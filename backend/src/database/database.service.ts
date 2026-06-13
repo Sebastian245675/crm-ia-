@@ -267,7 +267,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
         // Also seed subscription
         await this.query(
-          "INSERT INTO suscripciones (user_id, plan, status, is_demo, trial_ends_at) VALUES (%s, 'deluxe-ilimitado-websy', 'active', 1, null)",
+          "INSERT INTO suscripciones (user_id, plan, status, is_demo, trial_ends_at) VALUES (%s, 'deluxe-ilimitado-websy', 'active', true, null)",
           [adminId]
         );
         console.log('[DB] Default admin user seeded successfully with ID:', adminId);
@@ -285,7 +285,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         );
         const superId = insertResult[0]?.id || 2;
         await this.query(
-          "INSERT INTO suscripciones (user_id, plan, status, is_demo, trial_ends_at) VALUES (%s, 'saas-super-admin', 'active', 1, null)",
+          "INSERT INTO suscripciones (user_id, plan, status, is_demo, trial_ends_at) VALUES (%s, 'saas-super-admin', 'active', true, null)",
           [superId]
         );
         console.log('[DB] Super admin user seeded successfully with ID:', superId);
