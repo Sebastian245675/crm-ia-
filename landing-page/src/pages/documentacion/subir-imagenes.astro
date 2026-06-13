@@ -1,0 +1,90 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo subir y gestionar imágenes | merco" description="Guía para subir imágenes de productos y gestionar el bucket." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo subir y gestionar imágenes</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Sube y gestiona imágenes de productos y logos. Verifica almacenamiento en bucket o modo mock.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué puedes hacer aquí</h2>
+        <p class="mb-4">En esta sección puedes subir fotos de productos, cambiar el logo de la tienda y ordenar las imágenes que verán tus clientes.</p>
+        <p class="text-slate-600">Verifica siempre que la imagen se haya cargado correctamente antes de guardar el producto.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Formatos y límites</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li><strong>Formatos recomendados:</strong> JPG, PNG y WebP.</li>
+          <li><strong>Tamaño máximo:</strong> generalmente menos de 5 MB por imagen. Si necesitas reducir el tamaño, usa herramientas de compresión.</li>
+          <li><strong>Resolución sugerida:</strong> 800x800 o más para que la imagen se vea bien en la tienda.</li>
+          <li><strong>Proporción:</strong> mantén una relación cercana a 1:1 para miniaturas más consistentes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo subir imágenes</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3">
+          <li>
+            <strong>Selecciona el producto</strong> o la sección de marca donde quieras cambiar el logo.
+          </li>
+          <li>
+            <strong>Arrastra</strong> la imagen al área de carga o haz clic para buscarla en tu equipo.
+          </li>
+          <li>
+            <strong>Espera la confirmación</strong> en pantalla antes de continuar. Si ves un mensaje de error, prueba con otra imagen o reduce su tamaño.
+          </li>
+          <li>
+            <strong>Guarda el producto</strong> solo después de que la imagen haya subido correctamente.
+          </li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Compresión y calidad</h2>
+        <p class="mb-4">Usa herramientas de compresión para reducir el tamaño sin perder calidad visual.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>WebP ofrece buena calidad con tamaños pequeños.</li>
+          <li>JPG es recomendable para fotografías y productos con degradados.</li>
+          <li>PNG es útil para logos y transparencias, pero puede pesar más.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Verifica las miniaturas y el orden</h2>
+        <p class="mb-4">Después de subir, revisa las miniaturas que aparecen en el panel y ajusta el orden si tu producto tiene varias imágenes.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>La primera imagen suele ser la principal que verán los clientes.</li>
+          <li>Arrastra para cambiar el orden si la sección lo permite.</li>
+          <li>Si el logo se ve cortado, prueba con una versión más simple o de mejor calidad.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Almacenamiento y modo de prueba</h2>
+        <p class="mb-4">En producción, las imágenes se guardan en el sistema de almacenamiento de la tienda. Si estás en modo de prueba, se guardarán temporalmente en modo mock.</p>
+        <p class="text-slate-600">Si no ves la imagen después de subirla, prueba recargando la página o revisa el mensaje de estado del panel.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores comunes</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Subir una imagen demasiado grande que supera el límite de carga.</li>
+          <li>Usar un formato no compatible como TIFF o BMP.</li>
+          <li>No guardar el producto después de la carga, lo que evita que la imagen quede registrada.</li>
+          <li>Seleccionar mal el orden de las imágenes y dejar una miniatura incorrecta como principal.</li>
+        </ul>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

@@ -1,0 +1,157 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Documentación - Productos | merco" description="Cómo crear y gestionar productos en merco: campos obligatorios, tipos de imagen, límites, y funcionalidades disponibles." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Documentación — Productos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía práctica para crear, editar y subir productos en el panel administrativo de merco.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+  
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Ruta</h2>
+      <p class="text-slate-600">Página: <span class="font-medium text-slate-800">/documentacion/productos</span>. Acceso desde el panel administrativo → Productos o vía <a class="underline text-blue-600" href="/documentacion">Documentación general</a>.</p>
+    </section>
+
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo cargar un producto</h2>
+      <ol class="list-decimal list-inside text-slate-600 space-y-2">
+        <li>Accede al panel administrativo: <a class="underline text-blue-600" href="http://localhost:8080/login">/login</a> y entra con tu cuenta de administrador.</li>
+        <li>Ir a <strong>Productos</strong> y hacer clic en <strong>Nuevo producto</strong> o <strong>Crear</strong>.</li>
+        <li>Completa el formulario con la información del producto (ver sección Campos obligatorios).</li>
+        <li>Sube la imagen principal y, opcionalmente, imágenes adicionales (ver Tipos de imagen y límites).</li>
+        <li>Guarda. El sistema enviará una petición a <code>/api/productos</code> y recibirá un ID de producto.</li>
+        <li>Si subiste imágenes, el backend guardará los archivos en <code>/uploads/</code> y devolverá la URL pública (ej. <code>/uploads/166..._imagen.webp</code>).</li>
+      </ol>
+    </section>
+
+    <section id="variantes" class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Variantes y medidas</h2>
+      <p class="text-slate-600 mb-4">Las variantes permiten manejar talles, colores y medidas con inventario y precios independientes dentro del mismo producto.</p>
+      <ul class="list-disc list-inside text-slate-600 space-y-2 ml-6">
+        <li>Cada variante puede tener su propio <strong>stock</strong>, <strong>precio</strong> y <strong>imagen</strong>.</li>
+        <li>Puedes crear variantes por talla, color, paquete o presentación (por ejemplo, 10 ml, 20 ml, 50 ml).</li>
+        <li>El sistema muestra estas variantes al cliente y actualiza la disponibilidad según la selección.</li>
+        <li>Para productos con medidas especiales, usa el campo de descripción para explicar diferencias de tamaño o contenido.</li>
+      </ul>
+      <p class="text-slate-600 mt-4">Si tu tienda vende decants o fracción de producto, registra cada medida como una variante separada para controlar el stock de manera precisa.</p>
+    </section>
+
+    <section id="categorias" class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Categorías</h2>
+      <p class="text-slate-600">En la pestaña de Productos, las categorías son la forma principal de agrupar y filtrar tu catálogo de forma consistente. Una buena estructura de categorías facilita la administración y mejora la experiencia de compra.</p>
+      <div class="space-y-4">
+        <div>
+          <h3 class="text-xl font-semibold text-slate-800 mb-2">Estructura recomendada</h3>
+          <ul class="list-disc list-inside text-slate-600 ml-6 space-y-2">
+            <li>Empieza con categorías principales amplias (ej. <strong>Perfumes</strong>, <strong>Maquillaje</strong>, <strong>Cuidado personal</strong>).</li>
+            <li>Añade subcategorías dentro de cada principal para especializar el catálogo (ej. <strong>Perfumes de mujer</strong>, <strong>Perfumes de hombre</strong>, <strong>Fragancias de lujo</strong>).</li>
+            <li>El tercer nivel debe usarse solo cuando sea necesario (ej. <strong>Perfumes de mujer → Florales → Día</strong>), evitando árboles muy profundos que confundan al usuario.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-slate-800 mb-2">Cómo usar categorías en Productos</h3>
+          <ul class="list-disc list-inside text-slate-600 ml-6 space-y-2">
+            <li>Asignar cada producto a una categoría principal y, si aplica, a una subcategoría.</li>
+            <li>El filtrado de productos en la interfaz se basa en estas categorías: al seleccionar una categoría, la lista se actualiza y muestra solo los productos relacionados.</li>
+            <li>Las categorías también pueden influir en la navegación del cliente en el front-end, generando menús y filtros automáticos.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-slate-800 mb-2">Datos y campos clave</h3>
+          <ul class="list-disc list-inside text-slate-600 ml-6 space-y-2">
+            <li>Cada categoría debería tener un <strong>nombre claro</strong>, una <strong>descripción breve</strong> y, si está disponible, un <strong>slug</strong> amigable para URL.</li>
+            <li>Evita nombres duplicados entre categorías y subcategorías para no generar ambigüedad en los filtros.</li>
+            <li>Si el administrador lo permite, registra un orden de visualización para controlar cómo se muestran las categorías en el front-end.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-slate-800 mb-2">Prácticas de mantenimiento</h3>
+          <ul class="list-disc list-inside text-slate-600 ml-6 space-y-2">
+            <li>Revisa periódicamente las categorías y elimina las que ya no se usan o que tengan pocos productos activos.</li>
+            <li>Mantén una nomenclatura consistente: por ejemplo, usar siempre singular o siempre plural según tu política interna.</li>
+            <li>Si migras productos, actualiza las categorías para que los productos nuevos caigan en la estructura correcta sin crear categorías nuevas innecesarias.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-semibold text-slate-800 mb-2">Relación con inventario y ventas</h3>
+          <p class="text-slate-600">Las categorías no solo ayudan al filtrado, también permiten:</p>
+          <ul class="list-disc list-inside text-slate-600 ml-6 space-y-2">
+            <li>Analizar qué categorías venden más y cuáles necesitan promoción.</li>
+            <li>Detectar rápidamente si una categoría está agotada o con bajo stock.</li>
+            <li>Configurar descuentos y ofertas por categoría si la plataforma lo soporta.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Tipos de imágenes permitidas</h2>
+      <ul class="list-disc list-inside text-slate-600 space-y-2">
+        <li>Formatos aceptados por el servidor: <strong>JPG, JPEG, PNG, WEBP, GIF, BMP</strong>. En la interfaz se recomienda y valida <strong>JPG, PNG y WebP</strong>.</li>
+        <li>Tamaño máximo por defecto en el uploader: <strong>5 MB</strong>. Si necesitas cambiarlo, ajusta el parámetro <code>maxSizeMB</code> en el componente <code>ImageUploader</code>.</li>
+        <li>El servidor intenta convertir las imágenes a <strong>WEBP</strong> para optimizar carga y rendimiento.</li>
+        <li>Recomendación: usar imágenes con buena compresión y resoluciones adecuadas (ej. 800–1200px para la imagen principal).</li>
+      </ul>
+    </section>
+
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Cantidad de imágenes y productos</h2>
+      <ul class="list-disc list-inside text-slate-600 space-y-2">
+        <li>Imágenes adicionales: el uploader múltiple permite hasta <strong>5 imágenes adicionales</strong> por producto (configurable con <code>maxImages</code> en <code>MultiImageUploader</code>).</li>
+        <li>No existe un límite duro de productos en la base de datos — el sistema paginará y mostrará productos por páginas. La interfaz por defecto muestra <strong>5 productos por página</strong> y carga más bajo demanda.</li>
+        <li>Para catálogos grandes recomendamos importar en lotes y usar paginación o procesos batch para no saturar la UI ni la API.</li>
+      </ul>
+    </section>
+
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos obligatorios</h2>
+      <p class="text-slate-600 mb-2">Al crear un producto, los campos que el backend espera son:</p>
+      <ul class="list-disc list-inside text-slate-600 space-y-1">
+        <li><strong>Nombre</strong> — identificador legible del producto.</li>
+        <li><strong>Precio</strong> — valor numérico (campo <code>precio</code>).</li>
+        <li><strong>Stock</strong> — cantidad disponible (campo <code>stock</code>).</li>
+      </ul>
+      <p class="text-slate-300 mt-3">Campos opcionales y útiles en la interfaz:</p>
+      <ul class="list-disc list-inside text-slate-300 space-y-1">
+        <li>Descripción, categorías (primaria, secundaria, tercera), imágenes (principal + adicionales), variantes por color, especificaciones, beneficios, garantías y métodos de pago.</li>
+        <li>Opciones para decants (tamaños fraccionados) en tiendas que vendan por volumen.</li>
+      </ul>
+    </section>
+
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Funcionalidades disponibles para productos</h2>
+      <ul class="list-disc list-inside text-slate-600 space-y-2">
+        <li><strong>Publicar/Despublicar:</strong> Marca un producto como activo o inactivo (visible en tienda).</li>
+        <li><strong>Variantes y Colores:</strong> Añade variantes con colores y una imagen por variante.</li>
+        <li><strong>Decants / Fraccionamientos:</strong> Configura ventas por volumen (2.5, 5, 10 ml, etc.) con precio y stock independientes.</li>
+        <li><strong>Descuentos y Ofertas:</strong> Aplica descuentos puntuales y precios originales para mostrar rebajas.</li>
+        <li><strong>Historial de modificaciones:</strong> El sistema registra quién modificó un producto y cuándo.</li>
+        <li><strong>Integración con POS:</strong> Las ventas en POS actualizan stock y métricas del Dashboard.</li>
+        <li><strong>Conversión de imágenes a WebP:</strong> Herramientas internas optimizan imágenes para rendimiento.</li>
+        <li><strong>Rotación y edición rápida:</strong> Usa las herramientas de imagen (AdminImageOrientation) para rotar y corregir orientación sin subir de nuevo.</li>
+        <li><strong>Export y análisis:</strong> Exporta datos y usa los módulos de análisis para ver productos más vistos, menos vistos y tendencias.</li>
+      </ul>
+    </section>
+
+    <section class="p-6 border-b border-slate-100">
+      <h2 class="text-2xl font-bold text-slate-800 mb-3">Buenas prácticas</h2>
+      <ul class="list-disc list-inside text-slate-600 space-y-2">
+        <li>Usa nombres descriptivos y slugs únicos para facilitar SEO.</li>
+        <li>Prioriza imágenes WebP optimizadas para mejorar velocidad de carga.</li>
+        <li>Mantén stock actualizado y usa el historial para auditar cambios.</li>
+        <li>Cuando importes muchos productos, hazlo en lotes de 100–500 para evitar timeouts.</li>
+      </ul>
+    </section>
+
+  
+</div>
+</DocLayout>

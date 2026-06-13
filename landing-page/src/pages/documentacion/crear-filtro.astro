@@ -1,0 +1,113 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo crear un filtro | merco" description="Guía completa para crear filtros en la sección de productos de la tienda merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">10. Cómo crear un filtro</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">En la sección de productos, crea filtros para segmentar el catálogo por categoría, etiqueta o atributo. Esto mejora la búsqueda interna y la navegación del cliente.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Objetivo del filtro</h2>
+        <p>Los filtros permiten a los administradores definir criterios reutilizables que los clientes y el equipo pueden usar para acotar resultados: por categoría, por etiquetas, por rangos de precio, por atributos (color, talla), por disponibilidad, por marca, etc.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">UX: Flujo para crear un filtro (paso a paso)</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-2">
+          <li><strong>Ir a Productos → Filtros</strong>: desde el panel, selecciona la sección de filtros (si no existe, está dentro de Productos).</li>
+          <li><strong>Nuevo filtro</strong>: haz clic en "Crear filtro" o "Nuevo".</li>
+          <li><strong>Nombre y visibilidad</strong>: asigna un nombre descriptivo (ej: "Mujer > Perfumes > Oferta") y selecciona si es público (visible en tienda) o privado (solo interno).</li>
+          <li><strong>Tipo de filtro</strong>: selecciona entre "Categoría", "Etiqueta/Tag", "Atributo", "Rango numérico" o "Combinado".</li>
+          <li><strong>Definir reglas</strong>: añade una o varias reglas (ej: categoría = "Perfumes mujer", precio entre 1000 y 3000, tag incluye "bestseller").</li>
+          <li><strong>Orden y prioridad</strong>: establece orden y prioridad para que filtros más específicos se apliquen antes que generales.</li>
+          <li><strong>Guardar y previsualizar</strong>: guarda el filtro y utiliza la opción de previsualizar para ver cuántos productos coinciden y revisar ejemplos.</li>
+          <li><strong>Publicar</strong>: si está listo, publica el filtro para que aparezca en la tienda y en la UI de filtrado.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Reglas y operadores soportados</h2>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li><strong>Igual / Contiene:</strong> para textos, tags y categorías.</li>
+          <li><strong>Mayor / Menor / Entre:</strong> para precios y atributos numéricos.</li>
+          <li><strong>IN / NOT IN:</strong> para listas de valores (ej: múltiples categorías o marcas).</li>
+          <li><strong>True / False:</strong> para booleanos (ej: disponible, en oferta).</li>
+          <li><strong>Combinación lógica:</strong> AND / OR para combinar múltiples reglas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Ejemplos de filtros</h2>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li><strong>Promoción Verano:</strong> categoría IN ("Perfumes", "Cuidado personal") AND precio BETWEEN 500 AND 2000 AND tag CONTAINS "verano"</li>
+          <li><strong>Stock bajo:</strong> stock &lt;= 5</li>
+          <li><strong>Bestsellers Mujer:</strong> categoría = "Perfumes mujer" AND tag CONTAINS "bestseller"</li>
+          <li><strong>Por color:</strong> atributo.color IN ("negro", "blanco")</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Implementación técnica</h2>
+        <h3 class="font-semibold mt-3">Backend</h3>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li>Modelo de filtro: guardar como objeto JSON con campos: <code>id</code>, <code>name</code>, <code>rules</code>, <code>visibility</code>, <code>priority</code>, <code>created_by</code>, <code>active</code>.</li>
+          <li>Endpoint: <code>POST /api/filtros</code>, <code>GET /api/filtros</code>, <code>PUT /api/filtros/:id</code>, <code>DELETE /api/filtros/:id</code>.</li>
+          <li>Validación: comprobar coherencia de reglas (rango válido, tipos correctos).</li>
+          <li>Ejecución: convertir reglas a consultas SQL/NoSQL o a cláusulas de búsqueda (ej: filtro dinámico en query builder).</li>
+        </ul>
+
+        <h3 class="font-semibold mt-3">Frontend</h3>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li>UI: formulario para crear reglas dinámicas (selector de campo, operador, valor).</li>
+          <li>Previsualización: llamada a <code>POST /api/filtros/preview</code> que devuelve conteo y ejemplos (limitado a 50 productos).</li>
+          <li>Almacenamiento local: conservar filtro temporal en <code>localStorage</code> durante la edición para evitar pérdidas.</li>
+          <li>Aplicación en listados: transformar filtro guardado en query params o body para la llamada a <code>/api/productos</code> (ej: <code>?filter_id=123</code> o body <code>&#123; rules &#125;</code>).</li>
+          <li>Cache y performance: cachear respuestas de conteo y resultados por 30s-2min para no sobrecargar la búsqueda.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Validación y pruebas</h2>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li>Prueba unitarias para el parser de reglas (edge cases: rango invertido, tipos incorrectos).</li>
+          <li>Pruebas de integración para asegurar que filtros devuelven los productos esperados.</li>
+          <li>Pruebas de UI: creación, edición, borrado, y previsualización del filtro.</li>
+          <li>Monitoreo: métricas de uso de filtros (cuántas veces se aplican y tasa de conversión si es posible).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Buenas prácticas</h2>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li>Nombre claro y consistente: incluir contexto (ej: "Mujer - Perfumes - Oferta Primavera").</li>
+          <li>No crear demasiados filtros públicos que saturen la UI; usar filtros compuestos si es necesario.</li>
+          <li>Documentar reglas complejas en la descripción del filtro.</li>
+          <li>Usar prioridad para evitar solapamientos y comportamientos ambiguos.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Migración y compatibilidad</h2>
+        <p>Si agregas nuevos atributos al catálogo, revisa los filtros existentes para evitar errores. Implementa migraciones que normalicen atributos y actualicen reglas si cambian los nombres de campos.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Errores comunes y cómo solucionarlos</h2>
+        <ul class="list-inside list-disc ml-6 space-y-2">
+          <li><strong>Filtro vacío:</strong> mostrar validación y evitar guardar reglas sin condiciones.</li>
+          <li><strong>Rango inválido:</strong> validar que min ≤ max antes de guardar.</li>
+          <li><strong>Campos obsoletos:</strong> al renombrar un atributo, actualizar filtros que lo usan o marcar como inválidos.</li>
+          <li><strong>Resultados inesperados:</strong> revisar la lógica AND/OR y la prioridad de reglas.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

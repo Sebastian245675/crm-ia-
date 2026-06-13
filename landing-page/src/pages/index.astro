@@ -1,0 +1,31 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CinematicScene from '../components/CinematicScene.astro';
+import Navbar from '../components/Navbar.astro';
+import Hero from '../components/Hero.astro';
+import Features from '../components/Features.astro';
+import HowItWorks from '../components/HowItWorks.astro';
+import Benefits from '../components/Benefits.astro';
+import PromoApi from '../components/PromoApi.astro';
+import FloatingWhatsapp from '../components/FloatingWhatsapp.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout 
+	title="merco"
+	description="Crea tu tienda online multirrubro en minutos con merco. Automatiza la atención al cliente con el Agente de WhatsApp IA, gestiona variantes de tamaño e inventario en tiempo real."
+>
+	<Navbar />
+	<main>
+		<Hero />
+		<Features />
+		<HowItWorks />
+		<Benefits />
+		<PromoApi />
+	</main>
+	<Footer />
+	<FloatingWhatsapp />
+
+	<!-- 3D Depth Scroll Engine (only adds animations, no visual changes) -->
+	<CinematicScene />
+</Layout>

@@ -1,0 +1,204 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Stock y Alertas | merco" description="Guía completa para revisar, gestionar y configurar alertas de stock en merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Stock y Alertas</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía completa para gestionar niveles de inventario y configurar alertas automáticas.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">¿Qué es el Stock?</h2>
+        <p class="text-slate-600">El stock es la cantidad de unidades disponibles de cada producto en tu inventario. En merco, el stock se actualiza automáticamente cada vez que:</p>
+        <ul class="list-disc list-inside text-slate-600 mt-3 space-y-1 ml-2">
+          <li>Se confirma un pedido online</li>
+          <li>Se registra una venta en el POS</li>
+          <li>Recibes reorden de proveedores</li>
+          <li>Realizas ajustes manuales</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo Revisar el Stock</h2>
+        <p class="text-slate-600 mb-4">Hay varias formas de consultar el inventario:</p>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">1️⃣ Desde el Dashboard</h3>
+            <p class="text-slate-600">El Dashboard muestra rápidamente:</p>
+            <ul class="list-disc list-inside ml-4 text-slate-600 mt-1 space-y-1">
+              <li>Productos con stock bajo</li>
+              <li>Productos agotados</li>
+              <li>Total de unidades en inventario</li>
+            </ul>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">2️⃣ Sección de Productos</h3>
+            <p class="text-slate-600">Desde Productos, puedes:</p>
+            <ul class="list-disc list-inside ml-4 text-slate-600 mt-1 space-y-1">
+              <li>Ver el stock de cada producto en la lista</li>
+              <li>Filtrar por rango de stock (ej: "menores a 10")</li>
+              <li>Editar producto para ver stock detallado</li>
+            </ul>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">3️⃣ Reporte de Inventario</h3>
+            <p class="text-slate-600">Genera reportes para análisis detallado:</p>
+            <ul class="list-disc list-inside ml-4 text-slate-600 mt-1 space-y-1">
+              <li>Stock actual por producto</li>
+              <li>Movimientos de inventario</li>
+              <li>Rotación de productos</li>
+              <li>Exportar a CSV o PDF</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Configurar Stock Mínimo</h2>
+        <p class="text-slate-600 mb-4">El stock mínimo es un umbral que define cuándo un producto necesita reorden:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 ml-2">
+          <li>
+            <strong>Abre un producto</strong> desde la sección de Productos.
+          </li>
+          <li>
+            <strong>Busca el campo "Stock Mínimo"</strong> o "Stock de Alerta".
+          </li>
+          <li>
+            <strong>Ingresa la cantidad:</strong> Por ejemplo, si vendes 20 unidades por semana, podrías establecer 30 como mínimo para asegurar 1.5 semanas de stock.
+          </li>
+          <li>
+            <strong>Guarda los cambios.</strong> El sistema ahora monitoreará este producto.
+          </li>
+        </ol>
+
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-600">
+          <p class="text-slate-600"><strong>💡 Consejo:</strong> El stock mínimo debe ser diferente según la categoría de producto. Productos de alta rotación necesitan mínimos más altos que artículos de baja rotación.</p>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Alertas Automáticas</h2>
+        <p class="text-slate-600 mb-4">Las alertas te notifican automáticamente cuando algo requiere atención:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-600">
+            <span class="text-xl">⚠️</span>
+            <div>
+              <strong class="text-slate-800">Stock Bajo</strong>
+              <p class="text-sm">Cuando la cantidad cae por debajo del mínimo configurado. Aparece en el Dashboard con color amarillo/naranja.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg border-l-4 border-red-600">
+            <span class="text-xl">❌</span>
+            <div>
+              <strong class="text-slate-800">Stock Agotado</strong>
+              <p class="text-sm">Cuando un producto llega a 0 unidades. Se marca como "No disponible" en la tienda y aparece en rojo en el Dashboard.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-600">
+            <span class="text-xl">📢</span>
+            <div>
+              <strong class="text-slate-800">Notificaciones Push</strong>
+              <p class="text-sm">Recibe notificaciones en el panel o por email cuando se alcanza el stock mínimo (según tu configuración).</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Actualizar Stock Manualmente</h2>
+        <p class="text-slate-600 mb-4">A veces necesitas ajustar stock por razones externas:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 ml-2">
+          <li>
+            <strong>Ve a Productos</strong> y selecciona el artículo.
+          </li>
+          <li>
+            <strong>Busca el campo de Stock</strong> y actualiza la cantidad.
+          </li>
+          <li>
+            <strong>Documenta el cambio:</strong> Agrega una nota sobre por qué cambió (ej: "Ajuste por inventario", "Devolución recibida", "Pérdida por daño").
+          </li>
+          <li>
+            <strong>Guarda.</strong> El sistema registra el cambio en el historial.
+          </li>
+        </ol>
+
+        <div class="mt-4 p-4 bg-amber-50 rounded-lg border-l-4 border-amber-600">
+          <p class="text-slate-600"><strong>⚠️ Importante:</strong> Todo ajuste manual queda registrado en el historial del producto. Esto ayuda a auditar cambios y detectar discrepancias.</p>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Sincronización de Stock</h2>
+        <p class="text-slate-600 mb-4">El stock se sincroniza en tiempo real entre canales:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">E-commerce + POS:</strong> Si vendes 5 unidades en la tienda online, el POS ve inmediatamente 5 menos en stock.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Actualización instantánea:</strong> Cuando se confirma un pedido, el stock disminuye automáticamente.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Consistencia de datos:</strong> No es posible vender más de lo disponible (el sistema valida stock antes de confirmar).</p>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Historial de movimientos:</strong> Todo cambio de stock queda registrado con fecha, usuario y razón.
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Gestionar Productos Sin Stock</h2>
+        <p class="text-slate-600 mb-4">Cuando un producto se agota, tienes opciones:</p>
+
+        <div class="space-y-3">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800 text-slate-800">Mantener visible:</strong> El producto permanece en el catálogo pero muestra "No disponible" y no se puede comprar.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Ocultar:</strong> El producto desaparece de la tienda hasta que tenga stock nuevamente.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Pre-orden:</strong> Permite que clientes reserven aunque no tengas stock ahora (si lo configuraste).
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Notificar:</strong> Los clientes pueden pedir que les notifiques cuando vuelva disponible.
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Mejores Prácticas</h2>
+        <ul class="list-disc list-inside text-slate-600 space-y-2 ml-2">
+          <li>Revisa el Dashboard diariamente para ver alertas de stock bajo.</li>
+          <li>Establece stock mínimo realista según tu velocidad de venta.</li>
+          <li>Realiza inventarios físicos periódicamente para validar que el sistema sea exacto.</li>
+          <li>Usa reportes de rotación para identificar productos que venden poco.</li>
+          <li>Comunica con tu proveedor los tiempos de reorden basados en stock mínimo.</li>
+          <li>Documenta siempre los ajustes manuales de stock.</li>
+          <li>Revisa el historial de movimientos para detectar anomalías.</li>
+        </ul>
+      </section>
+
+      <section class="p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Conclusión</h2>
+        <p class="text-slate-600">Un buen manejo del stock evita ventas perdidas (por falta de existencia), dinero inmovilizado (por exceso de inventario) y decepciones de clientes. Utiliza las alertas de merco para mantener el equilibrio perfecto en tu inventario.</p>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

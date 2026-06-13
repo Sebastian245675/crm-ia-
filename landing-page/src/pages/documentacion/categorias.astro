@@ -1,0 +1,187 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Categorías | merco" description="Guía completa para crear, organizar y estructurar categorías y subcategorías en el catálogo de merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Categorías del Catálogo</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía completa para organizar, crear y estructurar categorías y subcategorías que faciliten la navegación de tu tienda.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">¿Qué son las Categorías?</h2>
+        <p class="text-slate-600">Las categorías son grupos que organizan tus productos de forma lógica y jerárquica. Permiten a los clientes encontrar lo que buscan fácilmente y mejoran la experiencia de navegación en tu tienda. Una buena estructura de categorías también ayuda a los buscadores como Google a entender mejor tu contenido.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Estructura Jerárquica</h2>
+        <p class="text-slate-600 mb-4">Las categorías en merco funcionan en niveles:</p>
+
+        <div class="space-y-4">
+          <div class="bg-slate-50 p-4 rounded-lg border-l-4 border-blue-600">
+            <h3 class="font-semibold text-slate-800 mb-2">📦 Categoría Principal (Nivel 1)</h3>
+            <p class="text-slate-600 mb-2">Ejemplo: <strong>Perfumería</strong></p>
+            <p class="text-slate-600 text-sm">Es el grupo más amplio. Representa una sección importante de tu negocio.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg border-l-4 border-green-600">
+            <h3 class="font-semibold text-slate-800 mb-2">🏷️ Subcategoría (Nivel 2)</h3>
+            <p class="text-slate-600 mb-2">Ejemplos bajo "Perfumería": <strong>Perfumes de Hombre</strong>, <strong>Perfumes de Mujer</strong>, <strong>Fragancias Unisex</strong></p>
+            <p class="text-slate-600 text-sm">Subdivide la categoría principal en grupos más específicos.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg border-l-4 border-purple-600">
+            <h3 class="font-semibold text-slate-800 mb-2">🎯 Sub-subcategoría (Nivel 3)</h3>
+            <p class="text-slate-600 mb-2">Ejemplos bajo "Perfumes de Hombre": <strong>Aromas Frescos</strong>, <strong>Aromas Orientales</strong>, <strong>Aromas Amaderados</strong></p>
+            <p class="text-slate-600 text-sm">Nivel adicional de especificidad para productos muy diversos. Opcional pero útil en catálogos grandes.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-600">
+          <p class="text-slate-600"><strong>💡 Consejo:</strong> No necesitas usar los 3 niveles en todas las categorías. Usa solo los que tengan sentido para tu negocio.</p>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo Crear una Categoría</h2>
+        <p class="text-slate-600 mb-4">Pasos para crear una categoría nueva:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 ml-2">
+          <li>
+            <strong>Ve a la sección Categorías</strong> desde el panel administrativo.
+          </li>
+          <li>
+            <strong>Haz clic en "Nueva Categoría"</strong> o "Crear Categoría".
+          </li>
+          <li>
+            <strong>Completa los datos:</strong>
+            <ul class="list-disc list-inside ml-6 mt-2 space-y-1">
+              <li><strong>Nombre:</strong> nombre corto y descriptivo (ej: "Perfumes de Mujer")</li>
+              <li><strong>Descripción:</strong> texto breve que explique qué contiene (opcional pero recomendado)</li>
+              <li><strong>Imagen:</strong> foto representativa de la categoría (opcional)</li>
+              <li><strong>Categoría Padre:</strong> selecciona si es subcategoría de otra (déjalo vacío si es principal)</li>
+              <li><strong>Estado:</strong> activa o inactiva</li>
+              <li><strong>Orden:</strong> posición en la lista (útil para organizar visualmente)</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Guarda los cambios.</strong> La categoría aparecerá en el menú de navegación.
+          </li>
+        </ol>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Mejores Prácticas para Nombrar Categorías</h2>
+        <p class="text-slate-600 mb-4">Sigue estas recomendaciones para nombres claros:</p>
+
+        <div class="space-y-3">
+          <div class="flex items-start gap-3">
+            <span class="text-green-600 text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Sé específico:</strong> "Perfumes de Hombre 100ml" es mejor que "Productos"
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-green-600 text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Usa lenguaje del cliente:</strong> Piensa en cómo tus clientes buscan, no en cómo tú organizas el almacén.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-green-600 text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Evita abreviaturas:</strong> "Perfumes" es mejor que "Pf." o "Perf."
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-green-600 text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Mantén consistencia:</strong> Si usas "Hombre", no uses "Masculino" en otras categorías.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-green-600 text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">No dupliques:</strong> No crees "Perfumes" y "Perfumería" como categorías paralelas.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Asignar Productos a Categorías</h2>
+        <p class="text-slate-600 mb-4">Cuando creas o editas un producto, puedes asignarle una o más categorías:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-2 ml-2">
+          <li>Abre el formulario de producto (crear o editar).</li>
+          <li>Busca el campo "Categorías" o "Asignar categoría".</li>
+          <li>Selecciona una o más categorías del listado.</li>
+          <li>Un producto puede estar en varias categorías si es relevante para múltiples grupos.</li>
+          <li>Guarda el producto. Aparecerá en todas sus categorías asignadas.</li>
+        </ol>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Filtros y Búsqueda en Categorías</h2>
+        <p class="text-slate-600 mb-4">Las categorías funcionan como filtros para mejorar la experiencia de compra:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Menú de navegación:</strong> El cliente ve todas tus categorías principales en el menú de la tienda y puede hacer clic para filtrar.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Navegación anidada:</strong> Si tiene subcategorías, el cliente puede hacer clic en "Perfumes de Mujer" y luego en "Aromas Frescos".
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">URLs amigables:</strong> Cada categoría tiene una URL clara (ej: /tienda/perfumes/perfumes-de-mujer).
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Búsqueda refinada:</strong> Los clientes pueden combinar filtros de categoría con búsqueda de texto.
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Editar y Eliminar Categorías</h2>
+        <p class="text-slate-600 mb-4">Cambios después de crear una categoría:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Editar:</strong> Haz clic en la categoría en la lista y actualiza sus datos (nombre, descripción, orden, etc.). Los cambios afectan toda la tienda.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Desactivar:</strong> En lugar de eliminar, puedes desactivar una categoría. Los productos asignados no se verán en la tienda, pero los datos permanecen.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Eliminar:</strong> Si intentas eliminar una categoría que tiene productos, el sistema te pedirá que reasignes esos productos a otra categoría primero.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Reorganizar orden:</strong> Cambia el número de orden para que las categorías aparezcan en el menú en el orden que desees.
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Impacto en SEO</h2>
+        <p class="text-slate-600">Una estructura de categorías clara beneficia tu posicionamiento en buscadores:</p>
+        <ul class="list-disc list-inside text-slate-600 mt-3 space-y-2 ml-2">
+          <li>Urls claras con nombres de categorías ayudan a Google a entender tu estructura.</li>
+          <li>Descripciones de categoría bien escritas se incluyen en meta tags.</li>
+          <li>El árbol de categorías mejora la navegación y reduce la tasa de rebote.</li>
+          <li>Productos bien categorizados tienen mejor relevancia en búsquedas.</li>
+        </ul>
+      </section>
+
+      <section class="p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Conclusión</h2>
+        <p class="text-slate-600">Las categorías son la columna vertebral de la organización de tu tienda. Invierte tiempo en estructurarlas correctamente desde el principio. Una buena categorización facilita que los clientes encuentren lo que buscan y mejora las ventas.</p>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

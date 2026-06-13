@@ -1,0 +1,96 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo exportar datos | merco" description="Guía para exportar productos, pedidos y clientes." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo exportar datos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Exporta listados de productos, pedidos y clientes para análisis externo o backups.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué puedes exportar</h2>
+        <p class="mb-4">La plataforma permite exportar datos clave para análisis, reportes y respaldo. Entre los listados más comunes están:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>Productos y variantes</li>
+          <li>Pedidos y estados de ventas</li>
+          <li>Clientes y datos de contacto</li>
+          <li>Movimientos de inventario y stock</li>
+          <li>Facturación y descuentos aplicados</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo exportar</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3">
+          <li>Ingresa al panel y busca la sección de exportes o reportes.</li>
+          <li>Selecciona el tipo de dato que deseas descargar (productos, pedidos, clientes, etc.).</li>
+          <li>Aplicar filtros por fecha, estado, categoría o canal de venta para reducir el volumen.</li>
+          <li>Elige el formato de salida: <strong>CSV</strong> para uso simple o <strong>XLSX</strong> para análisis en Excel/Sheets.</li>
+          <li>Genera el reporte y descarga el archivo con un nombre claro, por ejemplo <code>pedidos-marzo-2026.xlsx</code>.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Formatos y compatibilidad</h2>
+        <p>CSV es ideal para importaciones rápidas y análisis en herramientas ligeras. XLSX resulta mejor cuando necesitas hojas separadas, formatos y filtros en Excel o Google Sheets.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Buenas prácticas</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>Exporta en períodos controlados (diario, semanal, mensual) para no procesar archivos gigantes.</li>
+          <li>Guarda copias con fecha y tipo de reporte para tener historial de cambios.</li>
+          <li>Usa filtros cuando prepares datos para contabilidad o auditoría.</li>
+          <li>Verifica los datos exportados antes de compartirlos con terceros.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">¿Qué hacer si hay inconsistencia?</h2>
+        <p>Si el archivo exportado no coincide con los totales esperados, revisa los siguientes puntos:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>Filtros aplicados correctamente (fecha, estado, canal, categoría).</li>
+          <li>Pedidos pendientes o anulados que no deban incluirse.</li>
+          <li>Duplicados en clientes o productos que puedan inflar el conteo.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Uso avanzado</h2>
+        <p class="mb-4">Para análisis avanzados, combina varias exportaciones y usa herramientas externas como Excel, Google Sheets o Power BI.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Exporta datos de productos y pedidos para hacer un análisis de margen por artículo.</li>
+          <li>Combina reportes de ventas con exportes de clientes para estudiar comportamiento de compra.</li>
+          <li>Usa filtros por canal para comparar rendimiento entre e-commerce y POS.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Recomendaciones para backups</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Haz exportaciones regulares de productos y clientes al menos una vez al mes.</li>
+          <li>Guarda los archivos con nombres claros y fechas (ej. <code>clientes-2026-06.csv</code>).</li>
+          <li>Verifica el contenido del archivo después de descargarlo para asegurarte de que no haya errores.</li>
+        </ul>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de exportación</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Seleccionar el tipo de dato correcto.</li>
+          <li>Aplicar filtros necesarios.</li>
+          <li>Elegir el formato adecuado (CSV/XLSX).</li>
+          <li>Descargar y verificar el contenido del archivo.</li>
+          <li>Guardar el archivo con nombre y fecha claros.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

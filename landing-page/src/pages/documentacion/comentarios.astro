@@ -1,0 +1,95 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Documentación - Comentarios y Contactos | merco" description="Guía completa para administrar comentarios de clientes y contactos desde el panel de administración de merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Documentación — Comentarios y Contactos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía completa para revisar, moderar y gestionar feedback de clientes, mensajes y la base de contactos desde el panel administrativo de merco.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ruta</h2>
+        <p class="text-slate-600">Página: <span class="font-medium text-slate-800">/documentacion/comentarios</span>. Accede desde el índice de documentación general o desde el apartado <strong>Comentarios y Contactos</strong> del panel.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Objetivo de la sección</h2>
+        <p class="text-slate-600">Esta vista documenta el flujo completo para gestionar comentarios de clientes y la lista de contactos en el administrador. Incluye el ciclo de revisión, respuesta, moderación y vínculo con la atención al cliente.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Comentarios: qué son y cómo funcionan</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Los comentarios son mensajes o reseñas que dejan los clientes sobre productos, pedidos o experiencia general. Se almacenan en la base de datos y aparecen en la sección de <strong>Comentarios</strong> dentro del panel administrativo.</li>
+          <li>En la interfaz administrativa, la lista de comentarios muestra estado, producto asociado, puntuación, nombre del cliente y mensaje.</li>
+          <li>El panel permite filtrar por estado (<strong>Pendiente</strong>, <strong>Publicado</strong>, <strong>Oculto</strong>), por producto o por fecha.</li>
+          <li>El proceso recomendado es: revisar, validar, responder si procede y publicar o archivar. Esto asegura que el site muestre solo feedback confiable.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Contactos: gestión y uso</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>La sección de <strong>Contactos</strong> agrupa clientes y leads registrados a través de formularios de contacto, registros y pedidos.</li>
+          <li>Cada contacto puede incluir nombre, correo, teléfono, mensaje, producto de interés y fecha de registro.</li>
+          <li>La gestión de contactos permite marcar prioridades, segmentar por estado y exportar la lista para campañas o seguimiento.</li>
+          <li>Es ideal revisar los contactos nuevos diariamente para dar seguimiento rápido a consultas comerciales o soporte.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo recomendado</h2>
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 pl-5">
+          <li><strong>Recibir:</strong> detectar nuevos comentarios y contactos en la bandeja del panel.</li>
+          <li><strong>Clasificar:</strong> asignar estado y prioridad según la urgencia o relevancia del mensaje.</li>
+          <li><strong>Responder:</strong> contestar desde el canal adecuado o marcar para seguimiento externo si la plataforma no tiene respuesta directa.</li>
+          <li><strong>Publicar o ocultar:</strong> decidir si el comentario va al front-end o se mantiene privado por incumplimiento de políticas.</li>
+          <li><strong>Registrar:</strong> añadir notas internas o etiquetas para indicar acciones realizadas y responsable.</li>
+        </ol>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos clave en cada registro</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li><strong>Comentario:</strong> producto asociado, nombre del cliente, email, texto del mensaje, calificación, fecha y estado.</li>
+          <li><strong>Contacto:</strong> nombre, email, teléfono, asunto, mensaje, origen (formulario, pedido, registro) y fecha.</li>
+          <li><strong>Estado y notas:</strong> campos internos para registrar si el mensaje fue leído, respondido o derivado a soporte.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores comunes y cómo resolverlos</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Si no aparecen comentarios nuevos, verifica la conexión entre el formulario del frontend y la API que guarda comentarios.</li>
+          <li>Si el contacto llega vacío, comprueba que el formulario envía correctamente los campos obligatorios y que no hay validación JavaScript bloqueando el envío.</li>
+          <li>Si no puedes cambiar el estado de un comentario, revisa permisos de usuario o posibles errores en la API de actualización.</li>
+          <li>Si el front-end no muestra comentarios publicados, puede ser un problema de caché o de filtro aplicado incorrectamente.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Buenas prácticas</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Revisa y responde los mensajes en menos de 24 horas para mantener buena atención al cliente.</li>
+          <li>Oculta comentarios que contienen spam, enlaces no deseados o lenguaje ofensivo.</li>
+          <li>Usa etiquetas o notas internas para distinguir entre leads, clientes actuales y solicitudes de soporte.</li>
+          <li>Sincroniza la lista de contactos con tu CRM o herramienta de marketing si necesitas automatizar seguimientos.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Recomendaciones de uso</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Utiliza los filtros por estado para procesar primero los mensajes pendientes.</li>
+          <li>Guarda un historial corto de respuestas o acciones en notas para futuras consultas.</li>
+          <li>Integra la gestión de contactos con campañas de fidelización si los datos se utilizan con frecuencia.</li>
+        </ul>
+      </section>
+    
+  </div>
+</DocLayout>

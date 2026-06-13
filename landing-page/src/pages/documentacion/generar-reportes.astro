@@ -1,0 +1,138 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo generar reportes | merco" description="Guía para generar reportes de ventas, pedidos y productos." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo generar reportes</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía práctica para generar reportes operativos, entender los resultados y exportarlos de forma segura.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué encontrarás aquí</h2>
+        <p class="mb-4">Esta página describe cómo crear reportes desde el panel, qué tipos de datos puedes ver y cómo usar los resultados para tomar decisiones comerciales.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Paso a paso para crear un reporte</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li><strong>Abre el módulo de reportes</strong> desde el menú principal del panel.</li>
+          <li><strong>Selecciona el tipo de reporte</strong> que necesitas: ventas, productos, stock o pedidos por canal.</li>
+          <li><strong>Define el periodo</strong> con claridad: diario, semanal, mensual o un rango personalizado.</li>
+          <li><strong>Aplica filtros</strong> según canal, categoría, tienda o estado de pedido para ver solo la información que te interesa.</li>
+          <li><strong>Genera el reporte</strong> y revisa los resultados en pantalla antes de exportar.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Tipos de reportes más útiles</h2>
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Ventas por periodo</h3>
+            <p class="text-slate-600">Compara las ventas diarias, semanales o mensuales para detectar picos, bajos de demanda o el impacto de promociones.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Productos más vendidos</h3>
+            <p class="text-slate-600">Identifica los productos que se venden mejor y los que requieren acciones como rebajas, promociones o cambiar su visibilidad.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Stock y movimientos</h3>
+            <p class="text-slate-600">Controla el inventario y detecta qué productos requieren reposición urgente o están en sobrestock.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Pedidos por canal</h3>
+            <p class="text-slate-600">Ve cuánto vendes en e-commerce versus POS para tomar decisiones sobre canales y promociones específicas.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo leer los resultados</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li><strong>Mira las tendencias</strong>: si las ventas crecen o caen en el tiempo.</li>
+          <li><strong>Revisa los top productos</strong> para saber qué ofrecer con prioridad.</li>
+          <li><strong>Observa el stock</strong> antes de que se agote o se acumule demasiado inventario.</li>
+          <li><strong>Compara canales</strong> para saber qué segmento requiere atención.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Exportar reportes</h2>
+        <p class="mb-4 text-slate-600">Una vez que el reporte muestre lo que necesitas, utiliza los botones de exportación para descargarlo en el formato que prefieras:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li><strong>CSV</strong>: ideal para abrir en hojas de cálculo simples.</li>
+          <li><strong>XLSX</strong>: útil si trabajas con Excel o software de análisis.</li>
+        </ul>
+        <p class="text-slate-600">Asegúrate de exportar siempre después de aplicar los filtros correctos y confirmar el periodo seleccionado.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Casos de uso operativos</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Revisar el cierre diario o semanal de ventas para controlar ingresos.</li>
+          <li>Detectar productos con bajo rendimiento y tomar acciones para promocionarlos.</li>
+          <li>Planificar reposición de stock antes de que se agote un artículo clave.</li>
+          <li>Monitorear el desempeño de promociones y descuentos activos.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Casos de uso contables</h2>
+        <p class="mb-4 text-slate-600">Los reportes también sirven para respaldar decisiones contables y fiscales.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Exporta ventas por periodo para conciliación de caja.</li>
+          <li>Genera reportes de ingresos y costos para análisis de margen.</li>
+          <li>Usa el informe de pedidos por canal para asignar cuentas de ingresos correctamente.</li>
+          <li>Revisa movimientos de stock antes de cierres mensuales o inventarios físicos.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Consejos para usar reportes operativos</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li><strong>Define periodos consistentes</strong> cuando compares datos, por ejemplo usar siempre semanas completas o meses completos.</li>
+          <li><strong>Guarda tus filtros</strong> como plantillas si el panel ofrece esa opción, para no repetir la configuración.</li>
+          <li><strong>Exporta regularmente</strong> para tener respaldo de los datos y compartirlos con tu equipo.</li>
+          <li><strong>Consulta a tu coordinador</strong> antes de tomar decisiones si ves cambios bruscos en las métricas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores comunes al generar reportes</h2>
+        <div class="space-y-4 text-slate-600">
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Periodo inapropiado</p>
+            <p>No compares días sueltos con semanas completas. Usa periodos similares para evitar conclusiones erróneas.</p>
+          </div>
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Filtros incompletos</p>
+            <p>Si no aplicas filtros por canal o categoría, el reporte puede mezclar datos de ventas que no corresponden al análisis que buscas.</p>
+          </div>
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">No verificar el formato de exportación</p>
+            <p>Antes de compartir, abre el archivo exportado para confirmar que los datos se ven correctos y que las columnas están ordenadas.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de reportes</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Tipo de reporte adecuado.</li>
+          <li>Periodo y filtros bien definidos.</li>
+          <li>Resultados revisados antes de exportar.</li>
+          <li>Exportación guardada con nombre y fecha.</li>
+          <li>Datos usados para decisiones operativas o contables.</li>
+        </ul>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

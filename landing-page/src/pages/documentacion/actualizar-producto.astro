@@ -1,0 +1,336 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Actualizar Productos | merco" description="Guía completa para editar y actualizar productos en el panel administrativo de merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo Actualizar un Producto</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía paso a paso para editar y modificar los detalles de tus productos existentes.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">¿Por Qué Actualizar Productos?</h2>
+        <p class="text-slate-600">Los productos necesitan actualizaciones por varias razones:</p>
+        <ul class="list-disc list-inside text-slate-600 mt-3 space-y-1 ml-2">
+          <li>Cambios de precio por promoción o ajuste de costo</li>
+          <li>Correcciones de descripción o detalles</li>
+          <li>Actualización de imágenes o fotos mejoradas</li>
+          <li>Cambios de disponibilidad o stock</li>
+          <li>Reasignación a diferentes categorías</li>
+          <li>Actualización de especificaciones técnicas</li>
+          <li>Corrección de errores de tipeo</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Acceder a la Edición de Productos</h2>
+        <p class="text-slate-600 mb-4">Hay varias formas de acceder a editar un producto:</p>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">Opción 1: Desde el Listado de Productos</h3>
+            <ol class="list-decimal list-inside text-slate-600 space-y-1 ml-2">
+              <li>Ve a la sección <strong>Productos</strong> del panel administrativo</li>
+              <li>Busca el producto que deseas editar en la lista</li>
+              <li>Haz clic en el producto o en el ícono de "editar" (lápiz) a la derecha</li>
+              <li>Se abrirá el formulario de edición</li>
+            </ol>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">Opción 2: Usar la Búsqueda</h3>
+            <ol class="list-decimal list-inside text-slate-600 space-y-1 ml-2">
+              <li>En la lista de productos, usa la barra de búsqueda</li>
+              <li>Escribe el nombre, código o referencia del producto</li>
+              <li>Presiona Enter o espera a que filtre automáticamente</li>
+              <li>Haz clic en el resultado para editar</li>
+            </ol>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">Opción 3: Filtrar por Categoría</h3>
+            <ol class="list-decimal list-inside text-slate-600 space-y-1 ml-2">
+              <li>Filtra la lista por categoría para acotar resultados</li>
+              <li>Busca el producto en la categoría filtrada</li>
+              <li>Abre el producto para editar</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos que Puedes Editar</h2>
+        <p class="text-slate-600 mb-4">Una vez abierto el formulario de edición, encontrarás estos campos:</p>
+
+        <div class="space-y-4 text-slate-600">
+          <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-600">
+            <h3 class="font-semibold text-slate-800 mb-2">📝 Nombre del Producto</h3>
+            <p class="mb-2">El nombre visible para los clientes. Debe ser claro y descriptivo.</p>
+            <p class="text-sm"><strong>Recomendación:</strong> Usa títulos cortos pero informativos (ej: "Perfume Clásico 100ml" en lugar de solo "Perfume")</p>
+          </div>
+
+          <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-600">
+            <h3 class="font-semibold text-slate-800 mb-2">💰 Precio</h3>
+            <p class="mb-2">El precio de venta al público. Puedes actualizar el precio base aquí.</p>
+            <p class="text-sm"><strong>Nota:</strong> Si hay promociones activas, el precio mostrado puede ser diferente al precio base.</p>
+          </div>
+
+          <div class="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-600">
+            <h3 class="font-semibold text-slate-800 mb-2">📄 Descripción</h3>
+            <p class="mb-2">Texto que detalla características, beneficios y especificaciones del producto.</p>
+            <p class="text-sm"><strong>Recomendación:</strong> Usa párrafos cortos, bullets para características clave y destaca beneficios principales.</p>
+          </div>
+
+          <div class="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-600">
+            <h3 class="font-semibold text-slate-800 mb-2">📦 Stock</h3>
+            <p class="mb-2">La cantidad de unidades disponibles. Actualiza cuando recibas reorden o vendas.</p>
+            <p class="text-sm"><strong>Validación:</strong> No puedes vender más de lo disponible. El sistema valida stock antes de confirmar pedidos.</p>
+          </div>
+
+          <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-600">
+            <h3 class="font-semibold text-slate-800 mb-2">⚠️ Stock Mínimo</h3>
+            <p class="mb-2">Cantidad umbral que dispara alertas. Cuando stock cae por debajo, recibirás notificaciones.</p>
+            <p class="text-sm"><strong>Ejemplo:</strong> Si vendes 20 unidades/semana, establece mínimo en 30 (1.5 semanas de buffer)</p>
+          </div>
+
+          <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-600">
+            <h3 class="font-semibold text-slate-800 mb-2">🖼️ Imágenes</h3>
+            <p class="mb-2">Fotos del producto. La primera es la imagen principal/thumbnail.</p>
+            <p class="text-sm"><strong>Recomendación:</strong> Usa mínimo 3-5 fotos desde ángulos diferentes. Formatos: JPG, PNG, WebP. Máximo 5MB por imagen.</p>
+          </div>
+
+          <div class="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-600">
+            <h3 class="font-semibold text-slate-800 mb-2">🏷️ Categorías</h3>
+            <p class="mb-2">Grupos a los que pertenece el producto. Un producto puede estar en múltiples categorías.</p>
+            <p class="text-sm"><strong>Nota:</strong> Actualizar categoría afecta dónde aparece el producto en la tienda.</p>
+          </div>
+
+          <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-600">
+            <h3 class="font-semibold text-slate-800 mb-2">🏷️ Etiquetas/Tags</h3>
+            <p class="mb-2">Palabras clave para búsqueda y clasificación (ej: "regalo", "promoción", "bestseller")</p>
+            <p class="text-sm"><strong>Recomendación:</strong> Usa etiquetas consistentes y relevantes para mejorar la búsqueda.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg border-l-4 border-slate-600">
+            <h3 class="font-semibold text-slate-800 mb-2">✓ Estado</h3>
+            <p class="mb-2">Activo o Inactivo. Productos inactivos no aparecen en la tienda.</p>
+            <p class="text-sm"><strong>Uso:</strong> Desactiva productos temporalmente sin perder sus datos.</p>
+          </div>
+
+          <div class="bg-cyan-50 p-4 rounded-lg border-l-4 border-cyan-600">
+            <h3 class="font-semibold text-slate-800 mb-2">💻 SKU/Código</h3>
+            <p class="mb-2">Código interno único del producto. Útil para inventario y sistemas externos.</p>
+            <p class="text-sm"><strong>Recomendación:</strong> Usa un sistema consistente (ej: "PERF-HM-001" para Perfume Hombre 001)</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Paso a Paso: Actualizar un Producto</h2>
+        <p class="text-slate-600 mb-4">Procedimiento completo:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-4 ml-2">
+          <li>
+            <strong>Abre la sección Productos</strong> desde el panel administrativo.
+          </li>
+          <li>
+            <strong>Busca y selecciona el producto</strong> que deseas editar. Haz clic en el ícono de editar o en el nombre del producto.
+          </li>
+          <li>
+            <strong>Modifica los campos necesarios:</strong>
+            <ul class="list-disc list-inside ml-6 mt-2 space-y-1">
+              <li>Actualiza nombre si es necesario</li>
+              <li>Cambia precio si hay promoción o ajuste</li>
+              <li>Mejora descripción si es necesario</li>
+              <li>Actualiza stock si hay nuevas unidades</li>
+              <li>Sube nuevas imágenes si mejoraste las fotos</li>
+              <li>Reasigna a categorías diferentes si corresponde</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Revisa todos los cambios</strong> antes de guardar. Verifica que los datos sean correctos.
+          </li>
+          <li>
+            <strong>Haz clic en "Guardar" o "Actualizar"</strong> para guardar los cambios.
+          </li>
+          <li>
+            <strong>Confirma el guardado.</strong> El sistema te mostrará un mensaje de éxito. Los cambios aparecen inmediatamente en la lista de productos y en la tienda.
+          </li>
+        </ol>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Actualizar Imágenes</h2>
+        <p class="text-slate-600 mb-4">Actualizar fotos es especialmente importante para producto:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Agregar nuevas imágenes:</strong> Haz clic en "Agregar imagen" o arrastra fotos. El sistema permite múltiples imágenes.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Establecer imagen principal:</strong> La primera imagen en la lista será la que se muestra en el catálogo. Puedes cambiar el orden arrastrando.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Eliminar imágenes:</strong> Haz clic en el ícono de papelera en la imagen que quieras remover.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">Almacenamiento:</strong> Las imágenes se guardan en el bucket configurado o como base64 en modo desarrollo.
+          </div>
+        </div>
+
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-600">
+          <p class="text-slate-600"><strong>💡 Consejos de fotografía:</strong></p>
+          <ul class="list-disc list-inside ml-4 space-y-1 text-sm">
+            <li>Usa buena iluminación (luz natural es mejor)</li>
+            <li>Muestra el producto desde múltiples ángulos</li>
+            <li>Incluye foto con escala (mano o objeto conocido)</li>
+            <li>Optimiza para web (no más de 2MB por imagen)</li>
+            <li>Mantén fondo consistente en todas</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Actualizar Precio: Consideraciones</h2>
+        <p class="text-slate-600 mb-4">Cuando cambias el precio de un producto:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="flex items-start gap-3">
+            <span class="text-xl">📊</span>
+            <div>
+              <strong class="text-slate-800">Impacta nuevos pedidos:</strong> Solo los pedidos futuros usan el nuevo precio. Pedidos confirmados mantienen el precio histórico.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">🛒</span>
+            <div>
+              <strong class="text-slate-800">Carrito en vivo:</strong> Si un cliente tiene el producto en carrito, verá actualización solo si recarga.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">📝</span>
+            <div>
+              <strong class="text-slate-800">Historial:</strong> El sistema registra cambios de precio. Puedes ver el historial en el log de cambios del producto.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">⚠️</span>
+            <div>
+              <strong class="text-slate-800">Promociones:</strong> Si hay promoción activa, el precio promocional sobrescribe el precio base mostrado.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Editar Descripción Efectiva</h2>
+        <p class="text-slate-600 mb-4">Una descripción buena impulsa ventas:</p>
+
+        <div class="p-4 bg-slate-50 rounded-lg space-y-3">
+          <div>
+            <strong class="text-slate-800">✓ Estructura recomendada:</strong>
+            <ol class="list-decimal list-inside ml-4 text-sm mt-1">
+              <li>Línea resumen (30-50 caracteres)</li>
+              <li>Características principales (2-3 líneas)</li>
+              <li>Beneficios (qué obtiene el cliente)</li>
+              <li>Especificaciones técnicas</li>
+              <li>Modo de uso (si aplica)</li>
+              <li>Garantía o política de devolución</li>
+            </ol>
+          </div>
+
+          <div>
+            <strong class="text-slate-800">✓ Ejemplo bueno:</strong>
+            <p class="text-sm bg-white p-2 rounded mt-1 font-mono italic">"Perfume premium para hombre con notas orientales. Formato 100ml. Fragrancia duradera que deja aroma en la piel por 8+ horas. Ideal para uso diario o eventos especiales. Ingredientes naturales."</p>
+          </div>
+
+          <div>
+            <strong class="text-slate-800">✗ Evita:</strong>
+            <ul class="list-disc list-inside ml-4 text-sm space-y-1 mt-1">
+              <li>Descripciones muy largas (párrafos de 100+ líneas)</li>
+              <li>Información irrelevante</li>
+              <li>Errores de ortografía</li>
+              <li>Promesas no verificables ("mejor del mundo")</li>
+              <li>Usar solo mayúsculas</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Validación y Guardado</h2>
+        <p class="text-slate-600 mb-4">Antes de guardar, el sistema valida:</p>
+
+        <div class="space-y-2 text-slate-600">
+          <div class="p-2 bg-green-50 rounded">✓ Nombre no vacío</div>
+          <div class="p-2 bg-green-50 rounded">✓ Precio válido y mayor a 0</div>
+          <div class="p-2 bg-green-50 rounded">✓ Stock no negativo</div>
+          <div class="p-2 bg-green-50 rounded">✓ Al menos una categoría asignada</div>
+          <div class="p-2 bg-red-50 rounded">✗ Si falta información obligatoria, verás un error</div>
+        </div>
+
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-600">
+          <p class="text-slate-600"><strong>💡 Tip:</strong> Revisa todos los campos antes de hacer clic en Guardar. Es más rápido arreglar aquí que revertir cambios después.</p>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ver Cambios en Vivo</h2>
+        <p class="text-slate-600 mb-4">Después de guardar, los cambios aparecen:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">En la lista de productos:</strong> Inmediatamente. Si buscaste el producto, verás la información actualizada.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">En la tienda pública:</strong> En 1-2 minutos (con cacheo puede ser hasta 5 minutos).
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">En Dashboard:</strong> Si cambió stock, el Dashboard se actualiza automáticamente.
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <strong class="text-slate-800">En reportes:</strong> Los datos históricos quedan registrados para auditoría.
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores Comunes y Soluciones</h2>
+        <p class="text-slate-600 mb-4">Problemas que pueden surgir:</p>
+
+        <div class="space-y-3">
+          <div class="p-3 bg-red-50 rounded-lg border-l-4 border-red-600">
+            <strong class="text-slate-800">❌ "Error al guardar"</strong>
+            <p class="text-slate-600 text-sm mt-1">Revisa que todos los campos obligatorios estén completos y correctos. Recarga la página e intenta nuevamente.</p>
+          </div>
+
+          <div class="p-3 bg-red-50 rounded-lg border-l-4 border-red-600">
+            <strong class="text-slate-800">❌ "Imagen muy grande"</strong>
+            <p class="text-slate-600 text-sm mt-1">Reduce el tamaño de la imagen. Usa herramientas online para comprimir a menos de 2MB.</p>
+          </div>
+
+          <div class="p-3 bg-red-50 rounded-lg border-l-4 border-red-600">
+            <strong class="text-slate-800">❌ "Cambios no se reflejan"</strong>
+            <p class="text-slate-600 text-sm mt-1">Espera 1-2 minutos. Recarga tu navegador. Si persiste, contacta soporte.</p>
+          </div>
+
+          <div class="p-3 bg-red-50 rounded-lg border-l-4 border-red-600">
+            <strong class="text-slate-800">❌ "No puedo editar campos"</strong>
+            <p class="text-slate-600 text-sm mt-1">Verifica que tengas permisos de editor o administrador. Algunos campos pueden ser de solo lectura.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Conclusión</h2>
+        <p class="text-slate-600">Actualizar productos regularmente mantiene tu catálogo fresco, competitivo y atractivo. Dedica tiempo a mejorar descripciones, fotos y precios. Un producto bien documentado convierte mejor.</p>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

@@ -1,0 +1,152 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout 
+  title="Acceso al Panel Administrativo | merco" 
+  description="Guía completa para acceder al panel administrativo de merco. Credenciales, resolución de problemas y navegación."
+  currentPath="/documentacion/acceso"
+>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Acceso al Panel Administrativo</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía detallada para iniciar sesión, gestionar credenciales y resolver problemas comunes de autenticación en el panel administrativo de merco.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Inicio de Sesión</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">Para acceder al panel administrativo, necesitas una cuenta con permisos administrativos. Sigue estos pasos:</p>
+        
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 text-sm sm:text-base">
+          <li>
+            <strong>Abre la ruta de login:</strong> Ve a <a class="underline text-brand-electric hover:text-blue-800" href="http://localhost:8080/login">http://localhost:8080/login</a>
+          </li>
+          <li>
+            <strong>Ingresa tus credenciales:</strong>
+            <ul class="list-disc list-inside ml-6 space-y-2 mt-2">
+              <li><strong>Correo o usuario:</strong> el identificador único de tu cuenta (ej: <code>admin@merco.com</code> o <code>admin</code>).</li>
+              <li><strong>Contraseña:</strong> tu contraseña de acceso. El sistema recomienda contraseñas seguras de mínimo 8 caracteres (idealmente 10-12 dígitos alfanuméricos con mayúsculas, minúsculas y números).</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Haz clic en "Ingresar"</strong> y espera a que el sistema valide tus credenciales.
+          </li>
+        </ol>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Solución de Problemas</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">Si el inicio de sesión falla, revisa los puntos siguientes:</p>
+
+        <div class="space-y-4">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-2 text-sm sm:text-base">❌ "Error de conexión" o "No se puede contactar al servidor"</h3>
+            <ul class="list-disc list-inside text-slate-500 space-y-1 text-xs sm:text-sm">
+              <li>Verifica que el servidor backend está en ejecución.</li>
+              <li>Abre la consola del navegador (F12) y revisa si hay errores de red.</li>
+              <li>Comprueba que la URL es correcta: <code>http://localhost:8080</code>.</li>
+              <li>Si usas un puerto diferente, actualiza la URL según tu configuración.</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-2 text-sm sm:text-base">❌ "Contraseña incorrecta"</h3>
+            <ul class="list-disc list-inside text-slate-500 space-y-1 text-xs sm:text-sm">
+              <li>Verifica que escribes la contraseña correctamente (sensible a mayúsculas/minúsculas).</li>
+              <li>Comprueba que no hay espacios antes o después de la contraseña.</li>
+              <li>Si la contraseña tiene caracteres especiales, asegúrate de tipearlos correctamente.</li>
+              <li>Si olvidaste la contraseña, solicita un restablecimiento a tu administrador del sistema.</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-2 text-sm sm:text-base">❌ "Usuario no encontrado"</h3>
+            <ul class="list-disc list-inside text-slate-500 space-y-1 text-xs sm:text-sm">
+              <li>Verifica que el correo o usuario es correcto.</li>
+              <li>En entornos locales de prueba, el usuario típico es <code>admin</code> o <code>admin@merco.com</code>.</li>
+              <li>Si no existe la cuenta, pide a un administrador que la cree en la base de datos.</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-2 text-sm sm:text-base">❌ "Error 500" o "Error interno del servidor"</h3>
+            <ul class="list-disc list-inside text-slate-500 space-y-1 text-xs sm:text-sm">
+              <li>Abre la consola del backend y busca mensajes de error.</li>
+              <li>Verifica que la base de datos está conectada y es accesible.</li>
+              <li>Reinicia el servidor backend e intenta de nuevo.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Acceso al Panel Admin</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">Una vez que inicias sesión correctamente, verás el menú de la cuenta en la esquina superior derecha. Desde allí:</p>
+        
+        <ol class="list-decimal list-inside text-slate-600 space-y-2 text-sm sm:text-base">
+          <li>Haz clic en <strong>tu nombre o icono de perfil</strong> para abrir el menú desplegable.</li>
+          <li>Selecciona <strong>"Panel Admin"</strong> para acceder.</li>
+          <li>Si no ves esta opción, tu cuenta no tiene permisos de administrador. Solicita que un administrador actualice tus permisos.</li>
+        </ol>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Estructura del Panel Administrativo</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">El panel administrativo incluye las siguientes secciones principales:</p>
+
+        <div class="space-y-4 text-slate-600 text-sm sm:text-base">
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">📊 Dashboard</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Métricas generales, ventas recientes, estado de stock y alertas importantes.</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">📦 Productos</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Alta, edición, publicación y gestión de inventario. Carga de imágenes y metadatos.</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">👥 Contactos</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Lista de clientes, prospectivos y leads. Información de contacto y historial.</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">🛒 Pedidos</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Seguimiento de ventas online y transacciones del punto de venta (POS).</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">⭐ Comentarios</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Moderación de reseñas, calificaciones y feedback de clientes.</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">🏷️ Categorías</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Organización del catálogo con jerarquías, subcategorías y filtros de búsqueda.</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">🤖 Asistente IA</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Configuración de chatbots, respuestas automáticas y modelos de lenguaje.</p>
+          </div>
+
+          <div class="border-l-4 border-brand-electric pl-4">
+            <h3 class="font-bold text-slate-800">💬 Mensajería</h3>
+            <p class="text-slate-500 text-sm mt-0.5">Gestión de integraciones de WhatsApp, notificaciones y canales de comunicación.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Mejores Prácticas de Seguridad</h2>
+        <ul class="list-disc list-inside text-slate-600 space-y-2 text-sm sm:text-base">
+          <li><strong>Nunca compartas tus credenciales</strong> con otros usuarios. Cada persona debe tener su propia cuenta.</li>
+          <li><strong>Usa contraseñas fuertes:</strong> mínimo 10 caracteres con mayúsculas, minúsculas, números y caracteres especiales.</li>
+          <li><strong>Cierra sesión</strong> cuando termines de trabajar, especialmente en equipos compartidos.</li>
+          <li><strong>No guardes credenciales</strong> en navegadores públicos o máquinas de terceros.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</DocLayout>

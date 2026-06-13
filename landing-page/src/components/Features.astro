@@ -1,0 +1,282 @@
+---
+// Features.astro
+---
+
+<section id="caracteristicas" class="py-10 md:py-14 relative overflow-hidden bg-[#f8fafc] border-t border-slate-100">
+  <!-- Soft background ambient glow -->
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-brand-electric/5 rounded-full blur-[140px] -z-10 pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    
+    <!-- Header Section -->
+    <div class="text-center max-w-4xl mx-auto mb-8 md:mb-10 space-y-2">
+      <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#11103d] tracking-tight uppercase leading-tight">
+        Todo lo que necesitas para escalar tu negocio
+      </h2>
+      <p class="text-sm sm:text-base md:text-lg text-slate-500 font-medium max-w-2xl mx-auto">
+        Compatible con rubros como <span class="text-brand-electric font-black">Tecnología, Moda, Hogar, Alimentos y Deportes</span> entre otros
+      </p>
+    </div>
+
+    <!-- Grid of Features (2 columns on large screens) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
+      
+      <!-- Card 1: Agente de Ventas IA 24/7 -->
+      <div class="depth-card bg-white border border-slate-100/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_12px_30px_rgba(0,0,0,0.015)] flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 group hover:shadow-lg hover:shadow-slate-100/50 hover:-translate-y-0.5 transition-all duration-300">
+        <!-- Image Container (Compact with SVG fallback) -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/Picsart_26-06-09_12-07-18-080.webp" 
+            alt="Agente de Ventas IA 24/7" 
+            class="w-full h-full object-contain relative z-10 p-2"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-green-500 p-3 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z" />
+            </svg>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-green-600">Asistente IA</span>
+          </div>
+        </div>
+
+        <!-- Content Box -->
+        <div class="flex-1 flex flex-col justify-between text-center sm:text-left w-full self-stretch">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] tracking-wide mb-1 leading-snug">
+              Agente de Ventas IA 24/7
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+              Asistente inteligente entrenado con tu catálogo real. Atiende y concreta ventas por WhatsApp, consulta stock en PostgreSQL y registra reservas con número de pedido automáticamente.
+            </p>
+          </div>
+          <div class="flex items-center justify-end w-full mt-auto">
+            <a 
+              href="/documentacion/chat-ia" 
+              class="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-electric hover:bg-[#2b26eb] text-white font-bold text-xs rounded-full shadow-md shadow-brand-electric/10 hover:shadow-lg hover:shadow-brand-electric/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            >
+              Ver Detalles
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Variantes y Medidas -->
+      <div class="depth-card bg-white border border-slate-100/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_12px_30px_rgba(0,0,0,0.015)] flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 group hover:shadow-lg hover:shadow-slate-100/50 hover:-translate-y-0.5 transition-all duration-300">
+        <!-- Image Container -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/features_variantes.png" 
+            alt="Variantes y Medidas" 
+            class="w-full h-full object-contain relative z-10 p-2"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-brand-blue p-3 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v16.5m0-16.5h16.5m-16.5 0v1.5m16.5-1.5v16.5m0-16.5h-1.5m1.5 1.5H5.25M18 18.75V21m-6-2.25V21m-6-2.25V21m9-3.75h1.5m-1.5-3h1.5m-1.5-3h1.5m-6 3h3m-3-3h3m-3-3h3" />
+            </svg>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-brand-blue">Variantes</span>
+          </div>
+        </div>
+
+        <!-- Content Box -->
+        <div class="flex-1 flex flex-col justify-between text-center sm:text-left w-full self-stretch">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] tracking-wide mb-1 leading-snug">
+              Variantes y Medidas
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+              Gestiona productos con talles, colores y paquetes distintos. Cada variante puede tener inventario y precio independiente, con vista clara para el equipo y el cliente.
+            </p>
+          </div>
+          <div class="flex items-center justify-end w-full mt-auto">
+            <a 
+              href="/documentacion/productos" 
+              class="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-electric hover:bg-[#2b26eb] text-white font-bold text-xs rounded-full shadow-md shadow-brand-electric/10 hover:shadow-lg hover:shadow-brand-electric/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            >
+              Ver Detalles
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Administración Central -->
+      <div class="depth-card bg-white border border-slate-100/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_12px_30px_rgba(0,0,0,0.015)] flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 group hover:shadow-lg hover:shadow-slate-100/50 hover:-translate-y-0.5 transition-all duration-300">
+        <!-- Image Container -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/features_admin.png" 
+            alt="Administración Central" 
+            class="w-full h-full object-contain relative z-10 p-2"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-brand-indigo p-3 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12a2.25 2.25 0 0 0 6 20.25Z" />
+            </svg>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-brand-indigo">Admin Central</span>
+          </div>
+        </div>
+
+        <!-- Content Box -->
+        <div class="flex-1 flex flex-col justify-between text-center sm:text-left w-full self-stretch">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] tracking-wide mb-1 leading-snug">
+              Administración Central
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+              Panel moderno multiusuario con control de caja, inventario y chats simultáneos. Monitoriza ventas, roles y rendimiento del bot desde una sola vista de mando.
+            </p>
+          </div>
+          <div class="flex items-center justify-end w-full mt-auto">
+            <a 
+              href="/documentacion/dashboard" 
+              class="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-electric hover:bg-[#2b26eb] text-white font-bold text-xs rounded-full shadow-md shadow-brand-electric/10 hover:shadow-lg hover:shadow-brand-electric/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            >
+              Ver Detalles
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Pasarela de Pagos -->
+      <div class="depth-card bg-white border border-slate-100/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_12px_30px_rgba(0,0,0,0.015)] flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 group hover:shadow-lg hover:shadow-slate-100/50 hover:-translate-y-0.5 transition-all duration-300">
+        <!-- Image Container -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/Picsart_26-06-09_13-22-25-744.webp" 
+            alt="Pasarela de Pagos" 
+            class="w-full h-full object-contain relative z-10 p-2"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-brand-orange p-3 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+            </svg>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-brand-orange">Pagos</span>
+          </div>
+        </div>
+
+        <!-- Content Box -->
+        <div class="flex-1 flex flex-col justify-between text-center sm:text-left w-full self-stretch">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] tracking-wide mb-1 leading-snug">
+              Pasarela de Pagos
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+              Vende en línea con un solo clic. Conecta pasarelas de pago seguras para cobrar al instante y cerrar pedidos web sin fricción desde el catálogo.
+            </p>
+          </div>
+          <div class="flex items-center justify-end w-full mt-auto">
+            <a 
+              href="/documentacion/pasarela-pagos" 
+              class="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-electric hover:bg-[#2b26eb] text-white font-bold text-xs rounded-full shadow-md shadow-brand-electric/10 hover:shadow-lg hover:shadow-brand-electric/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            >
+              Ver Detalles
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 5: Reportes y Contabilidad -->
+      <div class="depth-card bg-white border border-slate-100/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_12px_30px_rgba(0,0,0,0.015)] flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 group hover:shadow-lg hover:shadow-slate-100/50 hover:-translate-y-0.5 transition-all duration-300">
+        <!-- Image Container -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/features_reportes.png" 
+            alt="Reportes y Contabilidad" 
+            class="w-full h-full object-contain relative z-10 p-2"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-brand-yellow p-3 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+            </svg>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-brand-yellow">Reportes</span>
+          </div>
+        </div>
+
+        <!-- Content Box -->
+        <div class="flex-1 flex flex-col justify-between text-center sm:text-left w-full self-stretch">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] tracking-wide mb-1 leading-snug">
+              Reportes y Contabilidad
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+              Monitorea ventas, ingresos y márgenes con reportes claros de caja, clientes y productos. Información contable precisa para ventas, finanzas y decisiones de inventario.
+            </p>
+          </div>
+          <div class="flex items-center justify-end w-full mt-auto">
+            <a 
+              href="/documentacion/historial-cambios" 
+              class="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-electric hover:bg-[#2b26eb] text-white font-bold text-xs rounded-full shadow-md shadow-brand-electric/10 hover:shadow-lg hover:shadow-brand-electric/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            >
+              Ver Detalles
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 6: Rendimiento y SEO -->
+      <div class="depth-card bg-white border border-slate-100/80 rounded-[28px] p-5 sm:p-6 md:p-7 shadow-[0_12px_30px_rgba(0,0,0,0.015)] flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 group hover:shadow-lg hover:shadow-slate-100/50 hover:-translate-y-0.5 transition-all duration-300">
+        <!-- Image Container -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-cyan-50 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/features_seo.png" 
+            alt="Rendimiento y SEO" 
+            class="w-full h-full object-contain relative z-10 p-2"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-cyan-500 p-3 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+            </svg>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-cyan-600">Velocidad</span>
+          </div>
+        </div>
+
+        <!-- Content Box -->
+        <div class="flex-1 flex flex-col justify-between text-center sm:text-left w-full self-stretch">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] tracking-wide mb-1 leading-snug">
+              Rendimiento y SEO
+            </h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+              Arquitectura lista para SEO, con HTML semántico y cache local de 24 horas usando React Query. Ideal para catálogo rápido y accesible, con buena experiencia para Google.
+            </p>
+          </div>
+          <div class="flex items-center justify-between w-full mt-auto gap-4">
+            <span class="px-3.5 py-1 bg-[#f1f5f9] text-[#11103d] text-[10px] font-bold rounded-full select-none">
+              Nuevo
+            </span>
+            <a 
+              href="/documentacion/editar-tienda" 
+              class="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-electric hover:bg-[#2b26eb] text-white font-bold text-xs rounded-full shadow-md shadow-brand-electric/10 hover:shadow-lg hover:shadow-brand-electric/25 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            >
+              Ver Detalles
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

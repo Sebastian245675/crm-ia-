@@ -1,0 +1,19 @@
+# Robots.txt para REGALA ALGO
+User-agent: *
+Allow: /
+
+# Bloquear áreas administrativas
+Disallow: /admin
+Disallow: /admin-panel
+Disallow: /api/
+
+# Permitir archivos importantes para SEO
+Allow: /sitemap.xml
+Allow: /robots.txt
+
+# Sitemap
+Sitemap: https://regalaalgo.com/sitemap.xml
+
+# Crawl-delay para ser amigable con los servidores
+Crawl-delay: 1
+

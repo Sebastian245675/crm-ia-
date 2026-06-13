@@ -1,0 +1,92 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo ver ventas por canal | merco" description="Guía para analizar ventas por canal (e-commerce, POS)." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo ver ventas por canal</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Analizar ventas por canal para entender desempeño entre e-commerce y POS.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué ver en este informe</h2>
+        <p class="mb-4">Esta vista te permite comparar el rendimiento de ventas entre el e-commerce y el punto de venta (POS). Usa esta información para saber qué canal está teniendo mejor desempeño y dónde necesitas ajustar precios, promociones o stock.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Métricas clave</h2>
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Ingresos por canal</h3>
+            <p class="text-slate-600">Muestra cuánto vendiste en pesos en e-commerce y cuánto en POS. Es la métrica principal para medir volumen de ventas.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Unidades vendidas</h3>
+            <p class="text-slate-600">Indica cuántos productos se vendieron en cada canal. Te ayuda a ver si hay más rotación de stock en uno u otro.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Tasa de conversión</h3>
+            <p class="text-slate-600">Mide qué porcentaje de visitantes o clientes terminó comprando. Es útil para detectar si un canal necesita mejoras en precio, oferta o experiencia.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Dónde aplicar filtros</h2>
+        <p class="mb-3">Para comparar correctamente, selecciona filtros antes de analizar los resultados. Esto reduce el ruido y te permite ver datos más relevantes.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li><strong>Rango de fechas:</strong> compara semanas, meses o campañas específicas.</li>
+          <li><strong>Categorías:</strong> revisa el desempeño de perfumes, cosmética u otros grupos de productos.</li>
+          <li><strong>Campañas:</strong> analiza promociones o descuentos activos en cada canal.</li>
+          <li><strong>Canal:</strong> elige solo e-commerce o solo POS para ver el detalle individual.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué buscar al comparar canales</h2>
+        <ul class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li><strong>Diferencia en ingresos:</strong> si un canal vende más, revisa promociones, precios y stock disponibles.</li>
+          <li><strong>Productos fuertes en cada canal:</strong> identifica cuáles se venden mejor online y cuáles en la tienda física.</li>
+          <li><strong>Variaciones en tasa de conversión:</strong> una tasa baja en un canal puede indicar problemas de experiencia o de oferta.</li>
+          <li><strong>Impacto de campañas:</strong> usa periodos con promociones para ver qué canal responde mejor.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Acciones recomendadas</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Si el POS vende más, mejora el surtido y la visibilidad en tienda.</li>
+          <li>Si el e-commerce vende más, impulsa campañas digitales y mejora la experiencia online.</li>
+          <li>Si un canal tiene baja conversión, revisa precios, promociones y la claridad de la oferta.</li>
+          <li>Redistribuye stock según la demanda de cada canal.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ejemplo de análisis</h2>
+        <p class="mb-4">Imagina que en una semana el e-commerce vendió $200.000 y el POS $120.000. Con estos datos:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Evalúa si la diferencia responde a promociones online o a una tienda física poco preparada.</li>
+          <li>Revisa qué productos impulsaron cada canal y si hay oportunidades de cross-selling.</li>
+          <li>Planea acciones para equilibrar los canales o potenciar el más rentable.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Consejos rápidos</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Compara siempre el mismo rango de fechas para evitar datos distorsionados.</li>
+          <li>Usa los datos del canal para planificar inventario y promociones.</li>
+          <li>Revisa los productos top y los productos fríos por canal.</li>
+          <li>Usa estos datos para planificar reposiciones y promociones por canal.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

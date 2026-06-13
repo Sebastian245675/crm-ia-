@@ -1,0 +1,88 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo crear ofertas especiales | merco" description="Guía para crear promociones y ofertas especiales." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo crear ofertas especiales</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Configura promociones por tiempo limitado, bundles o descuentos por volumen.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Tipos de ofertas</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li><strong>Descuento por porcentaje:</strong> aplica un % de descuento sobre el precio de lista.</li>
+          <li><strong>Descuento fijo:</strong> resta un monto fijo por producto o por carrito.</li>
+          <li><strong>Bundle o pack:</strong> compra varios productos y recibe uno gratis o un precio especial.</li>
+          <li><strong>Envío gratis:</strong> activo cuando el pedido supera un monto mínimo.</li>
+          <li><strong>Promoción por primera compra:</strong> descuento para clientes nuevos.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo crear una oferta</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3">
+          <li>Selecciona la sección de ofertas o promociones en el panel.</li>
+          <li>Define el nombre de la oferta y la descripción visible para el cliente.</li>
+          <li>Elige el tipo de promoción (porcentaje, monto fijo, bundle, envío gratis).</li>
+          <li>Selecciona el alcance: producto específico, categoría, cliente segmentado o todo el catálogo.</li>
+          <li>Define fechas de inicio y fin, o deja la oferta activa hasta nueva orden.</li>
+          <li>Guarda y verifica que la promoción se refleje correctamente en el front-end.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Condiciones posibles</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>Aplicar solo a productos en stock.</li>
+          <li>Limitar a una compra por cliente.</li>
+          <li>Vincular con envío gratis si el subtotal supera un mínimo.</li>
+          <li>Combinar descuentos con descuentos existentes solo si el sistema lo permite.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ejemplo práctico</h2>
+        <p>Si quieres impulsar el stock de un producto lento, crea una oferta de <strong>compra 2 y llévate 3</strong> por 7 días. Esto ayuda a mejorar rotación y a mover inventario sin bajar precio de todos los artículos.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Monitoreo y ajuste</h2>
+        <p>Revisa regularmente el rendimiento de cada oferta:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>¿El producto con promoción aumentó ventas?</li>
+          <li>¿Se están generando pedidos esperados?</li>
+          <li>¿Necesita extenderse o terminarse antes por agotarse el stock?</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Evaluación de resultados</h2>
+        <p class="mb-4">Mide el impacto de la oferta con métricas claras y ajusta cuando sea necesario.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Compara ventas del periodo de la oferta con periodos anteriores.</li>
+          <li>Analiza el margen neto después de aplicar el descuento.</li>
+          <li>Revisa si la promoción atrajo clientes nuevos o solo adelantó compras existentes.</li>
+          <li>Decide si conviene repetir la misma oferta o probar un formato distinto.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Reglas de combinación</h2>
+        <p class="mb-4">Define si una oferta puede combinarse con otras promociones o si se aplica de forma exclusiva.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Ofrece promociones exclusivas cuando deseas un control total del margen.</li>
+          <li>Permite combinaciones solo si el sistema admite múltiples descuentos.</li>
+          <li>Evita aplicar múltiples descuentos acumulados sobre el mismo producto si no quieres perder control del precio final.</li>
+          <li>Documenta en la descripción de la oferta las condiciones de combinación para evitar dudas internas.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

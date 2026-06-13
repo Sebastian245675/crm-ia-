@@ -1,0 +1,41 @@
+import urllib.request
+
+boundary = 'boundary123'
+# PNG 1x1 pixel minimal válido
+png_data = bytes([
+    0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,
+    0x00,0x00,0x00,0x0D,0x49,0x48,0x44,0x52,
+    0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,
+    0x08,0x02,0x00,0x00,0x00,0x90,0x77,0x53,
+    0xDE,0x00,0x00,0x00,0x0C,0x49,0x44,0x41,
+    0x54,0x08,0xD7,0x63,0xF8,0xCF,0xC0,0x00,
+    0x00,0x00,0x02,0x00,0x01,0xE2,0x21,0xBC,
+    0x33,0x00,0x00,0x00,0x00,0x49,0x45,0x4E,
+    0x44,0xAE,0x42,0x60,0x82
+])
+
+part1 = ('--' + boundary + '\r\n').encode('utf-8')
+part2 = ('Content-Disposition: form-data; name="file"; filename="test.png"\r\n').encode('utf-8')
+part3 = ('Content-Type: image/png\r\n\r\n').encode('utf-8')
+part4 = ('\r\n--' + boundary + '--\r\n').encode('utf-8')
+
+body = part1 + part2 + part3 + png_data + part4
+
+req = urllib.request.Request(
+    'http://localhost:8000/api/upload',
+    data=body,
+    method='POST',
+    headers={
+        'Content-Type': 'multipart/form-data; boundary=' + boundary,
+        'Content-Length': str(len(body))
+    }
+)
+try:
+    resp = urllib.request.urlopen(req)
+    print('STATUS:', resp.status)
+    print('BODY:', resp.read().decode('utf-8'))
+except urllib.error.HTTPError as e:
+    print('HTTP ERROR:', e.code, e.reason)
+    print('BODY:', e.read().decode('utf-8'))
+except Exception as e:
+    print('ERROR:', e)

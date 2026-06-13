@@ -1,0 +1,392 @@
+---
+// documentacion.astro
+import DocLayout from '../layouts/DocLayout.astro';
+
+const categories = [
+  { id: "setup", name: "Configuración Inicial y Seguridad", icon: "⚙️" },
+  { id: "catalog", name: "Gestión de Catálogo e Inventario", icon: "📦" },
+  { id: "sales", name: "Ventas y Operaciones (POS)", icon: "🛒" },
+  { id: "ai", name: "Inteligencia Artificial y Mensajería", icon: "🤖" },
+  { id: "finance", name: "Finanzas, Analítica e Integraciones", icon: "💳" }
+];
+
+const cards = [
+  // 1. Configuración Inicial y Seguridad
+  {
+    title: "Acceso al panel",
+    description: "Guía paso a paso para iniciar sesión, gestionar tus credenciales y solucionar inconvenientes de conexión.",
+    href: "/documentacion/acceso",
+    category: "setup",
+    tags: "login acceso recuperar contraseña seguridad iniciar sesion"
+  },
+  {
+    title: "Gestión de Usuarios",
+    description: "Configura y administra usuarios con privilegios de administrador, asignación de roles y subcuentas.",
+    href: "/documentacion/crear-admin",
+    category: "setup",
+    tags: "roles usuarios admin permisos subcuentas operadores privilegios"
+  },
+  {
+    title: "Personalizar Tienda",
+    description: "Configura aspectos visuales, logos, banners y optimiza el SEO técnico y la velocidad de carga de la tienda.",
+    href: "/documentacion/editar-tienda",
+    category: "setup",
+    tags: "diseño logo banner seo velocidad cache rendimiento optimizacion"
+  },
+  {
+    title: "Perfil de Empresa",
+    description: "Registra y actualiza los datos corporativos, dirección física, horarios de atención y sucursales de la tienda.",
+    href: "/documentacion/empresa",
+    category: "setup",
+    tags: "empresa dirección horarios sucursales datos corporativos contacto"
+  },
+  {
+    title: "Historial de Cambios",
+    description: "Auditoría de seguridad y logs del sistema para rastrear las modificaciones de stock, precios y configuraciones.",
+    href: "/documentacion/historial-cambios",
+    category: "setup",
+    tags: "auditoria logs cambios seguridad historial modificaciones registros"
+  },
+  {
+    title: "Panel de Dashboard",
+    description: "Conoce la pantalla de bienvenida, la interpretación de gráficos operativos y la lectura de métricas financieras.",
+    href: "/documentacion/dashboard",
+    category: "setup",
+    tags: "dashboard metricas graficos ventas ingresos caja panel control"
+  },
+
+  // 2. Gestión de Catálogo e Inventario
+  {
+    title: "Productos y Variantes",
+    description: "Crea y gestiona productos del catálogo definiendo variantes de talles, colores, precios y control de stock.",
+    href: "/documentacion/productos",
+    category: "catalog",
+    tags: "productos variantes talle color crear catalogos stock precio"
+  },
+  {
+    title: "Categorías",
+    description: "Organiza tu catálogo mediante una estructura jerárquica de categorías, subcategorías y etiquetas.",
+    href: "/documentacion/categorias",
+    category: "catalog",
+    tags: "categorias jerarquia organizar catalogo subcategorias etiquetas"
+  },
+  {
+    title: "Actualizar Producto",
+    description: "Herramienta para editar la información de un producto, modificar descripciones o despublicarlo temporalmente.",
+    href: "/documentacion/actualizar-producto",
+    category: "catalog",
+    tags: "editar actualizar despublicar producto modificacion catalogos"
+  },
+  {
+    title: "Stock e Inventario",
+    description: "Control de stock mínimo, alertas de bajo stock y gestión de entradas y salidas de inventario.",
+    href: "/documentacion/stock",
+    category: "catalog",
+    tags: "stock inventario alertas reposición existencias minimos"
+  },
+  {
+    title: "Filtros y Búsqueda",
+    description: "Configuración de filtros personalizados (marcas, talles, colores) para facilitar la búsqueda al cliente.",
+    href: "/documentacion/crear-filtro",
+    category: "catalog",
+    tags: "filtros búsqueda marcas cliente navegacion especificaciones"
+  },
+  {
+    title: "Carga de Imágenes",
+    description: "Optimiza la subida de imágenes, formatos WebP y gestión de galería mediante drag & drop.",
+    href: "/documentacion/subir-imagenes",
+    category: "catalog",
+    tags: "imagenes webp upload galeria drag drop fotos archivos multimedia"
+  },
+
+  // 3. Ventas y Operaciones (POS)
+  {
+    title: "Pedidos / POS",
+    description: "Flujo del punto de venta (POS) para registrar ventas físicas, control de caja y cobros directos.",
+    href: "/documentacion/pedidos",
+    category: "sales",
+    tags: "pedidos pos ventas caja cobro física transacciones efectivo"
+  },
+  {
+    title: "Validación de Pedidos",
+    description: "Gestión de estados de pedidos (pendiente, confirmado, entregado) y preparación de despachos.",
+    href: "/documentacion/validar-pedidos",
+    category: "sales",
+    tags: "validar estados preparación despacho entrega online aprobacion"
+  },
+  {
+    title: "Registro de Clientes",
+    description: "Registra datos de clientes en el punto de venta para mantener una base de datos de compradores.",
+    href: "/documentacion/registrar-cliente",
+    category: "sales",
+    tags: "clientes registro pos base compradores datos historial"
+  },
+  {
+    title: "Registro de Proveedores",
+    description: "Administra tus proveedores, órdenes de compra y control de costes de adquisición de productos.",
+    href: "/documentacion/registrar-proveedor",
+    category: "sales",
+    tags: "proveedores compras costes adquisición stock mercancia insumos"
+  },
+  {
+    title: "Comentarios y Reseñas",
+    description: "Modera y gestiona las opiniones, calificaciones y testimonios enviados por tus clientes.",
+    href: "/documentacion/comentarios",
+    category: "sales",
+    tags: "comentarios reseñas moderación testimonios feedback opiniones"
+  },
+  {
+    title: "Descuentos",
+    description: "Crea y administra cupones de descuento, códigos promocionales y campañas de rebajas.",
+    href: "/documentacion/descuentos",
+    category: "sales",
+    tags: "descuentos cupones promociones rebajas ofertas codigos"
+  },
+  {
+    title: "Ofertas Especiales",
+    description: "Programa ofertas destacadas, descuentos por tiempo limitado y banners promocionales específicos.",
+    href: "/documentacion/ofertas",
+    category: "sales",
+    tags: "ofertas destacados banners promoción campañas liquidacion"
+  },
+
+  // 4. Inteligencia Artificial y Mensajería
+  {
+    title: "Asistente IA y WhatsApp",
+    description: "Conecta la API de Gemini y configura Twilio Sandbox o WhatsApp Cloud API directo para tu bot.",
+    href: "/documentacion/mensajeria",
+    category: "ai",
+    tags: "ia whatsapp twilio gemini meta webhooks conexion credenciales"
+  },
+  {
+    title: "Chat IA Cognitivo",
+    description: "Guía del asistente de ventas inteligente 24/7 conectado a stock real y generador de reservas.",
+    href: "/documentacion/chat-ia",
+    category: "ai",
+    tags: "chat ia cognitivo ventas bot offline respuestas automatizacion"
+  },
+  {
+    title: "Pruebas de Webhooks",
+    description: "Simulación de eventos de WhatsApp entrantes y depuración de payloads del webhook.",
+    href: "/documentacion/probar-webhooks",
+    category: "ai",
+    tags: "webhooks simulación depuración payloads prueba whatsapp meta"
+  },
+  {
+    title: "Responder Contactos",
+    description: "Manual de la bandeja de mensajería para chatear en tiempo real con clientes de WhatsApp.",
+    href: "/documentacion/responder-contactos",
+    category: "ai",
+    tags: "mensajería chats responder soporte en-vivo conversaciones bandeja"
+  },
+
+  // 5. Finanzas, Analítica e Integraciones
+  {
+    title: "Pasarela de pagos",
+    description: "Configuración de credenciales de Mercado Pago, modo sandbox y webhook de pagos aprobado.",
+    href: "/documentacion/pasarela-pagos",
+    category: "finance",
+    tags: "pagos mercado-pago sandbox credenciales reembolsos pasarela cobros"
+  },
+  {
+    title: "Generar Reportes",
+    description: "Generación de reportes financieros, márgenes de ganancia y exportación de auditorías en PDF.",
+    href: "/documentacion/generar-reportes",
+    category: "finance",
+    tags: "reportes ganancias finanzas pdf auditoria balances descargar"
+  },
+  {
+    title: "Exportar Datos",
+    description: "Cómo exportar tus catálogos, pedidos y bases de datos en formatos CSV o JSON.",
+    href: "/documentacion/exportar-datos",
+    category: "finance",
+    tags: "exportar csv json datos descarga copias seguridad"
+  },
+  {
+    title: "Ventas por Canal",
+    description: "Analítica del rendimiento y conversión de ventas a través de la web, WhatsApp e POS físico.",
+    href: "/documentacion/ventas-canal",
+    category: "finance",
+    tags: "ventas canales analitica conversión pos estadisticas grafico"
+  },
+  {
+    title: "Notificaciones",
+    description: "Configuración de notificaciones push de sistema y alertas visuales del panel operativo.",
+    href: "/documentacion/notificaciones",
+    category: "finance",
+    tags: "notificaciones alertas push sistema campana avisos panel"
+  }
+];
+---
+
+<DocLayout 
+  title="Documentación de la Tienda merco | Manuales de Usuario" 
+  description="Biblioteca completa de documentación de merco. Manuales técnicos del POS, sincronización de variantes y configuración del bot conversacional de WhatsApp."
+  currentPath="/documentacion"
+>
+  <div class="space-y-8 max-w-full">
+    
+    <!-- Header Section -->
+    <div class="space-y-4">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">
+        Documentación merco
+      </h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed max-w-3xl font-normal">
+        Encuentra guías operativas, especificaciones técnicas y checklists para exprimir al máximo tu panel de administración, catálogo de productos y tu asistente de ventas autónomo de IA.
+      </p>
+    </div>
+
+    <!-- Interactive Search Bar -->
+    <div class="bg-slate-50 border border-slate-200/60 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
+      <div class="relative flex-1 max-w-xl">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          id="search-input"
+          placeholder="Buscar guías (ej: WhatsApp, stock, Mercado Pago)..." 
+          class="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-sm placeholder-slate-400 text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+        />
+        <button 
+          id="clear-search" 
+          class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 hidden"
+          type="button"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <div class="text-xs sm:text-sm text-slate-500 font-medium whitespace-nowrap self-center">
+        <span id="search-count" class="text-blue-600 font-bold">{cards.length}</span> de <span class="font-semibold text-slate-700">{cards.length}</span> guías disponibles
+      </div>
+    </div>
+
+    <!-- Empty State for Search -->
+    <div id="no-results" class="hidden py-16 text-center bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl">
+      <div class="text-3xl mb-2">🔍</div>
+      <h3 class="text-base font-bold text-slate-700">No se encontraron artículos</h3>
+      <p class="text-slate-500 text-xs sm:text-sm mt-1">Intenta buscar con otros términos como 'POS', 'Gemini' o 'Variantes'.</p>
+    </div>
+
+    <!-- Grouped Sections -->
+    <div id="categories-container" class="space-y-12">
+      {categories.map((cat) => {
+        const catCards = cards.filter(card => card.category === cat.id);
+        return (
+          <section id={`category-sec-${cat.id}`} class="category-section space-y-5">
+            <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <span class="text-xl select-none">{cat.icon}</span>
+              <h2 class="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
+                {cat.name}
+              </h2>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {catCards.map((card) => (
+                <a 
+                  href={card.href}
+                  class="doc-card block bg-white border border-slate-100 hover:border-slate-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+                  data-title={card.title.toLowerCase()}
+                  data-description={card.description.toLowerCase()}
+                  data-tags={card.tags}
+                >
+                  <h3 class="text-sm sm:text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors mb-1">
+                    {card.title}
+                  </h3>
+                  <p class="text-slate-500 text-xs sm:text-sm leading-relaxed font-normal">
+                    {card.description}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+
+  </div>
+</DocLayout>
+
+<script>
+  // Client-side real-time interactive search filtering script
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    const clearBtn = document.getElementById('clear-search') as HTMLButtonElement;
+    const searchCountEl = document.getElementById('search-count') as HTMLElement;
+    const noResultsDiv = document.getElementById('no-results') as HTMLElement;
+    const cards = document.querySelectorAll('.doc-card');
+    const sections = document.querySelectorAll('.category-section');
+
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+      
+      // Toggle clear button visibility
+      if (query.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      let totalVisible = 0;
+
+      // Filter each section's cards
+      sections.forEach((section) => {
+        const sectionCards = section.querySelectorAll('.doc-card');
+        let visibleInSection = 0;
+
+        sectionCards.forEach((cardEl) => {
+          const card = cardEl as HTMLElement;
+          const title = card.getAttribute('data-title') || '';
+          const description = card.getAttribute('data-description') || '';
+          const tags = card.getAttribute('data-tags') || '';
+
+          // Match query in title, description, or tags
+          const isMatch = title.includes(query) || 
+                          description.includes(query) || 
+                          tags.includes(query);
+
+          if (isMatch) {
+            card.classList.remove('hidden');
+            card.classList.add('block');
+            visibleInSection++;
+            totalVisible++;
+          } else {
+            card.classList.remove('block');
+            card.classList.add('hidden');
+          }
+        });
+
+        // Toggle entire category section visibility
+        if (visibleInSection > 0) {
+          section.classList.remove('hidden');
+          section.classList.add('block');
+        } else {
+          section.classList.remove('block');
+          section.classList.add('hidden');
+        }
+      });
+
+      // Update counter and toggle empty state
+      searchCountEl.textContent = totalVisible.toString();
+      if (totalVisible === 0) {
+        noResultsDiv.classList.remove('hidden');
+      } else {
+        noResultsDiv.classList.add('hidden');
+      }
+    });
+
+    // Clear search handler
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+  });
+</script>

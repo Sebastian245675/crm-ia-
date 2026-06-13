@@ -1,0 +1,213 @@
+---
+// CinematicScene.astro
+// Pure scroll-depth animation engine
+// NO visual changes — only adds 3D depth animations via GSAP ScrollTrigger
+// All existing designs, colors, and layouts remain untouched
+---
+
+<!-- Scroll Progress Bar (thin line at top) -->
+<div id="scroll-progress" class="fixed top-0 left-0 h-[3px] z-[9999]" style="width: 0%; background: linear-gradient(to right, #3E3AF8, #7F56FF, #00E5FF);"></div>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  document.addEventListener('DOMContentLoaded', () => {
+
+    // ============================================================
+    // SCROLL PROGRESS BAR
+    // ============================================================
+    const progressBar = document.getElementById('scroll-progress');
+    ScrollTrigger.create({
+      trigger: document.documentElement,
+      start: 'top top',
+      end: 'bottom bottom',
+      onUpdate: (self) => {
+        if (progressBar) progressBar.style.width = `${self.progress * 100}%`;
+      }
+    });
+
+    // ============================================================
+    // FEATURE CARDS — Staggered 3D depth fly-in
+    // Each card enters from a different angle giving depth feeling
+    // ============================================================
+    const featureCards = document.querySelectorAll('.depth-card');
+    featureCards.forEach((card, i) => {
+      const fromX = (i % 2 === 0) ? -60 : 60;
+      const fromRotateY = (i % 2 === 0) ? 6 : -6;
+
+      gsap.fromTo(card,
+        {
+          opacity: 0,
+          y: 50,
+          x: fromX,
+          rotateY: fromRotateY,
+          scale: 0.9,
+          transformOrigin: 'center center',
+        },
+        {
+          opacity: 1,
+          y: 0,
+          x: 0,
+          rotateY: 0,
+          scale: 1,
+          duration: 0.8,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 92%',
+            end: 'top 55%',
+            scrub: 0.8,
+          }
+        }
+      );
+    });
+
+    // ============================================================
+    // HOW-IT-WORKS STEPS — Cinematic lateral depth reveal
+    // ============================================================
+    const steps = document.querySelectorAll('.depth-step');
+    steps.forEach((step, i) => {
+      const directions = [-100, 0, 100]; // left, center, right
+      const fromX = directions[i % 3];
+      const fromRotateY = (i === 0) ? 10 : (i === 2) ? -10 : 0;
+
+      gsap.fromTo(step,
+        {
+          opacity: 0,
+          x: fromX,
+          y: 40,
+          rotateY: fromRotateY,
+          scale: 0.85,
+          transformOrigin: 'center center',
+        },
+        {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotateY: 0,
+          scale: 1,
+          duration: 1,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: step,
+            start: 'top 90%',
+            end: 'top 50%',
+            scrub: 1,
+          }
+        }
+      );
+    });
+
+    // ============================================================
+    // BENEFIT ITEMS — Subtle depth stagger
+    // ============================================================
+    const benefits = document.querySelectorAll('.depth-benefit');
+    benefits.forEach((item, i) => {
+      gsap.fromTo(item,
+        {
+          opacity: 0,
+          y: 30,
+          x: (i % 2 === 0) ? -30 : 30,
+          scale: 0.95,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          x: 0,
+          scale: 1,
+          duration: 0.7,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: item,
+            start: 'top 92%',
+            end: 'top 65%',
+            scrub: 0.6,
+          }
+        }
+      );
+    });
+
+    // ============================================================
+    // PARALLAX EFFECT ON HERO BACKGROUND ELEMENTS
+    // Creates depth when scrolling past the hero
+    // ============================================================
+    const heroSection = document.getElementById('inicio');
+    if (heroSection) {
+      const heroBgElements = heroSection.querySelectorAll(':scope > .absolute');
+      heroBgElements.forEach((el, i) => {
+        const speed = 0.3 + (i * 0.15);
+        gsap.to(el, {
+          y: -80 * speed,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: heroSection,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true,
+          }
+        });
+      });
+    }
+
+    // ============================================================
+    // WHATSAPP CHAT MOCKUP — Depth entrance
+    // ============================================================
+    const chatMockup = document.querySelector('#integraciones .rounded-2xl.overflow-hidden');
+    if (chatMockup) {
+      gsap.fromTo(chatMockup,
+        {
+          opacity: 0,
+          y: 60,
+          scale: 0.9,
+          rotateY: -5,
+          transformOrigin: 'center center',
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          rotateY: 0,
+          duration: 1,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: chatMockup,
+            start: 'top 90%',
+            end: 'top 45%',
+            scrub: 1,
+          }
+        }
+      );
+    }
+
+    // ============================================================
+    // FOOTER CONTENT — Gentle depth entrance
+    // ============================================================
+    const footerContent = document.querySelector('#contacto > .max-w-7xl');
+    if (footerContent) {
+      gsap.fromTo(footerContent,
+        {
+          opacity: 0,
+          y: 40,
+          scale: 0.97,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 1,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: footerContent,
+            start: 'top 95%',
+            end: 'top 60%',
+            scrub: 1,
+          }
+        }
+      );
+    }
+
+  });
+</script>

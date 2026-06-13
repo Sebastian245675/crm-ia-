@@ -1,0 +1,54 @@
+/* Ocultar completamente la barra de desplazamiento pero permitiendo el scroll */
+.scrollbar-container::-webkit-scrollbar {
+  width: 0px;
+  background-color: transparent;
+}
+
+.scrollbar-container::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.scrollbar-container::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Para Firefox */
+.scrollbar-container {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+/* Estilo para botones de navegación */
+.scrollbar-container {
+  position: relative;
+}
+
+/* Estilo para contenido del dropdown */
+.category-dropdown-content {
+  padding-right: 24px; /* Espacio para los botones de navegación */
+}
+
+/* Scrollbar sutil para la barra de categorías - delgada con color suave */
+.category-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.category-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+  border-radius: 2px;
+}
+
+.category-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 2px;
+}
+
+.category-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Para Firefox */
+.category-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) rgba(241, 245, 249, 0.5);
+}

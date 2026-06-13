@@ -1,0 +1,235 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout 
+  title="Agente de Ventas IA 24/7 | Arquitectura Cognitiva" 
+  description="Guía avanzada y especificaciones técnicas del asistente de ventas inteligente por WhatsApp integrado con Gemini API y bases de datos locales." 
+  currentPath={Astro.url.pathname}
+>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-md uppercase tracking-wider">Técnico</span>
+        <span class="text-slate-400 text-sm">|</span>
+        <span class="text-slate-500 text-sm">Última actualización: Junio 2026</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Agente de Ventas IA 24/7</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">
+        Especificación de la arquitectura cognitiva, llamadas a funciones estructuradas (Tool Calling) de Gemini y políticas de contingencia del bot de ventas autónomo de WhatsApp de merco.
+      </p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+      <!-- Arquitectura Cognitiva -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">1. Arquitectura Cognitiva del Bot</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          El bot opera como un agente autónomo de tipo **ReAct (Reasoning and Acting)**. No utiliza plantillas rígidas de flujos conversacionales, sino que procesa el lenguaje natural del cliente mediante un modelo de lenguaje masivo (LLM) y decide en tiempo real qué acciones tomar con base en las herramientas de base de datos registradas.
+        </p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200/50">
+            <h3 class="font-bold text-slate-800 mb-2">🧠 Motor de Razonamiento (Gemini)</h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed">
+              Consume el modelo <strong>gemini-1.5-flash</strong> (o <em>gemini-1.5-pro</em>) mediante peticiones seguras desde el servidor backend. El modelo recibe la historia de chat del cliente, el prompt del sistema y las definiciones de las funciones (herramientas).
+            </p>
+          </div>
+          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200/50">
+            <h3 class="font-bold text-slate-800 mb-2">⚡ Integración con Base de Datos</h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed">
+              Cuando el bot requiere datos, genera una llamada a función estructurada (<em>JSON Tool Call</em>). El backend la intercepta, ejecuta la consulta real en PostgreSQL o SQLite y le devuelve los resultados al LLM para formular la respuesta final.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Flujo del Mensaje -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">2. Flujo de Procesamiento del Mensaje</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          El siguiente diagrama ilustra el flujo de extremo a extremo que realiza el sistema ante cada mensaje recibido en el webhook de WhatsApp:
+        </p>
+
+        <!-- Diagrama Visual CSS -->
+        <div class="p-5 bg-slate-900 rounded-2xl border border-slate-800 overflow-x-auto text-xs sm:text-sm text-slate-300 font-mono space-y-2 max-w-full">
+          <div class="flex items-center gap-2">
+            <span class="text-blue-400">Cliente WhatsApp</span> ➜ <span class="text-yellow-400">Webhook API (Meta/Twilio)</span> ➜ <span class="text-emerald-400">Backend Controller</span>
+          </div>
+          <div class="text-slate-500 pl-4 border-l border-slate-800 py-1 space-y-1.5">
+            <div>⬇️ <strong>Paso 1:</strong> Validación del remitente y token de seguridad.</div>
+            <div>⬇️ <strong>Paso 2:</strong> Recuperación del historial del chat (últimos 15 mensajes) de la base de datos.</div>
+            <div>⬇️ <strong>Paso 3:</strong> Construcción del payload y llamada al Agente de IA.</div>
+          </div>
+          <div class="flex items-center gap-2 pl-4">
+            <span>⚙️ ¿API Key de Gemini configurada?</span>
+          </div>
+          <div class="pl-8 border-l border-slate-800 py-1 space-y-2">
+            <div class="text-emerald-400 font-bold">▶️ Sí (Flujo Inteligente):</div>
+            <div class="pl-4 text-slate-400 space-y-1">
+              <div>1. Gemini recibe contexto + herramientas.</div>
+              <div>2. ¿Requiere datos? ➜ Genera <strong>Tool Call JSON</strong>.</div>
+              <div>3. Backend ejecuta consulta SQL ➜ Devuelve resultados a Gemini.</div>
+              <div>4. Gemini formula respuesta de texto final.</div>
+            </div>
+            <div class="text-red-400 font-bold">▶️ No (Flujo Offline Contingente):</div>
+            <div class="pl-4 text-slate-400 space-y-1">
+              <div>1. Se ejecuta el motor de reglas estáticas local.</div>
+              <div>2. Se buscan coincidencias de palabras clave en el catálogo local.</div>
+              <div>3. Se formula respuesta de contingencia predefinida.</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400">Backend Controller</span> ➜ <span class="text-yellow-400">Envío de WhatsApp (Graph API)</span> ➜ <span class="text-blue-400">Cliente final</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Definición de Herramientas (Tool Calling) -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">3. Declaración de Herramientas y Esquema JSON</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          El bot inteligente tiene acceso a funciones declarativas. A continuación se detallan los esquemas JSON de las herramientas principales que utiliza el bot para consultar inventario y confirmar compras:
+        </p>
+
+        <div class="space-y-4">
+          <!-- Herramienta 1: Consultar Stock -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
+              <span class="font-bold text-slate-800 text-xs sm:text-sm">🔍 tool_consultar_inventario</span>
+              <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-md">LECTURA</span>
+            </div>
+            <div class="p-4 bg-slate-900 text-slate-300 font-mono text-xs overflow-x-auto">
+              <pre><code>{`{
+  "name": "consultar_inventario",
+  "description": "Busca productos en el catálogo por nombre, categoría o especificaciones para comprobar precio y stock real.",
+  "parameters": {
+    "type": "OBJECT",
+    "properties": {
+      "query": {
+        "type": "STRING",
+        "description": "Término de búsqueda del producto (ej: 'perfume importado', 'talle M')"
+      },
+      "categoria": {
+        "type": "STRING",
+        "description": "Categoría opcional para filtrar resultados (ej: 'fragancias', 'indumentaria')"
+      }
+    },
+    "required": ["query"]
+  }
+}`}</code></pre>
+            </div>
+          </div>
+
+          <!-- Herramienta 2: Crear Reserva/Pedido -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
+              <span class="font-bold text-slate-800 text-xs sm:text-sm">📝 tool_crear_pedido_reserva</span>
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md">ESCRITURA</span>
+            </div>
+            <div class="p-4 bg-slate-900 text-slate-300 font-mono text-xs overflow-x-auto">
+              <pre><code>{`{
+  "name": "crear_reserva",
+  "description": "Crea una orden de compra o reserva en la base de datos cuando el cliente confirma explícitamente el pedido.",
+  "parameters": {
+    "type": "OBJECT",
+    "properties": {
+      "cliente_nombre": { "type": "STRING", "description": "Nombre del comprador" },
+      "cliente_telefono": { "type": "STRING", "description": "Número de WhatsApp del cliente" },
+      "items": {
+        "type": "ARRAY",
+        "items": {
+          "type": "OBJECT",
+          "properties": {
+            "producto_id": { "type": "STRING", "description": "ID único del producto a comprar" },
+            "cantidad": { "type": "INTEGER", "description": "Unidades a ordenar" },
+            "variante_id": { "type": "INTEGER", "description": "ID de la variante (ej: color o talle)" }
+          },
+          "required": ["producto_id", "cantidad"]
+        }
+      },
+      "metodo_pago": {
+        "type": "STRING",
+        "enum": ["efectivo", "transferencia", "mercado_pago"],
+        "description": "Medio de cobro preferido"
+      }
+    },
+    "required": ["cliente_nombre", "cliente_telefono", "items", "metodo_pago"]
+  }
+}`}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Instrucciones del Sistema (System Prompt) -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">4. System Prompt e Instrucciones de Personalidad</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          El comportamiento conversacional del agente se define mediante directrices de sistema estrictas. El LLM se ve obligado a adherirse al siguiente prompt base:
+        </p>
+        
+        <div class="bg-blue-50/50 border-l-4 border-blue-500 p-5 rounded-r-2xl space-y-2 text-slate-700 text-xs sm:text-sm leading-relaxed">
+          <p><strong>PROMPT SISTEMA DIRECTIVO:</strong></p>
+          <p class="italic font-normal">
+            "Eres el bot de ventas oficial de la Tienda merco. Tu objetivo principal es ayudar a los clientes a encontrar productos, consultar precios, comprobar disponibilidad real y guiar el proceso de compra.
+          </p>
+          <ul class="list-disc list-inside ml-4 space-y-1 font-normal">
+            <li><strong>Tono:</strong> Amable, profesional, directo y conciso.</li>
+            <li><strong>Extensión:</strong> No envíes párrafos largos. Mantén tus respuestas en un rango de 15 a 80 palabras. Usa saltos de línea para mejorar la legibilidad en WhatsApp.</li>
+            <li><strong>Stock:</strong> Nunca inventes la existencia de un producto. Si el cliente pregunta por disponibilidad, utiliza la función <code>consultar_inventario</code>. Si el producto no figura, responde de forma educada que no se encuentra en catálogo.</li>
+            <li><strong>Llamada a la acción:</strong> Siempre incentiva el cierre del pedido. Si confirmas que hay stock, pregunta inmediatamente: '¿Te gustaría que te reserve una unidad antes de que se agote?'."</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Motor Offline de Contingencia -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">5. Motor de Reglas Offline (Fallback)</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base mb-4">
+          Si la conexión con la API de Gemini falla, o si no se ha configurado la API Key de inteligencia artificial, el sistema activa automáticamente un **motor de coincidencia estática** programado localmente en el servidor backend:
+        </p>
+        
+        <ul class="list-disc list-inside text-slate-600 space-y-3 ml-6 text-sm sm:text-base">
+          <li>
+            <strong>Detección de Saludos:</strong> Expresiones como <em>"hola"</em>, <em>"buenos días"</em>, o <em>"buenas tardes"</em> disparan un mensaje de bienvenida predefinido indicando las sucursales, horarios de atención y un menú interactivo.
+          </li>
+          <li>
+            <strong>Búsqueda por Palabras Clave:</strong> Si el mensaje contiene nombres de categorías o productos específicos (ej: <em>"perfume"</em>, <em>"talle"</em>, <em>"precio"</em>), el servidor realiza un barrido de texto `LIKE` directo en la base de datos y lista los primeros 3 productos coincidentes con su stock actual.
+          </li>
+          <li>
+            <strong>Mensaje de Fallback General:</strong> Si no hay coincidencia de palabras clave, el bot devuelve un mensaje de contingencia solicitando paciencia y aclarando que un operador del equipo de ventas físico responderá a la brevedad.
+          </li>
+        </ul>
+      </section>
+
+      <!-- Checklist de Verificación -->
+      <section class="p-6 bg-slate-50 border border-slate-200/60 rounded-2xl">
+        <h2 class="text-xl font-bold text-slate-800 mb-3 tracking-tight">Checklist de Puesta en Marcha</h2>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-600 text-xs sm:text-sm font-medium">
+          <li class="flex items-center gap-2">
+            <span class="text-emerald-500 font-bold">✓</span> API Key de Gemini cargada en Variables
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="text-emerald-500 font-bold">✓</span> Sincronización de Webhook en Meta Developers
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="text-emerald-500 font-bold">✓</span> Base de datos indexada para búsquedas veloces
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="text-emerald-500 font-bold">✓</span> Respuesta límite de API Timeouts a 5000ms
+          </li>
+        </ul>
+      </section>
+
+      <!-- Regresar -->
+      <section class="pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold text-sm">
+          ← Volver a Documentación
+        </a>
+      </section>
+
+    </div>
+  </div>
+</DocLayout>

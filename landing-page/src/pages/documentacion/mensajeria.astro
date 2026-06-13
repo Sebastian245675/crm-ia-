@@ -1,0 +1,255 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Documentación - Asistente IA y Mensajería | merco" description="Guía extensa para configurar Asistente IA y mensajería WhatsApp con Meta directo, webhooks y mejores prácticas en merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Documentación — Asistente IA y Mensajería</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía completa para configurar, probar y operar la integración de WhatsApp con IA en merco. Incluye detalles de Meta directo, webhook, ngrok y recomendaciones de seguridad.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ruta</h2>
+        <p class="text-slate-600">Página: <span class="font-medium text-slate-800">/documentacion/mensajeria</span>. Accede desde el índice principal de documentación o desde la sección de <strong>Asistente IA y Mensajería</strong> en la documentación general.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Objetivo</h2>
+        <p class="text-slate-600">Esta documentación cubre la configuración, el flujo y las pruebas necesarias para que el chat de WhatsApp funcione con la inteligencia artificial de merco. Se enfoca en la conexión directa con Meta/WhatsApp Cloud API, evitando intermediarios cuando sea posible.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Arquitectura general</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>El frontend administra la configuración en <strong>Asistente IA → Configuración</strong> y almacena credenciales seguras en variables de entorno o en el backend.</li>
+          <li>El servidor recibe webhooks de Meta o Twilio con mensajes entrantes de WhatsApp.</li>
+          <li>El backend procesa el webhook, consulta la IA y devuelve una respuesta a través de la API de mensajería.</li>
+          <li>La conexión recomendada es directa con Meta/WhatsApp Cloud API, sin intermediarios, para reducir latencia, evitar dependencias extra y tener control total del flujo.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Configuración mínima necesaria</h2>
+        <p class="text-slate-600 mb-3">Configura los siguientes valores en <strong>Asistente IA → Configuración</strong> para que la integración funcione correctamente:</p>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li><strong>API Key de Gemini:</strong> clave de acceso para el servicio de IA que responderá los mensajes. Debe mantenerse secreta y no exponerse en el frontend público.</li>
+          <li><strong>Meta App ID:</strong> identificador de la aplicación de Meta que usa WhatsApp Cloud API.</li>
+          <li><strong>Meta App Secret:</strong> secreto de la app de Meta.</li>
+          <li><strong>WhatsApp Business Account ID:</strong> cuenta de WhatsApp Business vinculada en Meta Business Manager.</li>
+          <li><strong>Phone Number ID:</strong> identificador del número de teléfono de WhatsApp en Meta.</li>
+          <li><strong>Access Token de Meta:</strong> token de acceso generado en el panel de Meta para enviar y recibir mensajes.</li>
+          <li><strong>Webhook URL:</strong> URL pública donde Meta enviará los eventos de mensajes entrantes.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo obtener un token permanente de Meta</h2>
+        <p class="text-slate-600 mb-3">Para usar WhatsApp Cloud API en producción, necesitas un token estable de larga duración. Meta emite tokens temporalmente, pero el flujo correcto es intercambiar un token corto por uno de larga duración y, si es necesario, obtener el token de la página o del número de WhatsApp.</p>
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 ml-6">
+          <li>
+            <strong>Crea y configura la app en Meta Developers:</strong> ve a <code>https://developers.facebook.com</code>, crea una app de tipo <em>Negocios</em> o <em>WhatsApp</em> y añade el producto <strong>WhatsApp</strong>.
+          </li>
+          <li>
+            <strong>Configura la cuenta de WhatsApp Business:</strong> vincula tu cuenta de WhatsApp Business y tu número en el panel de la app.
+          </li>
+          <li>
+            <strong>Genera un token de corto plazo:</strong> en la sección de WhatsApp Cloud API obtendrás un token provisional que sirve para el intercambio inicial.
+          </li>
+          <li>
+            <strong>Intercambia el token corto por uno de larga duración:</strong> usa el endpoint de Graph API de Meta:
+            <pre class="bg-slate-100 p-4 rounded text-sm text-slate-800 overflow-x-auto"><code>{`https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id={app-id}&client_secret={app-secret}&fb_exchange_token={short-lived-token}`}</code></pre>
+          </li>
+          <li>
+            <strong>Obtén el token de la página o del número:</strong> si tu integración requiere un token de página, realiza una llamada a la Graph API con el token de larga duración:
+            <pre class="bg-slate-100 p-4 rounded text-sm text-slate-800 overflow-x-auto"><code>{`https://graph.facebook.com/v17.0/{page-id}?fields=access_token&access_token={long-lived-user-token}`}</code></pre>
+          </li>
+          <li>
+            <strong>Guarda el token de forma segura:</strong> almacena el token en variables de entorno o en el gestor de secretos del backend. No lo incluyas en el frontend ni en repositorios.
+          </li>
+        </ol>
+        <p class="text-slate-600 mt-3">La mayoría de los tokens de larga duración expiran cada 60 días, por lo que conviene preparar un proceso de renovación automática o manual. El token permanente absoluto no siempre existe; se trata de mantener un token de larga duración renovable y un token de página asociado al número de WhatsApp.</p>
+        <p class="text-slate-600 mt-3">Usa la herramienta de depuración de tokens de Meta para verificar la validez con:</p>
+        <pre class="bg-slate-100 p-4 rounded text-sm text-slate-800 overflow-x-auto"><code>{`https://graph.facebook.com/debug_token?input_token={token}&access_token={app-id}|{app-secret}`}</code></pre>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Token de larga duración vs token de página</h2>
+        <p class="text-slate-600 mb-3">En la práctica, necesitas dos tipos de token para la integración de WhatsApp:</p>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-2">
+          <li><strong>Token de larga duración:</strong> es el token de usuario/app que se usa para obtener el token del número o la página.</li>
+          <li><strong>Token de página/número:</strong> es el token que realmente se usa para enviar mensajes desde el número de WhatsApp.</li>
+        </ul>
+        <p class="text-slate-600">Cuando configuras WhatsApp Cloud API, guarda ambos tokens en el backend y consulta la API solo desde el servidor. Si tu app obtiene token de página, úsalo para las llamadas de mensajería y mantén el token de larga duración para renovaciones futuras.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Renovación y gestión de tokens</h2>
+        <p class="text-slate-600 mb-3">Aunque tengas un token de larga duración, debes monitorear su fecha de expiración. Implementa un proceso de renovación automatizado para no interrumpir la mensajería.</p>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Almacena la fecha de expiración de cada token cuando lo generes.</li>
+          <li>Revisa periódicamente el estado con la API <code>/debug_token</code>.</li>
+          <li>Crea un trabajo cron o una tarea programada que verifique el token 15 días antes de expirar.</li>
+          <li>Si el token expira, repite el intercambio de token corto a largo y actualiza el backend con el nuevo valor.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Conexión directa con Meta / WhatsApp Cloud API</h2>
+        <p class="text-slate-600 mb-3">Para evitar intermediarios, la integración preferida es la conexión directa con Meta, usando la WhatsApp Cloud API. Esto significa que Meta envía eventos a tu webhook y tu backend responde directamente con mensajes de salida.</p>
+        <div class="space-y-3 text-slate-600">
+          <p><strong>Ventajas de la conexión directa:</strong></p>
+          <ul class="list-disc list-inside ml-6 space-y-2">
+            <li>Menos componentes entre el usuario y el bot.</li>
+            <li>Mayor control sobre la autenticación y la seguridad.</li>
+            <li>Menor latencia y dependencia de terceros adicionales.</li>
+            <li>Facilita auditoría y trazabilidad de mensajes.</li>
+          </ul>
+          <p><strong>Requisitos:</strong> cuenta de Meta Business, app en Meta Developers, número habilitado en WhatsApp Cloud API, webhook HTTPS accesible y token válido.</p>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Configuración del webhook</h2>
+        <p class="text-slate-600 mb-3">En Meta Business o en el administrador de WhatsApp Cloud API, registra el webhook público que recibe mensajes. El backend debe exponer un endpoint tipo <code>/api/webhook/mensajeria</code> o similar.</p>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li><strong>Callback URL:</strong> la URL pública donde Meta enviará notificaciones de mensaje.</li>
+          <li><strong>Verify Token:</strong> token de verificación que tu servidor usa para validar la suscripción del webhook.</li>
+          <li><strong>Eventos:</strong> suscribe al menos a los eventos de mensajes entrantes y entregas.</li>
+        </ul>
+        <p class="text-slate-600 mt-2">Si usas Twilio Sandbox como entorno de prueba, copia la URL webhook que Twilio te proporciona en la configuración de sandbox. Sin embargo, en producción deberías migrar a Meta directo.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Orientación para SaaS</h2>
+        <p class="text-slate-600 mb-3">Esta guía está orientada al consumo de la plataforma merco como SaaS, con integración directa hacia Meta/WhatsApp Cloud API. No es necesario ni recomendable compartir detalles de entornos locales de prueba como ngrok en la documentación pública del servicio.</p>
+        <p class="text-slate-600">Para pruebas internas, el equipo de desarrollo puede usar herramientas temporales, pero en producción el webhook debe ser una URL pública HTTPS propia y estable.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo de mensajes</h2>
+        <p class="text-slate-600 mb-3">El ciclo completo de un mensaje en WhatsApp con IA es:</p>
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 pl-5">
+          <li>El cliente envía un mensaje al número de WhatsApp registrado.</li>
+          <li>Meta o Twilio envía un evento webhook al backend con el contenido del mensaje.</li>
+          <li>El backend valida la firma y procesa el webhook.</li>
+          <li>La aplicación consulta la API de Gemini o el servicio de IA configurado para generar la respuesta.</li>
+          <li>El backend envía la respuesta de vuelta a WhatsApp mediante la API indicada.</li>
+          <li>El usuario recibe el mensaje de respuesta en su WhatsApp.</li>
+        </ol>
+        <p class="text-slate-600 font-normal mt-3">Es importante que el backend mantenga el estado mínimo necesario para evitar respuestas fuera de contexto y que registre cada evento en logs para depuración.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ejemplo de webhook entrante</h2>
+        <pre class="bg-slate-100 p-4 rounded text-sm text-slate-800 overflow-x-auto"><code>{`{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "1234567890",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "+1234567890",
+              "phone_number_id": "0987654321"
+            },
+            "contacts": [
+              {
+                "profile": { "name": "Cliente Prueba" },
+                "wa_id": "5491123456789"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5491123456789",
+                "id": "ABCD1234",
+                "timestamp": "1712345678",
+                "text": { "body": "Hola, quiero información" },
+                "type": "text"
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}`}</code></pre>
+        <p class="text-slate-600 mt-3">El backend debe leer <code>entry[0].changes[0].value.messages[0]</code> para extraer el remitente, el cuerpo y el tipo de mensaje.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Enviar mensajes de respuesta</h2>
+        <p class="text-slate-600 mb-3">Usa la API de Meta para enviar respuestas directas al número que escribió. El cuerpo de la petición suele incluir el <code>phone_number_id</code>, el destinatario y el contenido.</p>
+        <pre class="bg-slate-100 p-4 rounded text-sm text-slate-800 overflow-x-auto"><code>{`{
+  "messaging_product": "whatsapp",
+  "to": "5491123456789",
+  "type": "text",
+  "text": {
+    "body": "Gracias por tu consulta. Aquí tienes la información solicitada..."
+  }
+}`}</code></pre>
+        <p class="text-slate-600 mt-2">En la respuesta, usa texto simple y evita enviar payloads demasiado grandes. Para botones o plantillas avanzadas, consulta la documentación de WhatsApp Cloud API.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Meta directo vs Twilio</h2>
+        <p class="text-slate-600 mb-3">Aunque el panel puede soportar Twilio Sandbox para pruebas, en producción es mejor usar Meta directo. Twilio añade una capa extra y puede implicar costos y latencia adicional.</p>
+        <div class="space-y-3 text-slate-600">
+          <p><strong>Cuando usar Twilio:</strong></p>
+          <ul class="list-disc list-inside ml-6 space-y-2">
+            <li>Pruebas rápidas si ya tienes cuenta de Twilio y sandbox de WhatsApp.</li>
+            <li>Prototipos donde no quieres configurar Meta Business inmediatamente.</li>
+          </ul>
+          <p><strong>Cuando usar Meta directo:</strong></p>
+          <ul class="list-disc list-inside ml-6 space-y-2">
+            <li>Implementación real en producción.</li>
+            <li>Control directo sobre la autenticación y los webhooks.</li>
+            <li>Menor dependencia de intermediarios y mejor compatibilidad con políticas de Meta.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Seguridad y buenas prácticas</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Valida siempre la firma del webhook y el token de verificación antes de procesar el evento.</li>
+          <li>Usa HTTPS en producción y envía el token de acceso solo desde el backend.</li>
+          <li>Mantén los tokens y secretos de Meta/Gemini fuera del código fuente y en variables de entorno seguras.</li>
+          <li>Limita el volumen de solicitudes a la API de Gemini para evitar costos excesivos.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Depuración y monitoreo</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Activa logs detallados en el backend para ver los eventos de webhook recibidos y las respuestas de Gemini.</li>
+          <li>Usa la consola de Meta Developers para revisar los eventos entrantes y los errores de webhook.</li>
+          <li>Verifica que los mensajes no queden en estado pendiente por problemas de token o errores 4xx/5xx.</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de despliegue</h2>
+        <ul class="list-disc list-inside text-slate-600 ml-6 space-y-3">
+          <li>Cuenta de Meta Business configurada y número de WhatsApp aprobado.</li>
+          <li>Webhook público en HTTPS registrado en Meta/Twilio.</li>
+          <li>Access Token and Phone Number ID validados.</li>
+          <li>API Key de Gemini configurada y probada con solicitudes de ejemplo.</li>
+          <li>Flujo de mensajes probado con un webhook público estable y configuraciones de producción, no con URLs temporales de desarrollo.</li>
+        </ul>
+      </section>
+
+      <section class="p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Resumen</h2>
+        <p class="text-slate-600">La integración de Asistente IA y WhatsApp en merco debe estar basada en Meta directo siempre que sea posible. Twilio puede servir para pruebas, pero la meta es tener un webhook propio, un backend que procese eventos y una respuesta generada por Gemini/IA sin intermediarios innecesarios.</p>
+      </section>
+    
+    </div>
+  </div>
+</DocLayout>

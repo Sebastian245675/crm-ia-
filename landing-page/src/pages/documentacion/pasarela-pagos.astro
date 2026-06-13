@@ -1,0 +1,114 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Pasarela de Pagos y Venta Online | merco" description="Documentación completa para configurar cobros online, checkout y flujo de venta con pasarela de pago." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Pasarela de Pagos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Configura y prueba el cobro online para que tus clientes compren con un clic y el pago se registre automáticamente en el sistema.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué incluye esta página</h2>
+        <p class="mb-4">Aquí aprenderás a activar la pasarela de pagos, probar transacciones, controlar estados de pago y asegurarte de que cada venta online se registre correctamente.</p>
+        <p class="text-slate-600">Este es el paso clave para transformar tu catálogo en una tienda lista para cobrar y facturar desde el frontend.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo de venta con un clic</h2>
+        <p class="mb-4">Cuando el cliente hace clic en comprar, el front-end envía la orden a la pasarela de pago y el backend recibe el resultado para generar el pedido.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>El cliente elige productos y pasa al checkout.</li>
+          <li>Se muestra el resumen de compra con total y métodos de pago disponibles.</li>
+          <li>El sistema redirige a la pasarela o abre el formulario seguro de pago.</li>
+          <li>Al completar el pago, el backend registra la transacción y crea el pedido.</li>
+          <li>El cliente recibe la confirmación con número de pedido y detalles de envío.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Configurar la pasarela</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li>Abre <strong>Configuración → Pagos</strong> en el panel administrativo.</li>
+          <li>Ingresa las credenciales de la pasarela: <strong>public key</strong>, <strong>secret key</strong> y cualquier token adicional.</li>
+          <li>Activa primero el modo <strong>sandbox</strong> para validar el flujo sin cobrar en producción.</li>
+          <li>Configura los webhooks para recibir notificaciones de estado de pago.</li>
+          <li>Guarda y ejecuta una prueba de pago para asegurarte de que la pasarela responde correctamente.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Métodos de pago compatibles</h2>
+        <p class="mb-4">La plataforma admite los métodos que tu pasarela configure, típicamente:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Tarjetas de crédito y débito.</li>
+          <li>Transferencias bancarias electrónicas.</li>
+          <li>Medios locales como billeteras digitales o pagos en cuotas, si la pasarela lo permite.</li>
+          <li>Pagos en un clic con enlaces directos desde WhatsApp o redes sociales.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Pruebas en modo sandbox</h2>
+        <p class="mb-4">Antes de pasar a producción, realiza pruebas completas para cada método de pago.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Usa tarjetas de prueba proporcionadas por la pasarela.</li>
+          <li>Verifica que los pedidos se creen con estado aprobado al finalizar el pago.</li>
+          <li>Prueba pagos rechazados y observa cómo se muestra el error al cliente.</li>
+          <li>Confirma que el stock se actualiza solo cuando el pago es exitoso.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Webhooks y validación</h2>
+        <p class="mb-4">Los webhooks son esenciales para sincronizar el estado del pago con tu sistema. Asegúrate de que la pasarela envíe notificaciones y que tu backend las valide correctamente.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Verifica la firma de cada webhook para prevenir fraudes.</li>
+          <li>Registra eventos de pago: aprobado, rechazado, pendiente y reembolsado.</li>
+          <li>Actualiza el pedido según el estado recibido del webhook.</li>
+          <li>Envía un email o mensaje de confirmación al cliente cuando el pago está aprobado.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores frecuentes y cómo corregirlos</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Credenciales incorrectas: revisa public key y secret key en el panel de pagos.</li>
+          <li>Webhook no recibido: revisa la URL de callback y la validación de firma.</li>
+          <li>Pagos aprobados pero pedidos no generados: revisa la lógica de respuesta en el backend.</li>
+          <li>Stock no actualizado: verifica que el estado de pedido se procese solo tras la confirmación de pago.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Monitoreo y control</h2>
+        <p class="mb-4">Mantén control total de las transacciones y la conciliación de pagos.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Revisa las transacciones aprobadas y rechazadas en el panel de pagos.</li>
+          <li>Concilia los montos con el reporte de ventas para evitar sorpresas.</li>
+          <li>Confirma que los cobros se registran en la contabilidad y el reporte de caja.</li>
+          <li>Actualiza la información del cliente solo cuando el pago esté finalizado.</li>
+        </ul>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de lanzamiento</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>✅ Credenciales de pasarela configuradas correctamente.</li>
+          <li>✅ Modo sandbox probado con pagos aprobados y rechazados.</li>
+          <li>✅ Webhook de notificaciones activo y validado.</li>
+          <li>✅ Flujo de checkout probado y con confirmación de pedido.</li>
+          <li>✅ Conciliación entre ventas y cobros comprobada.</li>
+        </ul>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

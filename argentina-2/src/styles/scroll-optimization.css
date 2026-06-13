@@ -1,0 +1,109 @@
+/* Optimizaciones de scroll performance */
+/* Forzar aceleración por hardware para elementos fixed/sticky */
+.sticky-header,
+.fixed-element {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Optimizar elementos con backdrop-blur */
+.backdrop-blur-optimized {
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+}
+
+/* Reducir repaint en scroll */
+.smooth-scroll-container {
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+/* Optimizar imágenes durante scroll */
+img {
+  will-change: auto;
+  image-rendering: -webkit-optimize-contrast;
+  content-visibility: auto;
+}
+
+/* Deshabilitar blur en dispositivos de bajos recursos */
+@media (prefers-reduced-motion: reduce) {
+  .backdrop-blur-3xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-xl {
+    backdrop-filter: none !important;
+  }
+}
+
+/* Scroll suave nativo cuando es posible */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Optimizar secciones con muchos elementos */
+.product-section {
+  contain: layout style paint;
+}
+
+/* GPU acceleration para animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+/* Reducir blur en móviles para mejor performance */
+@media (max-width: 768px) {
+  .backdrop-blur-3xl {
+    backdrop-filter: blur(8px) !important;
+  }
+  
+  .backdrop-blur-2xl {
+    backdrop-filter: blur(6px) !important;
+  }
+}
+
+/* Reducir animaciones durante scroll */
+.reducing-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.reducing-motion .backdrop-blur-3xl,
+.reducing-motion .backdrop-blur-2xl {
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Optimizar renderizado de elementos durante scroll */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Forzar compositing layer para elementos que se mueven */
+.compositing-layer {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimizar repaint */
+.no-repaint {
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+

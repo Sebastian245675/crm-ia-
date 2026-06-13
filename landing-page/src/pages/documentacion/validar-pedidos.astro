@@ -1,0 +1,148 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo validar pedidos | merco" description="Guía para revisar y validar pedidos antes de procesarlos." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo validar pedidos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Comprueba la información de cada pedido antes de procesarlo.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué valida esta guía</h2>
+        <p class="mb-4">Esta documentación se basa en la tienda de la carpeta <code>argentina-2</code> y en la implementación real de pedidos de la interfaz administrativa.</p>
+        <p class="mb-4">En esta tienda, los pedidos se crean con estado <strong>pending</strong> y solo se marcan como <strong>confirmed</strong> cuando el pago o cobro se ha validado manualmente. El botón de confirmación en el panel actualiza el campo <code>status</code> y agrega <code>confirmed_at</code>.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo real de validación</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3">
+          <li>
+            <strong>Revisar pedido pendiente</strong>: el pedido llega con <code>status: "pending"</code> y se ve en el panel de pedidos de administración.
+          </li>
+          <li>
+            <strong>Comprobar información de cliente</strong>: nombre, correo, teléfono y dirección deben estar completos en el registro del usuario o en los datos de envío.
+          </li>
+          <li>
+            <strong>Verificar método de pago</strong>: si el pedido es de Mercado Pago, debe confirmarse solo cuando la pasarela indica éxito. Si es pago por efectivo/tarjeta/transferencia, asegúrate de que el cobro se haya recibido.
+          </li>
+          <li>
+            <strong>Corroborar stock</strong>: cada línea de <code>items</code> debe existir y tener stock suficiente en el inventario antes de confirmar.
+          </li>
+          <li>
+            <strong>Confirmar</strong>: en el admin, presiona el botón de confirmar para cambiar el estado a <code>confirmed</code> y registrar <code>confirmed_at</code>. El dashboard se refresca automáticamente mediante un evento interno.
+          </li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos clave del pedido</h2>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <h3 class="font-semibold text-slate-800 mb-2">Cabecera del pedido</h3>
+            <ul class="list-disc list-inside text-slate-600 space-y-1">
+              <li><strong>user_id</strong> — ID del cliente.</li>
+              <li><strong>user_name</strong> / <strong>user_email</strong> / <strong>user_phone</strong></li>
+              <li><strong>status</strong> — <code>pending</code> o <code>confirmed</code>.</li>
+              <li><strong>order_type</strong> — <code>online</code> o <code>physical</code>.</li>
+              <li><strong>order_notes</strong> — notas internas, por ejemplo referencia de Mercado Pago.</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <h3 class="font-semibold text-slate-800 mb-2">Valores financieros</h3>
+            <ul class="list-disc list-inside text-slate-600 space-y-1">
+              <li><strong>total</strong> — monto final del pedido.</li>
+              <li><strong>delivery_fee</strong> — costo de envío.</li>
+              <li><strong>confirmed_at</strong> — marca temporal cuando el pedido se confirma.</li>
+              <li><strong>created_at</strong> — fecha de creación del pedido.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Lista de items</h2>
+        <p class="mb-4">Cada pedido contiene el arreglo <code>items</code> con este formato:</p>
+        <pre class="rounded-2xl border border-slate-100 bg-slate-950 p-4 text-sm text-slate-100 overflow-x-auto"><code>&#123;
+  "id": "producto-123",
+  "name": "Perfume x100ml",
+  "price": 25000,
+  "quantity": 2,
+  "image": "https://..."
+&#125;</code></pre>
+        <p class="mt-4 text-slate-600">Valida que cada producto exista en el catálogo y que <strong>quantity</strong> no supere el stock actual. Si se detecta un producto sin stock, no confirmes el pedido hasta actualizar inventario.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Validación de envío</h2>
+        <p class="mb-3">En la tienda actual, el costo de envío se calcula como:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li><strong>Gratis</strong> si subtotal ≥ 60000 ARS.</li>
+          <li><strong>2000 ARS</strong> si subtotal &lt; 60000 ARS.</li>
+        </ul>
+        <p class="text-slate-600">Asegúrate de que el pedido incluya dirección y datos de envío antes de confirmar. Si el cliente seleccionó entrega a domicilio, revisa siempre que no falte calle, número y código postal.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Validación de pago</h2>
+        <p class="mb-4">El flujo de pago puede ser:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li><strong>Mercado Pago</strong>: la orden se guarda primero como <code>pending</code> y se confirma cuando el pago llega con éxito.</li>
+          <li><strong>Efectivo / Tarjeta / Transferencia</strong>: valida manualmente que el cobro se haya recibido y usa notas internas para verificar.</li>
+        </ul>
+        <p class="mb-4">En el componente de checkout real, el pedido se pre-guarda con una referencia externa (<code>externalRef</code>) y una nota tipo:</p>
+        <pre class="rounded-2xl border border-slate-100 bg-slate-950 p-4 text-sm text-slate-100 overflow-x-auto"><code>Pago con Mercado Pago (pendiente) | Ref: ORDER-167823652345</code></pre>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Confirmar pedido en el admin</h2>
+        <p class="mb-4">Cuando presionas el botón de confirmar en la lista de pedidos, el sistema hace exactamente esto:</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Recupera el pedido desde la tabla <code>orders</code>.</li>
+          <li>Actualiza <code>status</code> a <code>confirmed</code>.</li>
+          <li>Escribe <code>confirmed_at</code> con la fecha actual.</li>
+          <li>Refresca las estadísticas del dashboard con un evento interno.</li>
+        </ul>
+        <p class="text-slate-600">Esto significa que la validación administrativa no es solo visual: el estado real del pedido se persiste en la base de datos.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de validación</h2>
+        <ul class="list-inside list-disc ml-6 space-y-2 text-slate-600">
+          <li>Verificar que el pedido esté en <strong>pending</strong> antes de confirmar.</li>
+          <li>Confirmar que la dirección y datos de envío sean completos.</li>
+          <li>Validar el método de pago y si corresponde la confirmación de Mercado Pago.</li>
+          <li>Comprobar stock disponible para todos los artículos.</li>
+          <li>Comparar el total con el monto calculado: subtotal + delivery_fee.</li>
+          <li>Asegurarse de que el pedido tenga nota interna útil si hay restricción especial.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores más comunes</h2>
+        <div class="space-y-4 text-slate-600">
+          <div class="rounded-2xl bg-red-50 border border-red-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Pedido no encontrado</p>
+            <p>Esto ocurre si el pedido no existe en <code>orders</code> o si la base de datos no está accesible. Revisa que el ID esté correcto y que tu conexión a Supabase/Firebase esté funcionando.</p>
+          </div>
+          <div class="rounded-2xl bg-orange-50 border border-orange-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Stock insuficiente</p>
+            <p>Si el pedido contiene un artículo cuyo stock actual es menor a la cantidad solicitada, no confirmes. Actualiza el inventario primero o cancela el pedido.</p>
+          </div>
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Pago pendiente</p>
+            <p>Para Mercado Pago, no marques como confirmado si el estado sigue en <code>pending</code>. Confirma solo después de recibir el webhook de pago exitoso o la notificación del panel de pagos.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

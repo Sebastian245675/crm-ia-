@@ -1,0 +1,158 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout 
+  title="Gestión de Usuarios y Subcuentas | merco" 
+  description="Guía avanzada para configurar cuentas de administrador y subcuentas con permisos granulares en el panel de merco." 
+  currentPath={Astro.url.pathname}
+>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-md uppercase tracking-wider">Seguridad</span>
+        <span class="text-slate-400 text-sm">|</span>
+        <span class="text-slate-500 text-sm">Última actualización: Junio 2026</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Gestión de Usuarios y Subcuentas</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">
+        Manual operativo para administradores principales. Explica cómo registrar usuarios, asignar roles jerárquicos y configurar permisos granulares.
+      </p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+      <!-- Jerarquía de Roles -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">1. Jerarquía de Cuentas en la Plataforma</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          La plataforma merco distingue entre dos categorías fundamentales de cuentas administrativas para garantizar la confidencialidad de la información crítica de la empresa:
+        </p>
+        <ul class="list-disc list-inside text-slate-600 space-y-3 ml-6 text-sm sm:text-base">
+          <li>
+            <strong>Administrador Principal (Owner):</strong> Es el usuario maestro del sistema (típicamente los correos registrados como <code>admin@gmail.com</code> o <code>admin@tienda.com</code>). Posee control total sobre el dashboard, facturación de planes, eliminación de datos y, crucialmente, la gestión de subcuentas.
+          </li>
+          <li>
+            <strong>Sub-Administrador (Subcuenta):</strong> Cuenta de operador con acceso restringido de manera predeterminada. Las subcuentas son creadas por el Administrador Principal y sus capacidades están sujetas a una matriz de permisos selectiva.
+          </li>
+        </ul>
+      </section>
+
+      <!-- Matriz de Permisos Granulares -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">2. Matriz de Permisos para Subcuentas</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          Al crear o editar una subcuenta en el panel **Configuración ➜ Subcuentas**, el administrador principal puede alternar de forma independiente los siguientes modificadores de permisos:
+        </p>
+
+        <!-- Tabla de Permisos -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl mt-4">
+          <table class="min-w-full divide-y divide-slate-200 text-xs sm:text-sm text-left">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 font-bold text-slate-700">Llave de Permiso (DB)</th>
+                <th class="px-4 py-3 font-bold text-slate-700">Etiqueta Visual</th>
+                <th class="px-4 py-3 font-bold text-slate-700">Acceso Permitido</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-600">
+              <tr>
+                <td class="px-4 py-3 font-mono text-blue-600 font-medium">manageProducts</td>
+                <td class="px-4 py-3 font-semibold text-slate-800">Gestionar Productos</td>
+                <td class="px-4 py-3">Crear, actualizar y eliminar artículos, variantes de talles/colores y subir fotos en la pestaña <strong>Productos</strong>.</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-blue-600 font-medium">manageOrders</td>
+                <td class="px-4 py-3 font-semibold text-slate-800">Gestionar Pedidos</td>
+                <td class="px-4 py-3">Acceso al listado de pedidos en tiempo real, registro de facturas POS y cambios de estado de entrega.</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-blue-600 font-medium">manageContacts</td>
+                <td class="px-4 py-3 font-semibold text-slate-800">Gestionar Contactos</td>
+                <td class="px-4 py-3">Edición de perfiles de clientes, vinculación de ID de WhatsApp y registro de llamadas.</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-blue-600 font-medium">manageUsers</td>
+                <td class="px-4 py-3 font-semibold text-slate-800">Gestionar Usuarios</td>
+                <td class="px-4 py-3">Creación y revocación de otros accesos de operadores. <em>(Normalmente reservado a administradores principales)</em>.</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-blue-600 font-medium">viewAnalytics</td>
+                <td class="px-4 py-3 font-semibold text-slate-800">Ver Analíticas</td>
+                <td class="px-4 py-3">Acceso a gráficos de ventas por canal, métricas de retención, gráficos de ganancias e informes.</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-blue-600 font-medium">manageSettings</td>
+                <td class="px-4 py-3 font-semibold text-slate-800">Gestionar Configuración</td>
+                <td class="px-4 py-3">Edición de banners promocionales, coordenadas de mapa, API Keys de WhatsApp/Twilio y datos de empresa.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Representación en Base de Datos -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">3. Representación Técnica en Base de Datos</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          Los permisos se almacenan directamente en la tabla de usuarios (`users`) bajo una columna JSON. Esto permite flexibilidad para expandir permisos en el futuro sin realizar migraciones complejas de base de datos.
+        </p>
+        
+        <div class="border border-slate-200 rounded-xl overflow-hidden mt-4">
+          <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center text-xs font-mono">
+            <span class="font-bold text-slate-800">JSON Schema: users.permissions</span>
+          </div>
+          <div class="p-4 bg-slate-900 text-slate-300 font-mono text-xs overflow-x-auto">
+            <pre><code>{`{
+  "id": "usr-1781062464",
+  "name": "Operador Ventas Sur",
+  "email": "sucursal_sur@tienda.com",
+  "sub_cuenta": "si",
+  "permissions": {
+    "manageProducts": true,
+    "manageOrders": true,
+    "manageContacts": true,
+    "manageUsers": false,
+    "viewAnalytics": false,
+    "manageSettings": false
+  }
+}`}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Seguridad y Bloqueo de Traducción -->
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight">4. Mecanismos de Seguridad y Estabilidad Visual</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          La plataforma incluye salvaguardas avanzadas para prevenir fallos técnicos comunes en navegadores cuando las subcuentas están operando:
+        </p>
+        
+        <div class="space-y-4 mt-4 text-slate-600 text-sm sm:text-base">
+          <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
+            <h3 class="font-bold text-amber-800 flex items-center gap-1.5">🚫 Prevención de Traducción Automática (Pantalla en Blanco)</h3>
+            <p class="text-slate-600 text-xs sm:text-sm mt-1 leading-relaxed">
+              Las herramientas automáticas de traducción (como Google Translate integrado en Google Chrome) suelen romper el árbol DOM generado por React cuando traducen textos interactivos dinámicos de tablas de productos y pedidos, provocando pantallas blancas inoperativas.
+              El sistema de merco inyecta de forma forzada la etiqueta <code>class="notranslate"</code> y el atributo <code>translate="no"</code> en el cuerpo del documento, asegurando una estabilidad total.
+            </p>
+          </div>
+          
+          <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl">
+            <h3 class="font-bold text-blue-800 flex items-center gap-1.5">🔒 Route Guards & Ocultamiento de Sidebar</h3>
+            <p class="text-slate-600 text-xs sm:text-sm mt-1 leading-relaxed">
+              Si una subcuenta no posee privilegios para un módulo, el componente de enrutamiento frontend automáticamente omite renderizar las pestañas correspondientes. Si un operador intenta acceder forzando la URL, el sistema intercepta la sesión y redirige inmediatamente al dashboard básico o al inicio del sitio.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Regresar -->
+      <section class="pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold text-sm">
+          ← Volver a Documentación
+        </a>
+      </section>
+
+    </div>
+  </div>
+</DocLayout>

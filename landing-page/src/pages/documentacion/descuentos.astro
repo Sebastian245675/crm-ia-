@@ -1,0 +1,128 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo gestionar descuentos | merco" description="Guía para crear y gestionar descuentos y promociones." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo gestionar descuentos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Crear ofertas, definir fechas, condiciones y aplicar a productos o categorías.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué puedes hacer en esta sección</h2>
+        <p class="mb-4">Aquí puedes crear ofertas nuevas, programar cuándo comienzan y terminan, y elegir si se aplican a un producto específico o a una categoría completa.</p>
+        <p class="text-slate-600">Las promociones ayudan a mover stock, atraer clientes y mejorar las ventas sin tener que tocar manualmente los precios uno por uno.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Tipos de descuento disponibles</h2>
+        <div class="grid gap-6 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Porcentaje</h3>
+            <p class="text-slate-600">Reduce el precio en un porcentaje fijo, por ejemplo 10% de descuento sobre el precio original.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Monto fijo</h3>
+            <p class="text-slate-600">Aplica un descuento en pesos sobre el precio, por ejemplo $200 de descuento en el total.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Volumen o paquete</h3>
+            <p class="text-slate-600">Ofrece un precio especial cuando el cliente compra más de una unidad o un conjunto de productos.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo crear una promoción</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li>Ve a la sección de <strong>Descuentos</strong> en el panel.</li>
+          <li>Haz clic en <strong>Nuevo descuento</strong> o <strong>Crear oferta</strong>.</li>
+          <li>Elige el tipo de descuento y completa el valor: porcentaje, monto fijo o paquete.</li>
+          <li>Define el alcance: un producto, una categoría o toda la tienda.</li>
+          <li>Selecciona la fecha de inicio y la fecha de fin.</li>
+          <li>Guarda la oferta y revisa que aparezca en la lista de promociones.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué revisar antes de guardar</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Que las fechas de inicio y fin estén correctas.</li>
+          <li>Que el descuento no sea demasiado grande para tu margen.</li>
+          <li>Que la promoción no se solape con otra oferta similar si no quieres combinar descuentos.</li>
+          <li>Que la categoría o producto seleccionado sea el correcto.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Condiciones importantes</h2>
+        <p class="mb-4 text-slate-600">Las promociones pueden tener reglas especiales. Estas son algunas consideraciones comunes:</p>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Definir fechas de inicio y fin claras.</li>
+          <li>Decidir si la oferta se aplica solo a un producto o a una categoría entera.</li>
+          <li>Establecer si la oferta reemplaza otras promociones o se usa junto a ellas.</li>
+          <li>Escribir condiciones claras si la promoción requiere un mínimo de compra o cantidad mínima.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Monitoreo de impacto</h2>
+        <p class="mb-4 text-slate-600">Una vez activa la promoción, sigue su desempeño para saber si está cumpliendo los objetivos.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Comprueba si las ventas aumentan en el producto o categoría promocionada.</li>
+          <li>Revisa si la promoción está generando clientes nuevos o solo adelantando compras.</li>
+          <li>Evalúa el margen neto después de aplicar el descuento.</li>
+          <li>Ajusta la oferta si ves que no está rindiendo como esperabas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué hacer cuando la promoción está activa</h2>
+        <p class="mb-4 text-slate-600">Después de activar la oferta, verifica lo siguiente:</p>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Que el precio mostrado en la tienda sea el esperado.</li>
+          <li>Que el descuento aparezca en el carrito y en el checkout.</li>
+          <li>Que la promoción termine en la fecha correcta.</li>
+          <li>Que no haya conflictos con otras promociones si se combinan.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores comunes al usar descuentos</h2>
+        <div class="space-y-4 text-slate-600">
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Fechas mal configuradas</p>
+            <p>Si la fecha de fin es anterior a la de inicio, la oferta no se activará correctamente.</p>
+          </div>
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Descuento demasiado alto</p>
+            <p>Revisa que el descuento no deje el precio final por debajo de tu costo.</p>
+          </div>
+          <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+            <p class="font-semibold text-slate-800 mb-2">Aplicar al producto equivocado</p>
+            <p>Verifica siempre el nombre y la categoría seleccionados para evitar errores en la promoción.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de descuentos</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Tipo de descuento correcto.</li>
+          <li>Alcance bien definido.</li>
+          <li>Fechas configuradas correctamente.</li>
+          <li>Sin conflictos con otras promociones.</li>
+          <li>Monitoreo activo de resultados.</li>
+        </ul>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

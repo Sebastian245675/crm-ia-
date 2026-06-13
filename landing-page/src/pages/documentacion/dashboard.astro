@@ -1,0 +1,99 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout 
+  title="Dashboard | merco" 
+  description="Guía completa del Dashboard: métricas, ventas, stock y alertas en tiempo real del panel administrativo."
+  currentPath="/documentacion/dashboard"
+>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Dashboard</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Centro de información operativa con métricas en tiempo real, ventas, inventario, caja y alertas del sistema.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">¿Qué es el Dashboard?</h2>
+        <p class="text-slate-600 text-sm sm:text-base leading-relaxed">El Dashboard es el centro neurálgico de información operativa en merco. Muestra métricas calculadas a partir de las ventas registradas en el sistema, tanto del comercio electrónico como del punto de venta (POS), y se actualiza en tiempo real cuando llegan eventos nuevos de pedidos o cambios en el inventario.</p>
+        <p class="text-slate-600 text-sm sm:text-base leading-relaxed mt-3">Funciona como un agregador de las principales fuentes de datos del sistema y te ayuda a confirmar que las ventas, pedidos y stock se están sincronizando correctamente entre el backend y la interfaz.</p>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Origen de las Métricas</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">Cada dato que ves en el Dashboard proviene de fuentes específicas en el sistema:</p>
+
+        <div class="space-y-4 text-slate-600">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-1 text-sm sm:text-base">💰 Ventas Diarias</h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mt-0.5">Se derivan de los pedidos creados en la API de ventas y del registro de transacciones físicas. El sistema suma todos los montos de pedidos del día actual y los compara con el día anterior.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-1 text-sm sm:text-base">📊 Ventas Mensuales</h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mt-0.5">Se calculan agregando los importes de todos los pedidos del mes actual y comparándolos con meses anteriores para evaluar el desempeño general.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-1 text-sm sm:text-base">📦 Pedidos Totales</h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mt-0.5">Provienen de la lista de pedidos de la base de datos. El sistema cuenta todos los pedidos, diferenciando entre completados, entregados y pendientes.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-1 text-sm sm:text-base">🏭 Stock e Inventario</h3>
+            <p class="text-slate-500 text-xs sm:text-sm leading-relaxed mt-0.5">La información se lee desde la base de datos de productos y variantes, identificando de manera automática productos con stock bajo o agotados.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Actualización en Tiempo Real</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base font-normal">El Dashboard no es un panel estático. Implementa un sistema de eventos que mantiene las métricas siempre actualizadas:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 text-sm sm:text-base">
+          <li><strong>Escucha eventos:</strong> el panel capta las notificaciones de nuevos pedidos del POS o cambios de inventario.</li>
+          <li><strong>Registra nuevas transacciones:</strong> cuando se concreta una venta, se dispara el aviso de actualización.</li>
+          <li><strong>Recalcula métricas:</strong> las variables de dinero, stock y totales se refrescan en pantalla en tiempo real.</li>
+        </ol>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Alertas y Control Operativo</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">El sistema avisa de anomalías directamente en el tablero:</p>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-red-50/50 rounded-xl border border-red-100">
+            <h3 class="font-bold text-red-800 mb-1 text-sm sm:text-base">⚠️ Alertas de Stock Bajo</h3>
+            <p class="text-red-600/80 text-xs sm:text-sm leading-relaxed">Productos que han cruzado por debajo del mínimo de seguridad y necesitan reposición pronta.</p>
+          </div>
+
+          <div class="p-4 bg-red-50/50 rounded-xl border border-red-100">
+            <h3 class="font-bold text-red-800 mb-1 text-sm sm:text-base">❌ Productos Sin Existencia</h3>
+            <p class="text-red-600/80 text-xs sm:text-sm leading-relaxed">Artículos agotados de catálogo que bloquean ventas y requieren compra a proveedores.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="pb-6 border-b border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-3">Sincronización y Consistencia de Datos</h2>
+        <p class="text-slate-600 mb-4 text-sm sm:text-base">Un punto importante: el Dashboard solo es confiable si los datos del backend están sincronizados correctamente. Verifica:</p>
+
+        <div class="space-y-3 text-slate-600 text-sm sm:text-base font-normal">
+          <div class="flex items-start gap-3">
+            <span class="text-brand-electric font-black">✓</span>
+            <div><strong>Pedidos registrados:</strong> cada pedido debe poseer fecha, monto e ID de estado para contabilizarse.</div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-brand-electric font-black">✓</span>
+            <div><strong>Decremento automático:</strong> tras cada venta física o virtual, las unidades deben restarse en el acto.</div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-brand-electric font-black">✓</span>
+            <div><strong>Eventos POS:</strong> las transacciones del punto de venta local deben aparecer en el tablero principal en menos de un minuto.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</DocLayout>

@@ -1,0 +1,90 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo responder contactos | merco" description="Guía para gestionar y responder contactos y mensajes de clientes." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo responder contactos</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Flujo para responder consultas y gestionar comunicaciones desde el panel.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo de respuesta</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3">
+          <li>Accede a <strong>Contactos</strong> o <strong>Consultas</strong> en el panel administrativo.</li>
+          <li>Revisa la lista de mensajes nuevos y prioriza por urgencia (pagos, devoluciones, dudas de envío).</li>
+          <li>Abre la conversación y responde con un mensaje claro, amable y específico.</li>
+          <li>Si hay una solución inmediata, responde con los pasos correspondientes y cierra el ticket.</li>
+          <li>Si requiere soporte especializado, escala a la persona o área responsable y marca el caso como pendiente.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Tipos de mensajes</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li><strong>Consultas de producto:</strong> disponibilidad, talles, colores y tiempos de entrega.</li>
+          <li><strong>Seguimiento de pedido:</strong> estado de envío, cambios en la entrega o reclamos.</li>
+          <li><strong>Soporte técnico:</strong> problemas con la plataforma, pasarelas o pagos.</li>
+          <li><strong>Solicitudes de descuento o devolución:</strong> responde con claridad sobre políticas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Buenas prácticas al responder</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>Usa un saludo personalizado y confirma el nombre del cliente cuando esté disponible.</li>
+          <li>Responde en un tono profesional, breve y útil.</li>
+          <li>Incluye siempre pasos claros si la respuesta requiere una acción del cliente.</li>
+          <li>Documenta internamente cualquier cambio de estado o compromiso de envío.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Plantillas recomendadas</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li><strong>Pedido recibido:</strong> "Gracias por tu compra. Tu pedido está en proceso y en breve te enviamos el estado de envío."</li>
+          <li><strong>Producto agotado:</strong> "Lamentablemente este producto está agotado. Te puedo ofrecer una alternativa similar o te aviso cuando vuelva a estar disponible."</li>
+          <li><strong>Solicitud de descuento:</strong> "Gracias por tu consulta. En este momento ofrecemos un descuento especial del X% en productos seleccionados."</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">SLA y seguimiento</h2>
+        <p class="mb-4">Responde los mensajes prioritarios en menos de 2 horas cuando sea posible. Usa estados de ticket para saber cuáles quedan pendientes y evita que una consulta se quede sin respuesta.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2">
+          <li>Estado <strong>Nuevo</strong>: sin revisar.</li>
+          <li>Estado <strong>En curso</strong>: requiere información adicional o escalación.</li>
+          <li>Estado <strong>Resuelto</strong>: el cliente recibió la respuesta y el problema fue cerrado.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Mensajes urgentes y prioritarios</h2>
+        <p class="mb-4">Algunos mensajes requieren respuesta inmediata, como problemas de pago, reclamos de envío o solicitudes de devolución.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Prioriza los casos de pagos fallidos o pedidos incompletos.</li>
+          <li>Responde rápido a reclamos de productos dañados o faltantes.</li>
+          <li>Confirma siempre tiempos de entrega cuando el cliente lo solicita.</li>
+          <li>Escala urgentemente los casos que impliquen reembolsos o fallas técnicas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Seguimiento efectivo</h2>
+        <p class="mb-4">Para un buen seguimiento, documenta cada paso y usa notas internas cuando tengas que escalar un caso.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Registra quién respondió y qué acciones tomaste.</li>
+          <li>Actualiza el estado del ticket cuando haya cambios.</li>
+          <li>Contacta internamente a soporte o a operaciones si el cliente lo requiere.</li>
+          <li>Cierra el caso solo cuando el cliente confirme que está resuelto.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

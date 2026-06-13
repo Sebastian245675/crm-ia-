@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-electric: #3E3AF8;
+  --color-brand-indigo: #7F56FF;
+  --color-brand-blue: #4D62F9;
+  --color-brand-dark: #140d3a;
+  --color-brand-navy: #1d1452;
+  --color-brand-orange: #FF5722;
+  --color-brand-yellow: #FFB300;
+  --font-sans: "Outfit", "Inter", system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+    background-color: var(--color-brand-dark);
+    color: #f4f4f5;
+    overflow-x: clip;
+  }
+}
+
+/* Background Grid Pattern (Factus style) */
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(77, 98, 249, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(77, 98, 249, 0.06) 1px, transparent 1px);
+}
+
+/* Premium Gradient Backgrounds */
+.bg-gradient-factus {
+  background: radial-gradient(ellipse at 30% 50%, rgba(62, 58, 248, 0.35) 0%, rgba(20, 13, 58, 1) 70%);
+}
+
+.bg-gradient-navbar {
+  background: linear-gradient(to right, rgba(29, 20, 82, 0.9), rgba(20, 13, 58, 0.95));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Glassmorphism with Glowing Borders */
+.glass-card {
+  background: rgba(18, 9, 53, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(77, 98, 249, 0.16);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+.glass-card:hover {
+  border-color: rgba(127, 86, 255, 0.35);
+  box-shadow:
+    0 15px 35px -5px rgba(0, 0, 0, 0.6),
+    0 0 30px -5px rgba(63, 58, 248, 0.25);
+  transform: translateY(-4px);
+}
+
+/* Buttons and Gradients */
+.btn-electric {
+  background: #3F3AF8;
+  color: white;
+  box-shadow: 0 4px 20px rgba(63, 58, 248, 0.4);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-electric:hover {
+  background: #2b26eb;
+  box-shadow: 0 6px 25px rgba(63, 58, 248, 0.6);
+  transform: translateY(-1px);
+}
+
+.btn-orange-gradient {
+  background: linear-gradient(135deg, var(--color-brand-orange) 0%, var(--color-brand-yellow) 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(255, 115, 0, 0.35);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-orange-gradient:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 25px rgba(255, 115, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.text-gradient-neon {
+  background: linear-gradient(135deg, #ffffff 30%, #4D62F9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================================
+   3D DEPTH SCROLL ANIMATION TARGETS
+   These are invisible — only used by GSAP to apply transforms
+   ============================================================ */
+
+.depth-card,
+.depth-step,
+.depth-benefit {
+  will-change: transform, opacity;
+}

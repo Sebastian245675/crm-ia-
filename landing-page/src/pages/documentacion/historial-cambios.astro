@@ -1,0 +1,112 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Reportes de ventas y contabilidad | merco" description="Guía avanzada para analizar ventas, caja, ingresos y reportes contables de la tienda." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Reportes y Contabilidad</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Controla las ventas, la caja y las métricas contables con paneles de análisis diseñados para cerrar el mes sin sorpresas.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué encontrarás en esta sección</h2>
+        <p class="mb-4">Aquí se agrupan los datos financieros más importantes de la tienda: ventas, ingresos, caja, productos con mayor rotación y estados de inventario que afectan las finanzas.</p>
+        <p class="text-slate-600">Usa esta página como tu base para toma de decisiones financieras, cierre de turno y conciliación mensual.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Métricas clave que debes revisar</h2>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Ventas diarias</h3>
+            <p class="text-slate-600">Monto total vendido hoy y comparación con el día anterior. Ideal para detectar picos de demanda y caídas inesperadas.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Ingresos del mes</h3>
+            <p class="text-slate-600">Total acumulado del mes actual. Sirve para medir si vas en línea con tus objetivos comerciales.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Caja y conciliación</h3>
+            <p class="text-slate-600">Diferencia entre ventas registradas y cobros reales. Útil para detectar faltantes o errores en turnos de caja.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Top productos</h3>
+            <p class="text-slate-600">Lista de los productos que más facturan. Sirve para planificar reabastecimientos y promociones.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Caja y conciliación diaria</h2>
+        <p class="mb-4">Comparar la caja con las ventas reportadas te ayuda a cerrar cada turno sin diferencias. Este proceso debe hacerse todos los días al final de cada jornada.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Registra el efectivo final de la caja y compáralo con los ingresos del sistema.</li>
+          <li>Verifica los pagos con tarjeta contra el reporte de la pasarela.</li>
+          <li>Controla si hay cobros pendientes o rechazados que deban ajustarse.</li>
+          <li>Documenta las diferencias y busca la causa: errores de carga, descuentos mal aplicados o ventas no registradas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cierre mensual y contabilidad</h2>
+        <p class="mb-4">Al cerrar el mes, usa estos reportes para generar un resumen contable real y listo para entregar al contador.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Extrae totales de ventas y caja del periodo.</li>
+          <li>Identifica productos que representaron mayor ingreso.</li>
+          <li>Controla descuentos, devoluciones y ajustes que impactan el margen.</li>
+          <li>Exporta los reportes para conciliación o análisis externo.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Ejemplo práctico de uso</h2>
+        <p class="mb-4">Imagina que cierras el turno y tienes $100.000 en ventas registradas, pero $93.000 en caja física. Busca en los reportes:</p>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li>Pagos pendientes que aún no se reflejaron.</li>
+          <li>Descuentos aplicados o notas de crédito.</li>
+          <li>Errores de registro manual o ventas no finalizadas.</li>
+          <li>Transacciones reversadas o reembolsos emitidos.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Exportar datos para contabilidad</h2>
+        <p class="mb-4">Si la plataforma permite exportar reportes, utilízalo para preparar el cierre mensual y facilitar la carga contable.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Exporta ventas por fecha, producto y canal.</li>
+          <li>Incluye caja, ingresos y ajustes para tener un panorama completo.</li>
+          <li>Usa estos datos para comparar con estados bancarios y reportes de la pasarela.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Errores comunes</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Fallar en actualizar el stock tras ventas, generando reportes inflados.</li>
+          <li>No conciliar caja diaria con cobros electrónicos.</li>
+          <li>Usar periodos equivocados para el cierre mensual.</li>
+          <li>No considerar reembolsos o ajustes en el reporte de ingresos.</li>
+        </ul>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de control financiero</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>✅ Ventas diarias comparadas con caja física.</li>
+          <li>✅ Ingresos del mes revisados frente al periodo anterior.</li>
+          <li>✅ Productos top identificados para reabastecer.</li>
+          <li>✅ Ajustes de stock documentados y evaluados.</li>
+          <li>✅ Exportación lista para contabilidad.</li>
+        </ul>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

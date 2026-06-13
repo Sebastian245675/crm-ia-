@@ -1,0 +1,99 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo probar webhooks | merco" description="Guía para validar webhooks de mensajería y eventos." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo probar webhooks</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Valida webhooks de mensajería y eventos entrantes (Twilio, Meta, pasarelas).</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué valida esta guía</h2>
+        <p class="mb-4">Valida los webhooks de mensajería y eventos entrantes definidos por Twilio, Meta y las pasarelas de pago. Comprueba que el backend recibe notificaciones correctas y que la tienda reacciona según el evento.</p>
+        <p class="text-slate-600">En el panel habrá una herramienta que genera una URL de webhook específica por tienda. Esta URL se usa para conectar directamente con Meta y evitar intermediarios, haciendo la integración más segura y confiable.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Herramientas</h2>
+        <ul class="list-inside list-disc ml-6 space-y-3">
+          <li><strong>Herramienta del panel</strong>: el backend genera una URL de webhook única por tienda con un botón. Usa esa URL para conectar con Meta, Twilio o la pasarela sin intermediarios.</li>
+          <li><strong>Registro interno de eventos</strong>: revisa los logs del panel para validar que los webhooks llegan correctamente y se procesan sin errores.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo probar la URL generada por el backend</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li>En el panel, presiona el botón para generar la URL de webhook para tu tienda.</li>
+          <li>Copia esa URL y pégala en la configuración de Meta, Twilio o la pasarela correspondiente.</li>
+          <li>Activa el evento de prueba o envía un mensaje de prueba desde la plataforma externa.</li>
+          <li>Revisa en el panel los registros para confirmar que el webhook llegó y fue procesado.</li>
+          <li>Verifica que la respuesta del backend sea 200 OK y que el evento desencadene la acción esperada en la tienda.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo recomendado para Meta</h2>
+        <p class="mb-4">Usa la URL de webhook generada por el panel para conectar directamente con Meta. Esto reduce intermediarios y mantiene la integración más confiable.</p>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li>Ve al panel de la tienda y usa la herramienta de webhooks para generar la URL única por tienda.</li>
+          <li>En la configuración de Meta (WhatsApp Cloud API o Business Manager), pega esa URL como webhook de eventos.</li>
+          <li>Activa los eventos necesarios, como mensajes recibidos, estado de entrega o respuestas de cliente.</li>
+          <li>Envía un mensaje de prueba y confirma que el backend recibe el evento correctamente.</li>
+          <li>Revisa logs y responde si hay errores de firma, URL inválida o campos faltantes.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué revisar en cada prueba</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Que la URL de webhook sea la correcta y pertenezca a la tienda correcta.</li>
+          <li>Que la solicitud llegue al servidor y devuelva un código <strong>200</strong>.</li>
+          <li>Que el payload tenga los campos esperados para Twilio, Meta o la pasarela.</li>
+          <li>Que la tienda procese el evento y actualice el estado o la base de datos.</li>
+          <li>Que el proveedor no vuelva a reenviar eventos por errores no controlados.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Verificación de firma y seguridad</h2>
+        <p class="mb-4">Valida que los webhooks provengan realmente del proveedor y no de una fuente maliciosa.</p>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Comprueba la firma o token de seguridad enviado en el encabezado.</li>
+          <li>Configura el backend para rechazar solicitudes con firmas inválidas.</li>
+          <li>Usa HTTPS siempre para proteger el transporte del webhook.</li>
+          <li>Registra los intentos fallidos para detectar posibles ataques.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Migración a producción</h2>
+        <p class="mb-4">Antes de mover el webhook a producción, realiza pruebas en un entorno separado con datos de prueba.</p>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Prueba con una tienda de staging antes de actualizar la URL en producción.</li>
+          <li>Verifica que el webhook soporte tráfico real sin errores.</li>
+          <li>Configura alertas para detectar fallos en producción rápidamente.</li>
+          <li>Ten un plan de rollback si el webhook falla después del despliegue.</li>
+        </ul>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Checklist de webhooks</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>URL generada correctamente.</li>
+          <li>Eventos activados adecuados.</li>
+          <li>Firma/token verificado.</li>
+          <li>Respuesta 200 OK en pruebas.</li>
+          <li>Registro de logs habilitado.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

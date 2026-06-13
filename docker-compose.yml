@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - '8000:8000'
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=tienda
+      - DB_USER=posgrest
+      - DB_PASSWORD=123
+      - UPLOADS_DIR=/usr/src/app/uploads
+    volumes:
+      - ./uploads:/usr/src/app/uploads
+      - ./backend:/usr/src/app
+      - backend_node_modules:/usr/src/app/node_modules
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tienda
+      POSTGRES_USER: posgrest
+      POSTGRES_PASSWORD: 123
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  backend_node_modules:
+  postgres_data:

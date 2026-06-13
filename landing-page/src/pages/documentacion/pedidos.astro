@@ -1,0 +1,256 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Pedidos y POS | merco" description="Guía completa de gestión de pedidos online y punto de venta (POS) en el panel administrativo de merco." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Pedidos y Punto de Venta (POS)</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía completa para gestionar ventas online, procesamiento de pedidos y operaciones del punto de venta físico.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">¿Qué es la Sección de Pedidos?</h2>
+        <p class="text-slate-600">La sección de Pedidos es el corazón de tus operaciones comerciales. Aquí gestionas todas las ventas: tanto del comercio electrónico (tienda online) como del punto de venta físico (POS). Centraliza información de pedidos, estados, pagos, envíos y clientes.</p>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Canales de Venta</h2>
+        <p class="text-slate-600 mb-4">En merco puedes vender a través de múltiples canales que se integran en una sola pantalla:</p>
+
+        <div class="space-y-4 text-slate-600">
+          <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-600">
+            <h3 class="font-semibold text-slate-800 mb-2">🛒 Comercio Electrónico (E-commerce)</h3>
+            <p class="mb-2">Ventas a través de tu tienda online. Los clientes:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Navegan el catálogo</li>
+              <li>Agregan productos al carrito</li>
+              <li>Completan el checkout</li>
+              <li>Realizan el pago online</li>
+            </ul>
+            <p class="mt-2 text-sm">El pedido se registra automáticamente en el sistema con toda la información del cliente y los productos.</p>
+          </div>
+
+          <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-600">
+            <h3 class="font-semibold text-slate-800 mb-2">💳 Punto de Venta (POS)</h3>
+            <p class="mb-2">Ventas presenciales en tu tienda física. El vendedor:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Selecciona productos en la interfaz POS</li>
+              <li>Registra el cliente (nuevo o existente)</li>
+              <li>Procesa el pago (efectivo, tarjeta, etc.)</li>
+              <li>Genera un recibo</li>
+            </ul>
+            <p class="mt-2 text-sm">El pedido se sincroniza con el dashboard y afecta el stock en tiempo real.</p>
+          </div>
+
+          <div class="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-600">
+            <h3 class="font-semibold text-slate-800 mb-2">📱 Integraciones Externas</h3>
+            <p class="mb-2">Pedidos provenientes de otras plataformas:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Marketplace integrados</li>
+              <li>APIs de terceros</li>
+              <li>Importaciones manuales</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Estructura de un Pedido</h2>
+        <p class="text-slate-600 mb-4">Cada pedido contiene la siguiente información:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Número de Pedido:</strong> Identificador único que se genera automáticamente (ej: PED-2026-0001).
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Fecha y Hora:</strong> Momento exacto en que se creó el pedido.
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Cliente:</strong> Nombre, teléfono, email y dirección. Si es un cliente nuevo, se registra automáticamente.
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Productos:</strong> Lista de artículos comprados con cantidad, precio unitario y subtotal.
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Monto Total:</strong> Subtotal + impuestos + envío (si aplica) - descuentos.
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Método de Pago:</strong> Efectivo, tarjeta de crédito, transferencia, etc.
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Estado del Pedido:</strong> Pendiente, confirmado, procesando, enviado, entregado, cancelado.
+          </div>
+
+          <div class="bg-slate-50 p-3 rounded-lg">
+            <strong class="text-slate-800">Notas:</strong> Observaciones del cliente o vendedor (instrucciones de envío, reclamos, etc.).
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Estados de un Pedido</h2>
+        <p class="text-slate-600 mb-4">Todo pedido pasa por estados que reflejan su progreso:</p>
+
+        <div class="space-y-3">
+          <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
+            <span class="text-xl">🟡</span>
+            <div>
+              <strong class="text-slate-800">Pendiente</strong>
+              <p class="text-slate-600 text-sm">Pedido creado pero no confirmado. Requiere validación o pago.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+            <span class="text-xl">🔵</span>
+            <div>
+              <strong class="text-slate-800">Confirmado</strong>
+              <p class="text-slate-600 text-sm">Pago recibido y pedido validado. Listo para procesamiento.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
+            <span class="text-xl">🟣</span>
+            <div>
+              <strong class="text-slate-800">Procesando</strong>
+              <p class="text-slate-600 text-sm">El almacén está preparando el pedido para envío o retiro.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+            <span class="text-xl">🟠</span>
+            <div>
+              <strong class="text-slate-800">Enviado</strong>
+              <p class="text-slate-600 text-sm">El paquete está en camino hacia el cliente.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+            <span class="text-xl">🟢</span>
+            <div>
+              <strong class="text-slate-800">Entregado</strong>
+              <p class="text-slate-600 text-sm">El cliente recibió el pedido. Transacción completada.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+            <span class="text-xl">🔴</span>
+            <div>
+              <strong class="text-slate-800">Cancelado</strong>
+              <p class="text-slate-600 text-sm">Pedido cancelado por cliente o motivos internos. Stock se restaura.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Operaciones Comunes</h2>
+        <p class="text-slate-600 mb-4">Las tareas típicas que realizas con pedidos:</p>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📋 Ver Listado de Pedidos</h3>
+            <p class="text-slate-600">Muestra todos los pedidos con filtros por fecha, estado, cliente, monto. Puedes ordenar por más reciente, monto mayor, etc.</p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">🔍 Buscar Pedido Específico</h3>
+            <p class="text-slate-600">Busca por número de pedido, nombre de cliente o email para encontrar transacciones rápidamente.</p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">✏️ Actualizar Estado</h3>
+            <p class="text-slate-600">Cambia el estado del pedido (ej: de "Pendiente" a "Confirmado" o a "Enviado") conforme avanza el proceso.</p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📧 Notificar Cliente</h3>
+            <p class="text-slate-600">Envía emails automáticos al cliente con actualizaciones de su pedido (confirmación, envío, entrega).</p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">❌ Cancelar Pedido</h3>
+            <p class="text-slate-600">Cancela un pedido si es necesario. El sistema restaura el stock y crea un comprobante de cancelación.</p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">💾 Generar Recibo/Factura</h3>
+            <p class="text-slate-600">Crea documentos legales (recibos o facturas) que pueden imprimirse o enviarse por email al cliente.</p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📊 Ver Historial</h3>
+            <p class="text-slate-600">Revisa el historial completo del pedido: quién lo creó, cambios de estado, notas y comunicaciones.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Sincronización con el Dashboard</h2>
+        <p class="text-slate-600 mb-4">Los pedidos afectan directamente las métricas del Dashboard:</p>
+
+        <ul class="list-disc list-inside text-slate-600 space-y-2 ml-2">
+          <li><strong>Ventas diarias:</strong> Cada pedido confirmado suma al monto de ventas del día.</li>
+          <li><strong>Pedidos totales:</strong> Se cuentan en las estadísticas de número de pedidos procesados.</li>
+          <li><strong>Stock:</strong> Al confirmar un pedido, el stock de los productos disminuye automáticamente.</li>
+          <li><strong>Ingresos:</strong> Los montos se agregan a las ganancias del mes.</li>
+          <li><strong>Alertas:</strong> Si un producto se agota, el Dashboard lo marca como "Stock bajo" o "Agotado".</li>
+        </ul>
+      </section>
+
+      <section class="p-6 border-b border-stripe-200">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Validaciones Importantes</h2>
+        <p class="text-slate-600 mb-4">Antes de confirmar un pedido, verifica:</p>
+
+        <div class="space-y-3">
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Stock disponible:</strong> Los productos en el pedido deben tener stock suficiente.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Datos del cliente:</strong> Nombre, email y dirección deben ser correctos.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Método de pago:</strong> Verifica que el pago fue recibido (si es online).
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Monto total:</strong> Revisa que el cálculo de precios, impuestos y envío sea correcto.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong class="text-slate-800">Instrucciones especiales:</strong> Lee si hay notas del cliente (envío a otra dirección, regalos, etc.).
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Conclusión</h2>
+        <p class="text-slate-600">La sección de Pedidos es crítica para tu operativa. Mantén los pedidos siempre actualizados, responde rápidamente a los clientes y asegúrate de que los estados reflejen la realidad del proceso. Un sistema de pedidos bien gestionado genera confianza y satisfacción en tus clientes.</p>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

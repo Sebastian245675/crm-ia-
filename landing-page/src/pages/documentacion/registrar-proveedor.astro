@@ -1,0 +1,107 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo registrar un proveedor | merco" description="Guía para añadir proveedores y condiciones comerciales." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo registrar un proveedor</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Registrar proveedores con datos de contacto, condiciones y tiempos de entrega.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué es un proveedor</h2>
+        <p class="mb-4">Un proveedor es la persona o empresa que te suministra productos, materia prima o servicios. Registrar bien a cada proveedor te ayuda a gestionar compras, tiempos de entrega y condiciones de pago de forma ordenada.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Datos clave a incluir</h2>
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Información básica</h3>
+            <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+              <li>Nombre completo del proveedor.</li>
+              <li>Dirección y localidad.</li>
+              <li>Teléfono o WhatsApp.</li>
+              <li>Correo electrónico de contacto.</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <h3 class="font-semibold text-slate-800 mb-2">Condiciones comerciales</h3>
+            <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+              <li>Condiciones de pago (ej. contado, 30 días, tarjeta).</li>
+              <li>Tiempos de entrega habituales.</li>
+              <li>Ámbito de cobertura o zonas de envío.</li>
+              <li>Notas sobre descuentos, mínimos o condiciones especiales.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo registrar un proveedor</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3">
+          <li>Abre el módulo de <strong>Proveedores</strong> en el panel administrativo.</li>
+          <li>Haz clic en <strong>Nuevo proveedor</strong> para comenzar un registro.</li>
+          <li>Completa los datos solicitados con la información más actualizada disponible.</li>
+          <li>Si tienes contrato o documento, adjúntalo al registro para que quede asociado al proveedor.</li>
+          <li>Guarda el proveedor y verifica que aparezca en la lista con los datos correctos.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Integración con compras</h2>
+        <p class="mb-4">Relaciona los proveedores con los productos que compras con más frecuencia para facilitar la gestión de órdenes y la planeación de inventario.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Asigna proveedores favoritos a productos estratégicos.</li>
+          <li>Define condiciones de pago específicas por proveedor.</li>
+          <li>Registra descuentos y mínimos de compra para cada proveedor.</li>
+          <li>Usa la información del proveedor para mejorar el cálculo de costos y márgenes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Qué revisar después</h2>
+        <ul class="list-disc list-inside ml-6 space-y-3 text-slate-600">
+          <li>Que el nombre y el contacto principal estén correctos.</li>
+          <li>Que las condiciones de pago reflejen lo acordado.</li>
+          <li>Que el tiempo de entrega sea realista para tu operación.</li>
+          <li>Que el proveedor esté activo y visible en la lista.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Monitoreo y evaluación</h2>
+        <p class="mb-4">Evalúa el desempeño de tus proveedores regularmente para mantener una cadena de suministro confiable.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Revisa tiempos de entrega reales frente a los pactados.</li>
+          <li>Avalúa la calidad y consistencia de los productos recibidos.</li>
+          <li>Registra cambios de condiciones y actualiza el proveedor en el sistema.</li>
+          <li>Desactiva o reemplaza proveedores problemáticos si no cumplen con los acuerdos.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Consejos prácticos</h2>
+        <div class="space-y-4 text-slate-600">
+          <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+            <p><strong>Usa siempre un único registro por proveedor.</strong> Evita duplicados para no perder historial y mantener claridad en las compras.</p>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+            <p><strong>Actualiza los datos cuando cambien.</strong> Si cambian las condiciones de pago o los tiempos de entrega, edita el proveedor en lugar de crear uno nuevo.</p>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+            <p><strong>Adjunta archivos útiles.</strong> Guarda contratos, listas de precios o acuerdos de envío para consultarlos desde el registro.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

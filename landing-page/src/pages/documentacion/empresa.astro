@@ -1,0 +1,253 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Configuración de Empresa | merco" description="Guía completa de configuración del perfil de empresa: datos de marca, logo, información de contacto y almacenamiento." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Configuración del Perfil de Empresa</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Guía completa para actualizar los datos de marca, logo, información de contacto y configuración de almacenamiento de tu empresa en merco.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">¿Dónde Está la Configuración?</h2>
+        <p class="text-slate-600">Accede a la configuración de tu empresa desde el panel administrativo:</p>
+        <ol class="list-decimal list-inside text-slate-600 space-y-2 mt-3 ml-2">
+          <li>Haz clic en <strong>Configuración</strong> (generalmente en el menú lateral o en el ícono de engranaje).</li>
+          <li>Selecciona <strong>Perfil de Empresa</strong> o <strong>Datos de Empresa</strong>.</li>
+          <li>Verás un formulario con todos los campos de tu empresa.</li>
+        </ol>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos Editables</h2>
+        <p class="text-slate-600 mb-4">La configuración de empresa incluye los siguientes campos que puedes actualizar:</p>
+
+        <div class="space-y-4 text-slate-600">
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">🏢 Logo de la Empresa</h3>
+            <p class="mb-2">Imagen principal que representa tu marca. Se usa en:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Cabecera (header) de la tienda</li>
+              <li>Navbar del panel administrativo</li>
+              <li>Documentos comerciales</li>
+              <li>Correos y notificaciones</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📛 Nombre Comercial</h3>
+            <p class="mb-2">Nombre oficial de tu empresa. Se muestra en:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Cabecera de la tienda</li>
+              <li>Footer (pie de página)</li>
+              <li>Notificaciones de contacto</li>
+              <li>Facturas y documentos</li>
+            </ul>
+            <p class="text-red-600 text-sm mt-2">⚠️ <strong>Importante:</strong> Este campo debe estar siempre presente para que la tienda no quede en blanco.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📍 Dirección Física</h3>
+            <p class="mb-2">Ubicación física de tu negocio. Se usa en:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Perfil público de la tienda</li>
+              <li>Footer de la página</li>
+              <li>Documentos legales</li>
+              <li>Mapa de ubicación (si aplica)</li>
+            </ul>
+            <p class="text-sm mt-2">💡 <strong>Consejo:</strong> Mantén la dirección clara, consistente con la información legal y actualizada.</p>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📞 Teléfono de Contacto</h3>
+            <p class="mb-2">Número principal para que clientes te contacten. Se muestra en:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Página de contacto</li>
+              <li>Footer de la tienda</li>
+              <li>Formularios de soporte</li>
+              <li>Información de empresa</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📧 Correo de Contacto</h3>
+            <p class="mb-2">Email principal de la empresa. Se usa para:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Recibir consultas de clientes</li>
+              <li>Responder solicitudes de soporte</li>
+              <li>Comunicaciones legales</li>
+              <li>Información de empresa pública</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">📝 Descripción Empresarial</h3>
+            <p class="mb-2">Texto corto que presenta tu negocio. Se muestra en:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>Página de "Sobre Nosotros"</li>
+              <li>Perfil público</li>
+              <li>Meta descripciones SEO</li>
+            </ul>
+            <p class="text-sm mt-2">💡 <strong>Consejo:</strong> Usa un párrafo de 50-150 caracteres que destaque tu propuesta de valor.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo Subir el Logo</h2>
+        <p class="text-slate-600 mb-4">El logo es la imagen más visible de tu marca. Sigue estos pasos:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-3 ml-2">
+          <li>
+            <strong>Selecciona un archivo:</strong> Haz clic en el botón para elegir una imagen PNG o JPG de tu computadora.
+          </li>
+          <li>
+            <strong>Verifica la calidad:</strong> Asegúrate de que la imagen sea legible y tenga buen contraste. Se recomienda:
+            <ul class="list-disc list-inside ml-6 mt-2 space-y-1">
+              <li>Resolución mínima: 200x200 píxeles</li>
+              <li>Proporción: cuadrada (1:1) para evitar recortes inesperados</li>
+              <li>Formato: PNG (fondo transparente) o JPG</li>
+              <li>Tamaño máximo: generalmente 5-10 MB (según configuración)</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Sube el archivo:</strong> El sistema validará el tipo y tamaño del archivo automáticamente.
+          </li>
+          <li>
+            <strong>Guarda los cambios:</strong> Haz clic en el botón "Guardar" o "Actualizar" para aplicar los cambios.
+          </li>
+        </ol>
+
+        <div class="bg-blue-50 p-4 rounded-lg mt-4 border-l-4 border-blue-600">
+          <p class="text-slate-600"><strong>🎨 Recomendación de diseño:</strong> El logo debe verse bien tanto en pantallas pequeñas (móvil) como grandes (desktop). Evita textos muy pequeños o detalles que no se vean claros.</p>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Almacenamiento del Logo</h2>
+        <p class="text-slate-600 mb-4">El sistema almacena tu logo de diferentes formas según el entorno:</p>
+
+        <div class="space-y-4 text-slate-600">
+          <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-600">
+            <h3 class="font-semibold text-slate-800 mb-2">✅ Producción (En línea)</h3>
+            <p>En producción, el logo se almacena en un bucket de almacenamiento en la nube (AWS S3, Google Cloud Storage, etc.) y se sirve desde una URL estable:</p>
+            <p class="mt-2 font-mono text-sm bg-white p-2 rounded">https://tu-bucket.com/logos/logo-empresa.webp</p>
+            <p class="mt-2">Ventajas:</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>URLs permanentes y confiables</li>
+              <li>Escalabilidad automática</li>
+              <li>Cacheo global para mejor rendimiento</li>
+            </ul>
+          </div>
+
+          <div class="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-600">
+            <h3 class="font-semibold text-slate-800 mb-2">⚙️ Desarrollo (Modo Mock)</h3>
+            <p>En desarrollo o modo mock, el logo puede guardarse de diferentes formas:</p>
+            <ul class="list-disc list-inside ml-4 space-y-2 mt-2">
+              <li><strong>Base64:</strong> La imagen se codifica como texto y se guarda en la base de datos. Útil para pruebas rápidas sin infraestructura de archivos.</li>
+              <li><strong>localStorage:</strong> Se almacena en el navegador del cliente para sesiones locales.</li>
+              <li><strong>Almacenamiento temporal:</strong> Se guarda en la carpeta <code>/uploads</code> del servidor local.</li>
+            </ul>
+            <p class="text-sm mt-2">⚠️ <strong>Importante:</strong> Esto es solo para desarrollo. En producción siempre debes usar el bucket real.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Validaciones y Recomendaciones</h2>
+        <p class="text-slate-600 mb-4">Antes de guardar los cambios, asegúrate de cumplir con estos requisitos:</p>
+
+        <div class="space-y-3 text-slate-600">
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong>Nombre comercial obligatorio:</strong> Este campo debe estar siempre completo. Sin él, la tienda y las comunicaciones quedarían sin nombre.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong>Dirección consistente:</strong> La dirección debe ser clara, legible y consistente con la información legal de tu empresa registrada.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong>Logo legible:</strong> Usa logos con buen contraste y que se vean bien en diferentes tamaños. Evita logos borrosos o poco nítidos.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong>Teléfono y email válidos:</strong> Verifica que los datos de contacto sean correctos para que los clientes puedan comunicarse.
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-xl">✓</span>
+            <div>
+              <strong>Descripción breve y clara:</strong> La descripción debe ser concisa, indicar qué hace tu empresa y por qué es valiosa para los clientes.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Impacto de los Cambios</h2>
+        <p class="text-slate-600 mb-4">Cuando actualizas el perfil de empresa, los cambios se reflejan en:</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-600">
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">Frontend (Tienda Pública)</h3>
+            <ul class="list-disc list-inside space-y-1">
+              <li>Logo en el header</li>
+              <li>Nombre en el footer</li>
+              <li>Datos de contacto</li>
+              <li>Meta tags SEO</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-slate-800 mb-2">Backend & Comunicaciones</h3>
+            <ul class="list-disc list-inside space-y-1">
+              <li>Correos a clientes</li>
+              <li>Notificaciones</li>
+              <li>Facturas y documentos</li>
+              <li>Datos de empresa en APIs</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-6 border-b border-slate-100">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Validación en Producción</h2>
+        <p class="text-slate-600 mb-4">Si desarrollaste en modo mock, recuerda validar todo en producción antes de ir en línea:</p>
+
+        <ol class="list-decimal list-inside text-slate-600 space-y-2 ml-2">
+          <li>Verifica que el logo se sirve correctamente desde el bucket (no desde base64 en producción).</li>
+          <li>Comprueba que la URL del logo es permanente y accesible.</li>
+          <li>Revisa que los datos de contacto estén correctos en la tienda y en correos de prueba.</li>
+          <li>Valida que los meta tags SEO muestren el nombre y descripción de tu empresa.</li>
+          <li>Prueba desde diferentes navegadores y dispositivos móviles.</li>
+        </ol>
+      </section>
+
+      <section class="p-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Conclusión</h2>
+        <p class="text-slate-600">Un perfil de empresa completo, actualizado y bien diseñado es fundamental para:</p>
+        <ul class="list-disc list-inside text-slate-600 mt-3 space-y-1 ml-2">
+          <li>Mejorar la experiencia del cliente</li>
+          <li>Mantener coherencia visual de la marca</li>
+          <li>Transmitir profesionalismo</li>
+          <li>Facilitar comunicaciones claras</li>
+          <li>Optimizar SEO de tu sitio</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

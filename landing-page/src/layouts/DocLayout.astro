@@ -1,0 +1,132 @@
+---
+// DocLayout.astro
+import Layout from './Layout.astro';
+import Navbar from '../components/Navbar.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  currentPath?: string;
+}
+
+const { title, description, currentPath = "" } = Astro.props;
+
+// Normalizing current path for link matching
+const normalizedPath = currentPath.endsWith('/') ? currentPath.slice(0, -1) : currentPath;
+
+const links = [
+  { name: "Acceso al panel", href: "/documentacion/acceso" },
+  { name: "Dashboard", href: "/documentacion/dashboard" },
+  { name: "Productos", href: "/documentacion/productos", hasChevron: true },
+  { name: "Categorías", href: "/documentacion/categorias", hasChevron: true },
+  { name: "Comentarios", href: "/documentacion/comentarios", hasChevron: true },
+  { name: "Pedidos / POS", href: "/documentacion/pedidos", hasChevron: true },
+  { name: "Asistente IA y WhatsApp", href: "/documentacion/mensajeria", hasChevron: true },
+  { name: "Perfil de empresa", href: "/documentacion/empresa", hasChevron: true },
+  { name: "Stock y Alertas", href: "/documentacion/stock", hasChevron: true },
+  { name: "Actualizar Producto", href: "/documentacion/actualizar-producto" },
+  { name: "Filtros y Búsqueda", href: "/documentacion/crear-filtro" },
+  { name: "Gestión de Usuarios", href: "/documentacion/crear-admin" },
+  { name: "Generar Reportes", href: "/documentacion/generar-reportes" },
+  { name: "Personalizar Tienda", href: "/documentacion/editar-tienda" },
+  { name: "Pasarela de pagos", href: "/documentacion/pasarela-pagos", hasChevron: true },
+  { name: "Descuentos y Ofertas", href: "/documentacion/descuentos" },
+  { name: "Validación de Pedidos", href: "/documentacion/validar-pedidos", hasChevron: true },
+  { name: "Webhooks", href: "/documentacion/probar-webhooks", isBadge: "Pronto" },
+  { name: "Historial de Cambios", href: "/documentacion/historial-cambios", hasChevron: true },
+  { name: "Notificaciones", href: "/documentacion/notificaciones", hasChevron: true },
+  { name: "Exportar Datos", href: "/documentacion/exportar-datos", hasChevron: true },
+  { name: "Chat IA Cognitivo", href: "/documentacion/chat-ia" }
+];
+---
+
+<Layout title={title} description={description}>
+  <Navbar />
+  
+  <div class="min-h-screen bg-white text-slate-900 flex flex-col md:flex-row">
+    
+    <!-- Sidebar Index (Left Column) -->
+    <aside class="w-full md:w-80 border-r border-slate-100 flex-shrink-0 bg-white h-auto md:h-[calc(100vh-80px)] md:sticky md:top-20 md:self-start overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-200">
+      <div class="space-y-4">
+        
+        <!-- Index Button -->
+        {normalizedPath === "/documentacion" ? (
+          <div class="block bg-brand-electric text-white font-extrabold px-4 py-2.5 rounded-lg text-sm shadow-md shadow-brand-electric/15 select-none text-center sm:text-left">
+            Índice
+          </div>
+        ) : (
+          <a 
+            href="/documentacion" 
+            class="block text-slate-600 hover:text-slate-900 hover:bg-slate-50/70 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors text-center sm:text-left"
+          >
+            Índice
+          </a>
+        )}
+        
+        <!-- Navigation List -->
+        <nav class="flex flex-col gap-1.5 mt-4">
+          {links.map((link) => {
+            const isActive = normalizedPath === link.href;
+            return (
+              <a
+                href={link.href}
+                class={`group flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  isActive
+                    ? "bg-[#f0f4ff] text-[#3f3af8]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50/70"
+                }`}
+              >
+                <span class="truncate">{link.name}</span>
+                
+                {link.hasChevron && (
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke-width="2.5" 
+                    stroke="currentColor" 
+                    class={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all ${
+                      isActive ? "text-[#3f3af8]" : ""
+                    }`}
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                )}
+
+                {link.isBadge && (
+                  <span class="px-2 py-0.5 bg-brand-navy text-white text-[8px] font-bold rounded-md uppercase tracking-wider select-none">
+                    {link.isBadge}
+                  </span>
+                )}
+              </a>
+            );
+          })}
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main Content Area (Right Column) -->
+    <main class="flex-1 bg-white p-6 sm:p-8 md:p-12 lg:p-16 max-w-5xl">
+      <slot />
+    </main>
+
+  </div>
+</Layout>
+
+<style is:global>
+  /* Custom scrollbar formatting for clean documentation styling */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
+</style>

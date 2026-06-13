@@ -1,0 +1,66 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Rendimiento y SEO | merco" description="Guía de optimización de velocidad, caché y SEO técnico para la tienda." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Rendimiento y SEO</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Optimiza la velocidad de carga y la visibilidad de la tienda con buenas prácticas de SEO y cache.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Por qué importa</h2>
+        <p class="mb-4">Un sitio rápido y bien indexado mejora la experiencia del cliente y ayuda a que tu tienda aparezca mejor en resultados de búsqueda.</p>
+        <p class="text-slate-600">La plataforma incluye optimizaciones automáticas, pero también puedes aplicar prácticas adicionales para maximizar rendimiento y SEO.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Caché y velocidad de carga</h2>
+        <p class="mb-4">El sistema utiliza caché local y una carga de datos eficiente para que el catálogo se abra rápido, incluso con muchos productos.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>La cache local de 24 horas reduce las peticiones a la API y acelera las visitas repetidas.</li>
+          <li>Las imágenes se sirven en formatos optimizados y el contenido se carga de forma progresiva.</li>
+          <li>Evita bloques de renderizado con scripts ligeros y usa recursos comprimidos siempre que sea posible.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">SEO técnico</h2>
+        <p class="mb-4">Para que Google y otros motores entiendan mejor tu tienda, la página usa HTML semántico y etiquetas adecuadas.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Usa títulos <strong>H1</strong>, <strong>H2</strong> y descripciones claras para cada página.</li>
+          <li>Define metaetiquetas relevantes en los layouts y las páginas de productos.</li>
+          <li>Optimiza URLs amigables y evita parámetros innecesarios.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Recomendaciones prácticas</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Usa títulos descriptivos en productos y categorías para mejorar búsquedas internas y externas.</li>
+          <li>Completa descripciones relevantes y evita contenido duplicado.</li>
+          <li>Revisa tiempos de carga con herramientas como Lighthouse y corrige los elementos más pesados.</li>
+          <li>Prioriza imágenes optimizadas en WebP y no subas archivos excesivamente grandes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Cómo verificar resultados</h2>
+        <p class="mb-4">Comprueba el rendimiento y el SEO con métricas sencillas de velocidad y estructura.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Mide el tiempo de carga de la página principal y la vista de catálogo.</li>
+          <li>Verifica que las páginas de producto tengan meta descripción y título únicos.</li>
+          <li>Confirma que la tienda responde rápido en dispositivos móviles.</li>
+        </ul>
+      </section>
+
+      <section class="mt-12 pt-6 border-t border-slate-100">
+        <a href="/documentacion" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">← Volver a Documentación</a>
+      </section>
+    
+  </div>
+</DocLayout>

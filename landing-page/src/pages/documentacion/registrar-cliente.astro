@@ -1,0 +1,85 @@
+---
+import DocLayout from '../../layouts/DocLayout.astro';
+---
+
+<DocLayout title="Cómo registrar un cliente | merco" description="Guía para añadir clientes desde el panel administrativo." currentPath={Astro.url.pathname}>
+  <div class="space-y-8">
+    <div class="space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight">Cómo registrar un cliente</h1>
+      <p class="text-slate-600 text-sm sm:text-base leading-relaxed font-normal">Registrar clientes para seguimiento, facturación y CRM.</p>
+    </div>
+
+    <div class="border-t border-slate-100 pt-6 space-y-8">
+
+    
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Por qué registrar clientes</h2>
+        <p class="mb-4">Registrar clientes permite hacer seguimiento de compras, mejorar la atención, facturar correctamente y ofrecer promociones personalizadas. Es clave para CRM y fidelización.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos mínimos</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li><strong>Nombre completo:</strong> para dirigir la comunicación adecuadamente.</li>
+          <li><strong>Correo electrónico:</strong> correo principal de contacto.</li>
+          <li><strong>Teléfono:</strong> para notificaciones y confirmaciones.</li>
+          <li><strong>Dirección de facturación:</strong> necesaria para facturas y envíos.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Campos recomendados</h2>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Dirección de envío.</li>
+          <li>Documento de identidad o NIT.</li>
+          <li>Segmento o tipo de cliente.</li>
+          <li>Notas internas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Flujo de registro</h2>
+        <ol class="list-decimal list-inside ml-6 space-y-3 text-slate-600">
+          <li>Ir a <strong>Contactos</strong> → <strong>Nuevo cliente</strong>.</li>
+          <li>Completar los datos obligatorios y agrega información adicional cuando sea posible.</li>
+          <li>Verificar duplicados por correo o teléfono antes de guardar.</li>
+          <li>Guardar y revisar que el cliente aparezca en la lista con el dato correcto.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Prevención de duplicados</h2>
+        <p class="mb-4 text-slate-600">Evita crear clientes repetidos buscando primero por correo, teléfono o documento. Si encuentras coincidencias, actualiza el registro existente en lugar de crear uno nuevo.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Usa el campo de búsqueda rápida en la lista de clientes.</li>
+          <li>Combina correo electrónico con número de teléfono para coincidencias más seguras.</li>
+          <li>Si no estás seguro, marca el cliente como <strong>duplicado</strong> y haz limpieza más tarde.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Segmentación y CRM</h2>
+        <p class="mb-4 text-slate-600">Crear clientes correctamente permite segmentar por tipo, comportamiento de compra y frecuencia. Esto es útil para promociones, seguimiento de facturas y atención preferencial.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Clasifica clientes por frecuencia de compra, ticket promedio o lealtad.</li>
+          <li>Usa etiquetas o segmentos para campañas dirigidas.</li>
+          <li>Guarda notas internas sobre preferencias o historial de atención.</li>
+          <li>Actualiza el segmento si el cliente cambia de categoría (nuevo, recurrente, mayorista).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Actualización y limpieza de datos</h2>
+        <p class="mb-4 text-slate-600">Mantén la base de clientes limpia y actualizada para no perder tiempo ni enviar comunicaciones incorrectas.</p>
+        <ul class="list-disc list-inside ml-6 space-y-2 text-slate-600">
+          <li>Corrige datos cuando el cliente informa cambios de dirección o teléfono.</li>
+          <li>Elimina o fusiona registros duplicados periódicamente.</li>
+          <li>Usa filtros para encontrar clientes sin correo o sin teléfono y completa esos campos.</li>
+          <li>Registra las actualizaciones con notas internas cuando haya cambios importantes.</li>
+        </ul>
+      </section>
+
+      
+    
+  </div>
+</DocLayout>

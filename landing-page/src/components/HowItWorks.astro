@@ -1,0 +1,118 @@
+---
+// HowItWorks.astro
+---
+
+<section id="como-funciona" class="pt-20 pb-12 md:pt-28 md:pb-16 bg-white border-y border-slate-100 relative overflow-hidden">
+  <!-- Soft background ambient glow -->
+  <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-electric/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    
+    <!-- Header Section -->
+    <div class="text-center max-w-3xl mx-auto mb-16 md:mb-24 space-y-4">
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-[#11103d] tracking-tight uppercase">
+        ¿Cómo funciona?
+      </h2>
+      <p class="text-sm sm:text-base md:text-lg text-slate-500 font-medium max-w-2xl mx-auto">
+        Con <span class="text-brand-indigo font-black">merco</span>, simplificas y automatizas las ventas de tu negocio en minutos.
+      </p>
+    </div>
+
+    <!-- Steps Grid (3 columns, cardless clean design) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16 max-w-6xl mx-auto">
+      
+      <!-- Step 1 -->
+      <div class="depth-step flex flex-col items-center text-center group">
+        <!-- Illustration Container -->
+        <div class="w-32 h-32 flex items-center justify-center relative overflow-hidden mb-6 group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/Picsart_26-06-09_12-39-07-788.webp" 
+            alt="Sube tus productos" 
+            class="w-full h-full object-contain relative z-10"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex items-center justify-center text-brand-electric rounded-full w-28 h-28 mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          </div>
+        </div>
+        <!-- Text -->
+        <h3 class="text-lg font-extrabold text-[#11103d] mb-3 uppercase tracking-wide">
+          Sube tus productos
+        </h3>
+        <p class="text-slate-500 text-sm leading-relaxed max-w-sm">
+          Registra tu inventario de forma ágil desde el panel de control. Configura los precios, stocks y activa variantes de medidas o fraccionamientos de manera visual.
+        </p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="depth-step flex flex-col items-center text-center group">
+        <!-- Illustration Container -->
+        <div class="w-32 h-32 flex items-center justify-center relative overflow-hidden mb-6 group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/Picsart_26-06-09_13-12-57-844.webp" 
+            alt="Configura el Bot" 
+            class="w-full h-full object-contain relative z-10"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex items-center justify-center text-brand-indigo bg-slate-50 rounded-full w-28 h-28 mx-auto border border-slate-100">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+            </svg>
+          </div>
+        </div>
+        <!-- Text -->
+        <h3 class="text-lg font-extrabold text-[#11103d] mb-3 uppercase tracking-wide">
+          Configura el Bot en 1 Clic
+        </h3>
+        <p class="text-slate-500 text-sm leading-relaxed max-w-sm">
+          Ingresa al módulo de mensajería, abre la configuración y añade tu API Key de Gemini y credenciales de Twilio. Nuestro servidor se encargará de levantar el agente inteligente al instante.
+        </p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="depth-step flex flex-col items-center text-center group">
+        <!-- Illustration Container -->
+        <div class="w-32 h-32 flex items-center justify-center relative overflow-hidden mb-6 group-hover:scale-105 transition-transform duration-300">
+          <img 
+            src="/process_step3.png" 
+            alt="Vende en Piloto Automático" 
+            class="w-full h-full object-contain relative z-10"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="absolute inset-0 flex items-center justify-center text-brand-orange bg-slate-50 rounded-full w-28 h-28 mx-auto border border-slate-100">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0-6.16-12.12A14.98 14.98 0 0 0 9.64 16.2m0 0 .5-3m-.5 3h4m-4 0-.5-3" />
+            </svg>
+          </div>
+        </div>
+        <!-- Text -->
+        <h3 class="text-lg font-extrabold text-[#11103d] mb-3 uppercase tracking-wide">
+          Vende en Piloto Automático
+        </h3>
+        <p class="text-slate-500 text-sm leading-relaxed max-w-sm">
+          Tu agente inteligente atenderá de manera autónoma en WhatsApp, resolverá dudas, mostrará el catálogo online e integrará de forma automática las ventas y cotizaciones en tu base de datos.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Interactive CTA (Styled to match the clean design) -->
+    <div class="mt-20 text-center">
+      <div class="inline-flex flex-col md:flex-row items-center gap-4 bg-slate-50 border border-slate-100 rounded-2xl p-5 md:p-4 pr-6 shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
+        <span class="text-sm text-slate-500 font-medium">¿Quieres ver la simulación cognitiva del agente de IA en tiempo real?</span>
+        <a 
+          href="http://localhost:8080/login?demo=true" 
+          class="inline-flex items-center gap-2 btn-electric text-white px-5 py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm"
+        >
+          Probar en Consola
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25 21 12m0 0-7.5 7.5M21 12H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>

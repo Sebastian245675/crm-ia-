@@ -1,0 +1,155 @@
+/* Estilos adicionales para ProductAnalytics */
+.text-2xs {
+  font-size: 0.65rem;
+  line-height: 1rem;
+}
+
+/* Mejoras para la visualización en dispositivos móviles */
+@media (max-width: 640px) {
+  .recharts-legend-item-text {
+    font-size: 0.65rem !important;
+  }
+  
+  .recharts-default-legend {
+    margin-top: 0.5rem !important;
+  }
+  
+  .recharts-tooltip-item-name,
+  .recharts-tooltip-item-value {
+    font-size: 0.75rem !important;
+  }
+  
+  .recharts-layer.recharts-pie-labels {
+    font-size: 0.65rem !important;
+  }
+}
+
+/* Animaciones para elementos del gráfico */
+.recharts-pie-sector {
+  transition: transform 0.3s ease, opacity 0.2s ease;
+}
+
+.recharts-pie-sector:hover {
+  transform: scale(1.05);
+  opacity: 0.92;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
+}
+
+/* Animación de entrada para barras */
+@keyframes slide-right {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Estilos para el panel de visitantes */
+.visitor-panel-enter {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.visitor-panel-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.visitor-panel-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.visitor-panel-exit-active {
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Animaciones para la aparición de gráficos */
+.chart-appear {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.chart-appear-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Estilo para dispositivos extra pequeños */
+@media (max-width: 475px) {
+  .xs\:flex {
+    display: flex;
+  }
+  .xs\:hidden {
+    display: none;
+  }
+}
+
+.animate-slide-right {
+  animation: slide-right 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Define tamaños de pantalla personalizados para mejor responsive */
+@media (min-width: 475px) {
+  .xs\:flex {
+    display: flex;
+  }
+  
+  .xs\:flex-row {
+    flex-direction: row;
+  }
+  
+  .xs\:w-32 {
+    width: 8rem;
+  }
+  
+  .xs\:w-36 {
+    width: 9rem;
+  }
+  
+  .xs\:items-center {
+    align-items: center;
+  }
+  
+  .xs\:inline {
+    display: inline;
+  }
+}
+
+/* Mejoras para elementos recurrentes */
+.table-row-hover {
+  transition: background-color 0.2s ease;
+}
+
+/* Efectos para tarjetas */
+.card-hover-effect {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
+}
+
+/* Animación para el loading */
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.loading-pulse {
+  animation: pulse-scale 2s ease-in-out infinite;
+}

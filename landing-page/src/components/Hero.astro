@@ -1,0 +1,150 @@
+---
+// Hero.astro
+---
+
+<section id="inicio" class="relative pt-6 pb-12 md:pt-10 md:pb-16 overflow-hidden bg-gradient-factus bg-grid-pattern">
+  
+  <!-- Decorative Ambient Lights -->
+  <div class="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-brand-electric/20 rounded-full blur-[150px] z-[1] pointer-events-none"></div>
+  <div class="absolute bottom-10 left-10 w-[400px] h-[400px] bg-brand-indigo/10 rounded-full blur-[100px] z-[1] pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+      
+      <!-- Left Column (Content) -->
+      <div class="lg:col-span-7 space-y-8 text-left">
+        
+        <!-- Headline inspired by Factus -->
+        <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] text-white">
+          PLATAFORMA DE <br />
+          E-COMMERCE Y <br />
+          <span class="bg-gradient-to-r from-cyan-400 via-brand-blue to-brand-indigo bg-clip-text text-transparent">VENTAS CON IA</span>
+        </h1>
+        
+        <!-- Paragraph inspired by Factus -->
+        <p class="text-base sm:text-lg md:text-xl text-gray-300 font-light leading-relaxed max-w-xl">
+          Somos la plataforma de tiendas online más rápida, confiable y con el mejor soporte inteligente de WhatsApp.
+        </p>
+
+        <!-- CTA Buttons matching Factus colors -->
+        <div class="grid grid-cols-2 gap-4 w-full sm:flex sm:flex-row sm:items-center">
+          <a 
+            href="https://wa.me/573186218792" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-brand-dark font-bold text-sm hover:bg-gray-100 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/5 w-full"
+          >
+            Escríbenos
+          </a>
+          
+          <a 
+            href="/documentacion" 
+            class="inline-flex items-center justify-center px-8 py-3.5 rounded-full btn-electric font-bold text-sm hover:scale-105 active:scale-95 transition-all w-full"
+          >
+            Documentación
+          </a>
+          
+          <a 
+            href="http://localhost:8080/login?demo=true" 
+            class="col-span-2 inline-flex items-center justify-center px-8 py-3.5 rounded-full btn-orange-gradient font-bold text-sm hover:scale-105 active:scale-95 transition-all w-full sm:col-auto"
+          >
+            Ver Demo Gratis
+          </a>
+        </div>
+
+        <!-- Horizontal separator and integration subtext -->
+        <div class="hidden lg:block pt-8 border-t border-white/5 space-y-5">
+          <p class="text-sm md:text-base text-gray-300 leading-relaxed font-light">
+            Integra tu inventario de forma sencilla desde cualquier rubro: <br class="hidden sm:inline" />
+            <span class="text-white font-medium">Tecnología, Moda, Cuidado Personal, Hogar, Deportes, entre otros.</span>
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Right Column (Mascot Image) -->
+      <div class="lg:col-span-5 relative flex flex-col items-center lg:items-end justify-center lg:justify-end">
+        <div class="relative w-full max-w-[380px] sm:max-w-[440px] lg:max-w-[500px] group -translate-y-4 lg:-translate-y-6">
+          <!-- Behind image decoration: Deep glowing radial -->
+          <div class="absolute inset-0 bg-gradient-to-br from-brand-electric/25 to-brand-indigo/15 rounded-full blur-[60px] opacity-80 group-hover:scale-105 transition-transform duration-500 pointer-events-none"></div>
+          
+          <!-- Floating effect wrapper -->
+          <div class="relative w-full h-auto drop-shadow-2xl animate-float">
+            <img 
+              src="/Picsart_26-06-10_08-47-46-300.webp" 
+              alt="Mascota merco Castor" 
+              class="w-full h-auto object-contain rounded-2xl relative z-10 transition-transform duration-500 hover:scale-[1.01]"
+              width="540"
+              height="540"
+            />
+          </div>
+        </div>
+
+        <!-- Mobile-only integration text: displayed below image on phones/tablets -->
+        <div class="lg:hidden w-full pt-8 border-t border-white/5 space-y-5 mt-6 text-left">
+          <p class="text-sm md:text-base text-gray-300 leading-relaxed font-light">
+            Integra tu inventario de forma sencilla desde cualquier rubro: <br class="hidden sm:inline" />
+            <span class="text-white font-medium">Tecnología, Moda, Cuidado Personal, Hogar, Deportes, entre otros.</span>
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Background Split and Curve SVG (Factus Style) -->
+  <div class="absolute inset-0 z-0 w-full h-full overflow-hidden pointer-events-none">
+    <svg class="absolute bottom-0 left-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Solid vivid blue right-side shape — bold and unmissable like Factus -->
+      <path d="M 0,900 C 350,900 500,700 650,500 C 780,330 900,100 1100,0 L 1440,0 L 1440,900 Z" fill="url(#blue-shape-gradient)" />
+      
+      <!-- Bright neon edge line along the curve -->
+      <path d="M 0,900 C 350,900 500,700 650,500 C 780,330 900,100 1100,0" stroke="url(#electric-line-gradient)" stroke-width="4" fill="none" stroke-linecap="round"/>
+      
+      <!-- Subtle inner glow line for depth -->
+      <path d="M 0,900 C 350,900 500,700 650,500 C 780,330 900,100 1100,0" stroke="url(#electric-line-glow)" stroke-width="20" fill="none" stroke-linecap="round" opacity="0.3"/>
+      
+      <!-- Giant background text "TIENDA" behind the mascot (Factus style) -->
+      <text x="1050" y="650" fill="white" fill-opacity="0.12" font-size="220" font-family="system-ui, -apple-system, sans-serif" font-weight="900" text-anchor="middle" letter-spacing="18" transform="rotate(-10 1050 650)">TIENDA</text>
+      <text x="1080" y="800" fill="white" fill-opacity="0.08" font-size="150" font-family="system-ui, -apple-system, sans-serif" font-weight="900" text-anchor="middle" letter-spacing="12" transform="rotate(-10 1080 800)">ONLINE</text>
+
+      <defs>
+        <!-- Blue shape gradient — ALL bright, vivid stops (no dark navy) -->
+        <linearGradient id="blue-shape-gradient" x1="1440" y1="0" x2="400" y2="900" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#4845FF" stop-opacity="1.0"/>
+          <stop offset="35%" stop-color="#3B35F0" stop-opacity="1.0"/>
+          <stop offset="70%" stop-color="#2E27E0" stop-opacity="1.0"/>
+          <stop offset="100%" stop-color="#2218C9" stop-opacity="1.0"/>
+        </linearGradient>
+        
+        <!-- Bright neon line gradient -->
+        <linearGradient id="electric-line-gradient" x1="0" y1="900" x2="1100" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00E5FF"/>
+          <stop offset="40%" stop-color="#4D62F9"/>
+          <stop offset="100%" stop-color="#9B6DFF"/>
+        </linearGradient>
+        
+        <!-- Glow line gradient -->
+        <linearGradient id="electric-line-glow" x1="0" y1="900" x2="1100" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00E5FF"/>
+          <stop offset="50%" stop-color="#4D62F9"/>
+          <stop offset="100%" stop-color="#7F56FF"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<style>
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-12px);
+    }
+  }
+  .animate-float {
+    animation: float 5s ease-in-out infinite;
+  }
+</style>

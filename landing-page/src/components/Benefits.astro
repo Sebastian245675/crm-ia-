@@ -1,0 +1,160 @@
+---
+// Benefits.astro
+---
+
+<section id="beneficios" class="py-20 md:py-28 bg-[#f8fafc] border-b border-slate-100 relative overflow-hidden">
+  <!-- Soft background glow -->
+  <div class="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-brand-indigo/5 rounded-full blur-[130px] -z-10 pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    
+    <!-- Title -->
+    <div class="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+      <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#11103d] tracking-tight uppercase leading-tight">
+        Beneficios de merco
+      </h2>
+    </div>
+
+    <!-- Split Layout: Mascot Beaver (Left) & Center Graphic Dashboard Image (Right) -->
+    <!-- Combined Layout: Centered Graphic with Mascot Overlapping on the Left -->
+    <div class="relative w-[75%] ml-auto mr-4 md:w-full md:max-w-3xl md:mx-auto mb-16">
+      
+      <!-- Mascot Beaver (Raccoon) lying on the left side, overlapping the dashboard graphic -->
+      <div class="absolute -left-8 md:-left-20 lg:-left-28 bottom-2 md:bottom-4 lg:bottom-6 h-[82%] md:h-[80%] lg:h-[85%] z-20 pointer-events-none group">
+        <div class="relative h-full">
+          <!-- Subtle hover shadow/glow behind mascot -->
+          <div class="absolute inset-0 bg-brand-indigo/10 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+          <img 
+            src="/Picsart_26-06-10_08-22-32-884.webp" 
+            alt="Mascota merco avanzada" 
+            class="h-full w-auto object-contain relative z-10 transition-transform duration-500 hover:scale-105 hover:rotate-2 cursor-pointer pointer-events-auto" 
+          />
+        </div>
+      </div>
+
+      <!-- Center Graphic: Image with Tailwind Fallback -->
+      <div class="relative w-full translate-x-0 md:translate-x-6 lg:translate-x-10 rounded-[24px] overflow-hidden border border-slate-100 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.03)] bg-white aspect-[16/10] flex items-center justify-center group hover:shadow-xl hover:shadow-slate-100/50 transition-all duration-300 z-10">
+        <img 
+          src="/Captura-de-pantalla-2026-06-09-140205.webp" 
+          alt="Captura de pantalla del dashboard de merco" 
+          class="w-full h-full object-contain bg-slate-100 relative z-10"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+        />
+        <!-- Fallback Mockup using Tailwind -->
+        <div class="hidden absolute inset-0 bg-[#fbfcfd] flex items-center justify-between p-6 md:p-10 select-none">
+          
+          <!-- Left Side: Mascot Beaver -->
+          <div class="w-1/3 flex flex-col items-center justify-center border-r border-slate-100 pr-6 md:pr-8 h-full text-center">
+            <div class="relative w-20 h-20 sm:w-24 sm:h-24 bg-brand-indigo/10 rounded-full flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform duration-300">
+              <img 
+                src="/Picsart_26-06-10_08-22-32-884.webp" 
+                alt="Mascota merco" 
+                class="w-14 h-14 sm:w-16 sm:h-16 object-contain" 
+              />
+            </div>
+            <h4 class="text-xs sm:text-sm font-black text-[#11103d] uppercase tracking-wide">Mascota merco</h4>
+            <p class="text-[9px] sm:text-[10px] text-slate-400 mt-1 max-w-[120px] mx-auto leading-normal">¡Automatizando tu negocio al instante!</p>
+          </div>
+
+          <!-- Right Side: Mini Dashboard panel list -->
+          <div class="w-2/3 pl-6 md:pl-8 h-full flex flex-col justify-between">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 bg-red-400 rounded-full"></span>
+                <span class="w-2.5 h-2.5 bg-yellow-400 rounded-full"></span>
+                <span class="w-2.5 h-2.5 bg-green-400 rounded-full"></span>
+              </div>
+              <span class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Consola Administrativa</span>
+            </div>
+
+            <!-- Mock sales lists -->
+            <div class="flex-1 flex flex-col justify-center gap-2.5 py-4">
+              <div class="h-8 bg-white rounded-xl border border-slate-100 flex items-center justify-between px-3 text-[10px] sm:text-xs text-slate-500 shadow-sm shadow-slate-100/20">
+                <span class="font-extrabold text-slate-800">Pedido #104</span>
+                <span class="hidden sm:inline">Moda (Talle M, Azul)</span>
+                <span class="text-green-500 font-bold">$29,900</span>
+                <span class="bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-[8px] font-bold">Por WhatsApp IA</span>
+              </div>
+              <div class="h-8 bg-white rounded-xl border border-slate-100 flex items-center justify-between px-3 text-[10px] sm:text-xs text-slate-500 shadow-sm shadow-slate-100/20">
+                <span class="font-extrabold text-slate-800">Pedido #103</span>
+                <span class="hidden sm:inline">Tecnología (Auriculares)</span>
+                <span class="text-green-500 font-bold">$124,500</span>
+                <span class="bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full text-[8px] font-bold">Por Tienda Web</span>
+              </div>
+              <div class="h-8 bg-white rounded-xl border border-slate-100 flex items-center justify-between px-3 text-[10px] sm:text-xs text-slate-500 shadow-sm shadow-slate-100/20">
+                <span class="font-extrabold text-slate-800">Pedido #102</span>
+                <span class="hidden sm:inline">Hogar (Lámpara Velador)</span>
+                <span class="text-green-500 font-bold">$54,000</span>
+                <span class="bg-indigo-50 text-brand-indigo px-2 py-0.5 rounded-full text-[8px] font-bold">Por Punto Físico</span>
+              </div>
+            </div>
+
+            <div class="text-[9px] sm:text-[10px] text-slate-400 text-center border-t border-slate-100 pt-2 font-medium">
+              Vista unificada de ventas multicanal en tiempo real
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2x2 Grid of Benefits -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 max-w-4xl mx-auto">
+      
+      <!-- Benefit 1 -->
+      <div class="depth-benefit flex items-start gap-4">
+        <span class="w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 bg-brand-electric"></span>
+        <div>
+          <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] leading-snug mb-2">
+            Lanzamiento rápido de tu e-commerce
+          </h3>
+          <p class="text-slate-500 text-sm leading-relaxed font-normal">
+            Sube tu catálogo de productos y variants, y empieza a vender en línea en pocos minutos, sin complicaciones técnicas ni de desarrollo.
+          </p>
+        </div>
+      </div>
+
+      <!-- Benefit 2 -->
+      <div class="depth-benefit flex items-start gap-4">
+        <span class="w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 bg-brand-indigo"></span>
+        <div>
+          <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] leading-snug mb-2">
+            Atención autónoma inteligente 24/7
+          </h3>
+          <p class="text-slate-500 text-sm leading-relaxed font-normal">
+            Tu agente de ventas con inteligencia artificial atiende a los clientes por WhatsApp de manera inmediata, concretando pedidos de forma autónoma.
+          </p>
+        </div>
+      </div>
+
+      <!-- Benefit 3 -->
+      <div class="depth-benefit flex items-start gap-4">
+        <span class="w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 bg-[#A78BFA]"></span>
+        <div>
+          <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] leading-snug mb-2">
+            Soporte multirrubro flexible
+          </h3>
+          <p class="text-slate-500 text-sm leading-relaxed font-normal">
+            Se adapta perfectamente a rubros como moda, tecnología, calzado y hogar, gestionando variaciones de talles, colores y medidas.
+          </p>
+        </div>
+      </div>
+
+      <!-- Benefit 4 -->
+      <div class="depth-benefit flex items-start gap-4">
+        <span class="w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 bg-[#FF5722]"></span>
+        <div>
+          <h3 class="text-base sm:text-lg font-extrabold text-[#11103d] leading-snug mb-2">
+            Panel de control en tiempo real
+          </h3>
+          <p class="text-slate-500 text-sm leading-relaxed font-normal">
+            Visualiza tus ventas por canal, gestiona el inventario, revisa chats y supervisa alertas de stock mínimo desde una sola consola unificada.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
