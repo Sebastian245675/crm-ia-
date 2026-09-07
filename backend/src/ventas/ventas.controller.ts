@@ -1,12 +1,34 @@
-import { Controller, Post, Get, Body, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AgencyPermissionGuard } from '../auth/agency-permission.guard';
+import { RequireAgencyPermission } from '../auth/agency-permission.decorator';
 import * as express from 'express';
 
 @Controller('api')
 export class VentasController {
   constructor(private readonly db: DatabaseService) {}
 
+  @Post('ventas/pos')
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('manageOrders')
+  async registerPosSale(@Body() body: any, @Res() res: express.Response) {
+    try {
+      const result = await this.db.registerPosSale(body);
+      return res.status(HttpStatus.CREATED).json({ success: true, ...result });
+    } catch (e: any) {
+      const message = e?.message || 'No se pudo registrar la venta.';
+      const isConflict = /stock|ya no existe|inactivo/i.test(message);
+      return res.status(isConflict ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
   @Post('venta')
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('manageOrders')
   async registerVenta(@Body() body: any, @Res() res: express.Response) {
     try {
       const productoId = Number(body.producto_id || body.productoId || body.id);
@@ -79,6 +101,8 @@ export class VentasController {
   }
 
   @Get('ventas')
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('manageOrders')
   async getVentas(@Res() res: express.Response) {
     try {
       const rows = await this.db.query(

@@ -20,6 +20,12 @@ async function fixLandingPage() {
       `echo "Actualizando Node.js a la versión 22..."`,
       `curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs`,
 
+      // Reemplazar URLs en el código antes de compilar
+      `echo "Actualizando URLs para producción (usando dominios HTTPS)..."`,
+      `cd ${projectDir}/landing-page && find src -name "*.astro" -type f -exec sed -i "s|http://localhost:8080|https://panel.websysrl.com|g" {} +`,
+      `cd ${projectDir}/argentina-2 && find src -name "*.ts*" -type f -exec sed -i "s|fetch('/api|fetch('https://backend.websysrl.com/api|g" {} +`,
+      `cd ${projectDir}/argentina-2 && find src -name "*.ts*" -type f -exec sed -i "s|fetch(\\"/api|fetch(\\"https://backend.websysrl.com/api|g" {} +`,
+
       // 2. Re-compilar la Landing Page
       `echo "⚙️ Re-compilando Landing Page con Node 22..."`,
       `cd ${projectDir}/landing-page && npm run build`,

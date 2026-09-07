@@ -5,6 +5,7 @@ import './index.css'
 import './styles/scroll-optimization.css'
 import { preventAutomaticTranslation } from './lib/translation-blocker'
 import { initMercadoPago } from '@mercadopago/sdk-react'
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Inicializar Mercado Pago
 const MP_PUBLIC_KEY = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY || 'APP_USR-a4c9fa9b-cf26-439f-98fb-e832b68466f7';
@@ -105,7 +106,9 @@ const renderApp = () => {
     createRoot(rootElement).render(
       <React.StrictMode>
         <ErrorBoundary>
-          <App />
+          <GoogleOAuthProvider clientId="583953685438-tuumnv51bnof3jvmfoiv3rvb0b3nuoop.apps.googleusercontent.com">
+            <App />
+          </GoogleOAuthProvider>
         </ErrorBoundary>
       </React.StrictMode>
     );

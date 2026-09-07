@@ -321,7 +321,20 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
     }
   }
 
-  async obtenerContextoBaseConocimiento(): Promise<string> {
+  private async obtenerConfiguracionAgente(agentId?: string | null, ownerId?: string): Promise<any | null> {
+    if (!agentId) return null;
+    const rows = await this.db.query(
+      "SELECT datos FROM documentos WHERE tabla_nombre = 'ai_agents' AND id = %s LIMIT 1",
+      [agentId],
+    );
+    if (!rows.length) throw new Error('El agente seleccionado ya no existe.');
+    const agent = JSON.parse(rows[0].datos);
+    if (ownerId && agent.owner_id !== ownerId) throw new Error('No tienes acceso a este agente.');
+    if (agent.status !== 'active') throw new Error('El agente seleccionado está pausado.');
+    return agent;
+  }
+
+  async obtenerContextoBaseConocimiento(knowledgeBaseId?: string, ownerId?: string): Promise<string> {
     try {
       const rows = await this.db.query(
         "SELECT datos FROM documentos WHERE tabla_nombre = 'knowledge_bases'"
@@ -337,7 +350,7 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
             return null;
           }
         })
-        .filter((item) => item !== null);
+        .filter((item) => item !== null && (!knowledgeBaseId || item.id === knowledgeBaseId) && (!ownerId || item.owner_id === ownerId));
       
       for (const kb of kbs) {
         if (kb.documents && kb.documents.length > 0) {
@@ -361,14 +374,17 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
 
   async procesarMensaje(
     mensaje: string,
-    remitente: string
+    remitente: string,
+    agentId?: string | null,
+    ownerId?: string,
   ): Promise<{ response: string; thoughts: string[] }> {
     const apiConfigKey = this.cargarApiKey();
     const thoughts: string[] = [];
+    const agentConfig = await this.obtenerConfiguracionAgente(agentId, ownerId);
 
     if (!apiConfigKey) {
       thoughts.push('🔑 [Configuración] GEMINI_API_KEY no detectada. Iniciando en Modo Reglas (Offline).');
-      const resText = await this.procesarPorReglas(mensaje, thoughts);
+      const resText = await this.procesarPorReglas(mensaje, thoughts, agentConfig?.knowledge_base_id, ownerId);
       return {
         response: `${resText}\n\n⚠️ _[Modo Simulado Activo: Configura la API Key de Gemini en el Panel Web para respuestas avanzadas con IA]_`,
         thoughts,
@@ -377,8 +393,11 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
 
     thoughts.push('🔑 [Configuración] API Key de Gemini detectada. Iniciando flujo cognitivo de Agente...');
 
-    const kbContext = await this.obtenerContextoBaseConocimiento();
+    const kbContext = await this.obtenerContextoBaseConocimiento(agentConfig?.knowledge_base_id, ownerId);
     let currentSystemInstruction = this.systemInstruction;
+    if (agentConfig?.instructions) {
+      currentSystemInstruction += `\n\nINSTRUCCIONES ESPECÍFICAS DEL AGENTE “${agentConfig.name}”:\n${agentConfig.instructions}`;
+    }
     if (kbContext.trim()) {
       currentSystemInstruction += `\n\nINFORMACIÓN ADICIONAL DE LA BASE DE CONOCIMIENTO (Usa estos datos reales del negocio para responder consultas específicas):\n${kbContext}`;
       thoughts.push('📚 [Base de Conocimiento] Información cargada del negocio e inyectada en el prompt.');
@@ -393,7 +412,8 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
       },
     ];
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiConfigKey}`;
+    const model = agentConfig?.model === 'Gemini 1.5 Pro' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiConfigKey}`;
     const toolsPayload = [{ functionDeclarations: this.declaracionesHerramientas }];
 
     const maxLoops = 5;
@@ -473,7 +493,7 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
       } catch (e) {
         thoughts.push(`💥 [Excepción] Ocurrió un error en el flujo de IA: ${e.message}`);
         thoughts.push('🔄 [Recuperación] Entrando a Modo Reglas debido a un error de conexión con el servidor de IA.');
-        const rulesText = await this.procesarPorReglas(mensaje, thoughts);
+        const rulesText = await this.procesarPorReglas(mensaje, thoughts, agentConfig?.knowledge_base_id, ownerId);
         return {
           response: `${rulesText}\n\n⚠️ _[Nota: Respuesta generada localmente por fallo en API de IA]_`,
           thoughts,
@@ -488,7 +508,7 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
     };
   }
 
-  private async procesarPorReglas(mensaje: string, thoughts: string[]): Promise<string> {
+  private async procesarPorReglas(mensaje: string, thoughts: string[], knowledgeBaseId?: string, ownerId?: string): Promise<string> {
     const msg = mensaje.toLowerCase().trim();
 
     // 1. Saludos
@@ -618,7 +638,7 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
     }
 
     // 8. Búsqueda en la Base de Conocimiento (Fallback offline)
-    const kbContext = await this.obtenerContextoBaseConocimiento();
+    const kbContext = await this.obtenerContextoBaseConocimiento(knowledgeBaseId, ownerId);
     if (kbContext.trim()) {
       // Buscar coincidencias sencillas por palabras clave
       const secciones = kbContext.split('--- Documento:');

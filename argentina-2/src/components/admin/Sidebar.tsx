@@ -20,7 +20,6 @@ import {
   Settings,
   Home,
   Users,
-  Package,
   ShoppingCart,
   TrendingUp,
   BarChart3,
@@ -36,13 +35,15 @@ import {
   Send,
   Image,
   Star,
-  Kanban
+  Kanban,
+  Factory
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { canAccessAdminTab } from '@/lib/agency-permissions';
 
 interface SidebarProps {
   activeTab: string;
@@ -128,7 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Abrir el menú de configuración automáticamente si estamos en configuration, subaccounts, info, filters, wpp, mail-config, revisiones, payment-gateways o modalities
   useEffect(() => {
-    if (activeTab === 'configuration' || activeTab === 'subaccounts' || activeTab === 'info' || activeTab === 'filters' || activeTab === 'wpp' || activeTab === 'mail-config' || activeTab === 'revisiones' || activeTab === 'payment-gateways' || activeTab === 'modalities') {
+    if (activeTab === 'configuration' || activeTab === 'subaccounts' || activeTab === 'wpp' || activeTab === 'mail-config' || activeTab === 'revisiones' || activeTab === 'payment-gateways' || activeTab === 'modalities' || activeTab === 'facturacion' || activeTab === 'seguridad') {
       setShowConfigurationMenu(true);
     } else {
       setShowConfigurationMenu(false);
@@ -155,25 +156,40 @@ const Sidebar: React.FC<SidebarProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [isMobile]);
 
+  // Escuchar evento de toggle desde componentes externos (ej. header en AdminPanel)
+  useEffect(() => {
+    const handleToggle = () => {
+      setIsSidebarOpen(prev => !prev);
+    };
+    window.addEventListener('toggleSidebar', handleToggle);
+    return () => window.removeEventListener('toggleSidebar', handleToggle);
+  }, []);
+
   // Toggle sidebar
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
   const sidebarItems = [
-    ...(isSubAdmin ? [] : [
-      { id: 'dashboard', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Dashboard', description: 'Vista general' }
-    ]),
+    { id: 'dashboard', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Dashboard', description: 'Vista general' },
     { id: 'mensajeria', icon: <MessageSquare className="h-5 w-5" />, label: 'Mensajes', description: 'Chats y WhatsApp' },
     { id: 'contacts', icon: <Contact className="h-5 w-5" />, label: 'Contactos', description: 'Gestión de clientes' },
     { id: 'calendars', icon: <Calendar className="h-5 w-5" />, label: 'Calendario', description: 'Citas y reservas' },
     { id: 'opportunities', icon: <Kanban className="h-5 w-5" />, label: 'Oportunidades', description: 'Embudo de ventas' },
-    { id: 'products', icon: <Package className="h-5 w-5" />, label: 'Productos', description: 'Gestión de inventario' },
+    ...(isSubAdmin && canAccessAdminTab(user, 'products') ? [
+      { id: 'products', icon: <Tag className="h-5 w-5" />, label: 'Productos', description: 'Catálogo e inventario' }
+    ] : []),
     { id: 'marketing', icon: <Send className="h-5 w-5" />, label: 'Marketing', description: 'Correos masivos y campañas' },
     { id: 'orders', icon: <ShoppingCart className="h-5 w-5" />, label: 'Pedidos', description: 'Control de ventas' },
+    { id: 'erp', icon: <Factory className="h-5 w-5" />, label: 'ERP Integral', description: 'Operaciones y recursos' },
     { id: 'website', icon: <Globe className="h-5 w-5" />, label: 'Sitio Web', description: 'Páginas, funnels, SEO...' },
-    { id: 'categories', icon: <Tag className="h-5 w-5" />, label: 'Categorías', description: 'Organizar productos' },
     { id: 'ai-assistant', icon: <Bot className="h-5 w-5" />, label: 'Asistente IA', description: 'Inteligencia artificial' },
+    { id: 'contabilidad', icon: <DollarSign className="h-5 w-5" />, label: 'Contabilidad', description: 'Ingresos y egresos' },
   ];
+  const visibleSidebarItems = sidebarItems.filter((item) => canAccessAdminTab(user, item.id));
+  const canManageSettings = canAccessAdminTab(user, 'configuration');
+  const canViewAccounting = canAccessAdminTab(user, 'facturacion');
+  const canOpenConfigurationMenu = canManageSettings || canViewAccounting || isAdmin;
 
   const handleNavigation = (id: string) => {
     setActiveTab(id);
@@ -184,7 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (activeTab === itemId) return true;
 
     // Si es sitio web y estamos en alguna de sus sub-páginas
-    if (itemId === 'website' && ['website', 'funnels', 'sitios', 'seo', 'analytics', 'comments'].includes(activeTab)) {
+    if (itemId === 'website' && ['website', 'funnels', 'sitios', 'seo', 'analytics', 'reportes', 'comments', 'products', 'filters', 'categories'].includes(activeTab)) {
       return true;
     }
 
@@ -195,25 +211,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const iconAnimation = (isActive: boolean) => {
     return isActive ? "scale-110 transform transition-all duration-300" : "transform transition-all duration-300";
   };
-
-  // Toggle button para móvil con diseño mejorado
-  const MobileToggleButton = () => (
-    <button
-      onClick={toggleSidebar}
-      className="fixed z-50 bottom-6 right-6 w-16 h-16 rounded-2xl bg-gradient-to-r from-sky-400 to-blue-500 flex items-center justify-center shadow-lg text-white lg:hidden transform hover:scale-105 transition-all duration-300"
-      aria-label={isSidebarOpen ? "Cerrar menú" : "Abrir menú"}
-      style={{
-        boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.5), 0 8px 10px -6px rgba(59, 130, 246, 0.3)'
-      }}
-    >
-      <div className="relative">
-        {isSidebarOpen ?
-          <X className="h-7 w-7 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 duration-300" /> :
-          <Menu className="h-7 w-7 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 duration-300" />
-        }
-      </div>
-    </button>
-  );
 
   return (
     <>
@@ -226,16 +223,16 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Sidebar con diseño mejorado */}
-      <div
+      <div 
         className={cn(
-          "h-screen bg-[#1e293b] text-slate-300 flex flex-col z-40 admin-sidebar notranslate critical-ui-container w-[220px]",
+          "h-screen bg-[#eef3f6] text-slate-700 border-r border-[#9fb8c8] flex flex-col z-40 admin-sidebar notranslate critical-ui-container w-[220px] shadow-sm",
           isMobile ? "fixed left-0 top-0 transition-all duration-500 ease-in-out transform" : "",
           isMobile && !isSidebarOpen ? "-translate-x-full" : "translate-x-0"
         )}
         translate="no"
       >
         {/* Brand Logo Area */}
-        <div className="h-16 flex items-center justify-center px-6 border-b border-slate-700/50">
+        <div className="h-16 flex items-center justify-center px-6 bg-white border-b border-[#b6cbd8]">
           {companyLogo ? (
             <img
               src={companyLogo}
@@ -247,29 +244,29 @@ const Sidebar: React.FC<SidebarProps> = ({
               }}
             />
           ) : (
-            <h1 className="text-xl font-bold text-orange-500 tracking-wider">{companyName}</h1>
+            <h1 className="text-xl font-bold text-[#245878] tracking-wide">{companyName || 'MERCO'}</h1>
           )}
         </div>
 
         {/* User / Location Selector */}
         <div className="p-4">
           <div
-            className="bg-slate-800/50 rounded-lg p-3 flex items-center justify-between border border-slate-700 cursor-pointer hover:bg-slate-800 transition-colors"
+            className="bg-white rounded-sm p-2.5 flex items-center justify-between border border-[#b6cbd8] cursor-pointer hover:bg-[#e4f1f8] transition-colors"
             onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
           >
             <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              <div className="w-8 h-8 rounded-sm bg-[#397da8] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                 {companyName.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase()}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-white truncate">{companyName}</span>
-                <span className="text-xs text-slate-400 truncate">
+                <span className="text-sm font-semibold text-[#244d68] truncate">{companyName || 'Empresa principal'}</span>
+                <span className="text-xs text-slate-500 truncate">
                   {companyCity && companyState ? `${companyCity}, ${companyState}` : companyCity || companyState || 'Sin ubicación'}
                 </span>
               </div>
             </div>
             <div className="flex flex-col">
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isBranchMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 text-[#668aa1] transition-transform duration-200 ${isBranchMenuOpen ? 'rotate-180' : ''}`} />
             </div>
           </div>
 
@@ -290,7 +287,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <input
               type="text"
               placeholder="Buscar"
-              className="w-full bg-slate-800/50 border border-slate-700 rounded-md py-2 pl-9 pr-12 text-sm text-slate-300 focus:outline-none focus:border-slate-600 placeholder-slate-500"
+              className="w-full bg-white border border-[#b6cbd8] rounded-sm py-2 pl-9 pr-12 text-sm text-slate-700 focus:outline-none focus:border-[#6fa4c5] placeholder-slate-400"
             />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               <span className="text-[10px] text-slate-500 bg-slate-800 px-1 rounded border border-slate-700">ctrlK</span>
@@ -307,7 +304,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <nav className="flex-1 overflow-y-auto py-2 px-2 custom-scrollbar">
           {showMainMenu ? (
             <ul className="space-y-1">
-              {sidebarItems.map((item, index) => (
+              {visibleSidebarItems.map((item, index) => (
                 <React.Fragment key={item.id}>
                   <li>
                     <button
@@ -321,18 +318,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                       className={cn(
                         "w-full flex items-center px-4 py-2.5 rounded-md text-left transition-all duration-200 group relative",
                         isTabActive(item.id)
-                          ? "bg-slate-800 text-white font-medium"
-                          : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                          ? "bg-[#d5eaf7] text-[#174e73] border border-[#9bc3dc] font-semibold"
+                          : "text-slate-600 border border-transparent hover:bg-[#e2eff6] hover:text-[#174e73]"
                       )}
                     >
                       {/* Active Indicator Line for main items */}
                       {isTabActive(item.id) && !item.hasDropdown && (
-                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-orange-500 rounded-r-md" />
+                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-[#2575a8]" />
                       )}
 
                       <span className={cn(
                         "flex-shrink-0 mr-3",
-                        isTabActive(item.id) ? "text-orange-500" : "text-slate-500 group-hover:text-slate-400"
+                        isTabActive(item.id) ? "text-[#2575a8]" : "text-[#668aa1] group-hover:text-[#397da8]"
                       )}>
                         {item.icon}
                       </span>
@@ -391,7 +388,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <span className="truncate flex-1">Volver atrás</span>
                 </button>
               </li>
-              <li>
+              {canManageSettings && <li>
                 <button
                   onClick={() => {
                     handleNavigation('configuration');
@@ -408,7 +405,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                   <span className="truncate flex-1">Perfil de empresa</span>
                 </button>
-              </li>
+              </li>}
               {isAdmin && (
                 <li>
                   <button
@@ -429,43 +426,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 </li>
               )}
-              <li>
-                <button
-                  onClick={() => {
-                    handleNavigation('info');
-                  }}
-                  className={cn(
-                    "w-full flex items-center px-4 py-2.5 rounded-md text-left transition-all duration-200 group relative",
-                    isTabActive('info')
-                      ? "bg-slate-800 text-white font-medium"
-                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-                  )}
-                >
-                  {isTabActive('info') && (
-                    <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-orange-500 rounded-r-md" />
-                  )}
-                  <span className="truncate flex-1">Info Secciones</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    handleNavigation('filters');
-                  }}
-                  className={cn(
-                    "w-full flex items-center px-4 py-2.5 rounded-md text-left transition-all duration-200 group relative",
-                    isTabActive('filters')
-                      ? "bg-slate-800 text-white font-medium"
-                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-                  )}
-                >
-                  {isTabActive('filters') && (
-                    <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-orange-500 rounded-r-md" />
-                  )}
-                  <span className="truncate flex-1">Filtros</span>
-                </button>
-              </li>
-              <li>
+              {canManageSettings && <li>
                 <button
                   onClick={() => {
                     handleNavigation('modalities');
@@ -482,8 +443,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                   <span className="truncate flex-1">Modalidades de Producto</span>
                 </button>
-              </li>
-              <li>
+              </li>}
+              {canManageSettings && <li>
                 <button
                   onClick={() => {
                     handleNavigation('wpp');
@@ -500,8 +461,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                   <span className="truncate flex-1">WhatsApp (WPP)</span>
                 </button>
-              </li>
-              <li>
+              </li>}
+              {canManageSettings && <li>
                 <button
                   onClick={() => {
                     handleNavigation('mail-config');
@@ -518,8 +479,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                   <span className="truncate flex-1">Correos (IMAP/SMTP)</span>
                 </button>
-              </li>
-              <li>
+              </li>}
+              {canManageSettings && <li>
                 <button
                   onClick={() => {
                     handleNavigation('payment-gateways');
@@ -536,8 +497,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                   <span className="truncate flex-1">Pasarelas de Pago</span>
                 </button>
-              </li>
-              {!isSubAdmin && (
+              </li>}
+              {isAdmin && (
                 <li>
                   <button
                     onClick={() => {
@@ -557,33 +518,69 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 </li>
               )}
+              {canViewAccounting && <li>
+                <button
+                  onClick={() => {
+                    handleNavigation('facturacion');
+                  }}
+                  className={cn(
+                    "w-full flex items-center px-4 py-2.5 rounded-md text-left transition-all duration-200 group relative",
+                    isTabActive('facturacion')
+                      ? "bg-slate-800 text-white font-medium"
+                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                  )}
+                >
+                  {isTabActive('facturacion') && (
+                    <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-orange-500 rounded-r-md" />
+                  )}
+                  <span className="truncate flex-1">Facturación</span>
+                </button>
+              </li>}
+              {isAdmin && <li>
+                <button
+                  onClick={() => {
+                    handleNavigation('seguridad');
+                  }}
+                  className={cn(
+                    "w-full flex items-center px-4 py-2.5 rounded-md text-left transition-all duration-200 group relative",
+                    isTabActive('seguridad')
+                      ? "bg-slate-800 text-white font-medium"
+                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                  )}
+                >
+                  {isTabActive('seguridad') && (
+                    <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-orange-500 rounded-r-md" />
+                  )}
+                  <span className="truncate flex-1">Seguridad</span>
+                </button>
+              </li>}
             </ul>
           )}
         </nav>
 
         {/* Footer Actions - Configuración separada */}
-        {showMainMenu && (
+        {showMainMenu && canOpenConfigurationMenu && (
           <div className="px-4 py-2 border-t border-slate-700/50 mt-auto">
             <button
               onClick={() => {
                 setShowConfigurationMenu(true);
-                handleNavigation('configuration');
+                handleNavigation(canManageSettings ? 'configuration' : 'facturacion');
               }}
               className={cn(
                 "w-full flex items-center px-3 py-2 rounded-md text-left transition-all duration-200 group relative",
-                isTabActive('configuration') || isTabActive('subaccounts') || isTabActive('info') || isTabActive('filters') || isTabActive('wpp') || isTabActive('mail-config') || isTabActive('revisiones') || isTabActive('payment-gateways') || isTabActive('modalities')
+                isTabActive('configuration') || isTabActive('subaccounts') || isTabActive('wpp') || isTabActive('mail-config') || isTabActive('revisiones') || isTabActive('payment-gateways') || isTabActive('modalities') || isTabActive('facturacion') || isTabActive('seguridad')
                   ? "bg-slate-800 text-white font-medium"
                   : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
               )}
             >
               {/* Active Indicator Line */}
-              {(isTabActive('configuration') || isTabActive('subaccounts') || isTabActive('info') || isTabActive('filters') || isTabActive('wpp') || isTabActive('mail-config') || isTabActive('revisiones') || isTabActive('payment-gateways') || isTabActive('modalities')) && (
+              {(isTabActive('configuration') || isTabActive('subaccounts') || isTabActive('wpp') || isTabActive('mail-config') || isTabActive('revisiones') || isTabActive('payment-gateways') || isTabActive('modalities') || isTabActive('facturacion') || isTabActive('seguridad')) && (
                 <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-5 w-1 bg-orange-500 rounded-r-md" />
               )}
 
               <span className={cn(
                 "flex-shrink-0 mr-2.5",
-                (isTabActive('configuration') || isTabActive('subaccounts') || isTabActive('info') || isTabActive('filters') || isTabActive('wpp') || isTabActive('mail-config') || isTabActive('revisiones') || isTabActive('payment-gateways') || isTabActive('modalities')) ? "text-orange-500" : "text-slate-500 group-hover:text-slate-400"
+                (isTabActive('configuration') || isTabActive('subaccounts') || isTabActive('wpp') || isTabActive('mail-config') || isTabActive('revisiones') || isTabActive('payment-gateways') || isTabActive('modalities') || isTabActive('facturacion') || isTabActive('seguridad')) ? "text-orange-500" : "text-slate-500 group-hover:text-slate-400"
               )}>
                 <Settings className="h-4 w-4" />
               </span>
@@ -603,8 +600,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Botón toggle para móvil */}
-      {isMobile && <MobileToggleButton />}
     </>
   );
 };

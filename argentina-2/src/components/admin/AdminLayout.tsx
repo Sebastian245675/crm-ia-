@@ -611,7 +611,10 @@ const sidebarItems = [
   { id: 'info', label: 'Info Secciones', description: 'Configuración general' },
   { id: 'help-manual', label: 'Manual de Ayuda', description: 'Guías y tutoriales' },
   { id: 'revisiones', label: 'Revisiones', description: 'Aprobar cambios' },
-  { id: 'employees', label: 'Empleados', description: 'Gestión de personal' }
+  { id: 'facturacion', label: 'Facturación', description: 'Configurar facturación y líneas' },
+  { id: 'seguridad', label: 'Seguridad', description: 'Autenticación de 2 pasos y accesos' },
+  { id: 'employees', label: 'Empleados', description: 'Gestión de personal' },
+  { id: 'contabilidad', label: 'Contabilidad', description: 'Ingresos y egresos' }
 ];
 
 export default AdminLayout;

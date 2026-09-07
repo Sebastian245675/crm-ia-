@@ -22,6 +22,9 @@ interface CompanyProfile {
 
 export const CompanyConfiguration: React.FC = () => {
   const { user } = useAuth();
+  const agencyOwnerId = user?.accountRole === 'agency_user'
+    ? String(user.agencyId || user.parentUserId || user.id)
+    : String(user?.id || '');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<CompanyProfile>({
@@ -39,8 +42,8 @@ export const CompanyConfiguration: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
-    loadCompanyProfile();
-  }, []);
+    if (agencyOwnerId) loadCompanyProfile();
+  }, [agencyOwnerId]);
 
   const loadCompanyProfile = async () => {
     try {
@@ -48,6 +51,7 @@ export const CompanyConfiguration: React.FC = () => {
       const { data, error } = await db
         .from('company_profile')
         .select()
+        .eq('owner_id', agencyOwnerId)
         .maybeSingle();
 
       if (error) {
@@ -126,7 +130,8 @@ export const CompanyConfiguration: React.FC = () => {
         state: formData.state || null,
         country: formData.country || 'Colombia',
         updated_at: new Date().toISOString(),
-        updated_by: user?.email || 'unknown'
+        updated_by: user?.email || 'unknown',
+        owner_id: agencyOwnerId,
       };
 
       if (!payload.id) {

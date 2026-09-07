@@ -5,17 +5,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, RefreshCw, ChevronDown, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, RefreshCw, ChevronDown, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/firebase';
 import { getAuthErrorMessage, isEmailConfirmationPendingError } from '@/lib/auth-email';
+import { auth as backendAuth } from '@/backendClient';
+import { useGoogleLogin } from '@react-oauth/google';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, login } = useAuth();
+  const { user, login, login2fa } = useAuth();
+  const configuredLandingUrl = String(import.meta.env.VITE_LANDING_URL || '').trim().replace(/\/+$/, '');
+  const isLocalEnvironment = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const landingBaseUrl = configuredLandingUrl || (isLocalEnvironment
+    ? `${window.location.protocol}//${window.location.hostname}:4321`
+    : 'https://merco.websysrl.com');
+  const landingLink = (section = '') => `${landingBaseUrl}/${section}`;
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // 2FA state variables
+  const [show2faInput, setShow2faInput] = useState(false);
+  const [temp2faToken, setTemp2faToken] = useState('');
+  const [totpCode, setTotpCode] = useState('');
 
   // Redirigir si ya está logueado
   React.useEffect(() => {
@@ -42,6 +55,48 @@ export const LoginPage: React.FC = () => {
   const [errors, setErrors] = useState({
     email: '',
     password: '',
+  });
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      const { data, error } = await backendAuth.signInWithGoogle(tokenResponse.access_token);
+      if (error || !data?.session) {
+        toast({
+          title: "Error",
+          description: error?.message || "No se pudo iniciar sesión con Google",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "¡Bienvenido!",
+          description: "Has iniciado sesión con Google",
+        });
+        
+        const sessionRaw = localStorage.getItem('auth_user_session');
+        let isSaasAdmin = false;
+        if (sessionRaw) {
+          try {
+            const u = JSON.parse(sessionRaw);
+            isSaasAdmin = u.sub_cuenta === 'saas-admin' || u.subCuenta === 'saas-admin';
+          } catch (e) {}
+        }
+        
+        if (isSaasAdmin) {
+          window.location.href = '/superadmin';
+        } else {
+          window.location.href = '/admin';
+        }
+      }
+      setIsLoading(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Autenticación de Google cancelada o fallida",
+        variant: "destructive",
+      });
+    }
   });
 
   const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -74,6 +129,13 @@ export const LoginPage: React.FC = () => {
 
       if (!result.success) {
         throw result.error;
+      }
+
+      if (result.require2fa) {
+        setTemp2faToken(result.tempToken || '');
+        setShow2faInput(true);
+        setIsLoading(false);
+        return;
       }
 
       if (rememberMe) {
@@ -115,6 +177,60 @@ export const LoginPage: React.FC = () => {
           variant: 'destructive',
         });
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handle2faSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (totpCode.length !== 6) {
+      toast({
+        title: 'Error',
+        description: 'Por favor ingrese el código de 6 dígitos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await login2fa(temp2faToken, totpCode);
+      if (!result.success) {
+        throw result.error;
+      }
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', loginData.email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
+      toast({
+        title: 'Bienvenido',
+        description: 'Sesión iniciada correctamente.',
+      });
+
+      const sessionRaw = localStorage.getItem('auth_user_session');
+      let isSaasAdmin = false;
+      if (sessionRaw) {
+        try {
+          const u = JSON.parse(sessionRaw);
+          isSaasAdmin = u.sub_cuenta === 'saas-admin' || u.subCuenta === 'saas-admin';
+        } catch (e) {}
+      }
+
+      if (isSaasAdmin) {
+        navigate('/superadmin');
+      } else {
+        navigate('/admin');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Código incorrecto',
+        description: error.message || 'No se pudo iniciar sesión. Verifique el código.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +278,7 @@ export const LoginPage: React.FC = () => {
       {/* Top Promo Notification Bar */}
       <div className="w-full bg-gradient-to-r from-[#3e3af8] via-[#7f56ff] to-[#4d62f9] py-2 px-4 text-center text-xs font-semibold text-white flex items-center justify-center gap-2 relative z-50">
         <span>🚀 YA DISPONIBLE: Crea tu Tienda Online Multirrubro en 5 minutos.</span>
-        <a href="https://merco.com/#como-funciona" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/80 transition-colors flex items-center gap-0.5">
+        <a href={landingLink('#como-funciona')} className="underline hover:text-white/80 transition-colors flex items-center gap-0.5">
           Empezar gratis &rarr;
         </a>
       </div>
@@ -172,7 +288,7 @@ export const LoginPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <a href="/" className="flex items-center gap-3 group">
+            <a href={landingLink()} className="flex items-center gap-3 group">
               <img 
                 src="/Picsart_26-06-08_19-14-58-865.webp" 
                 alt="merco logo" 
@@ -182,11 +298,11 @@ export const LoginPage: React.FC = () => {
 
             {/* Desktop Navigation Menu */}
             <nav className="hidden md:flex items-center gap-8">
-              <a href="/" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Inicio</a>
-              <a href="/#caracteristicas" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Características</a>
-              <a href="/#como-funciona" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Cómo Funciona</a>
-              <a href="/#integraciones" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Integraciones</a>
-              <a href="/#contacto" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Contacto</a>
+              <a href={landingLink()} className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Inicio</a>
+              <a href={landingLink('#caracteristicas')} className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Características</a>
+              <a href={landingLink('#como-funciona')} className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Cómo Funciona</a>
+              <a href={landingLink('#integraciones')} className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Integraciones</a>
+              <a href={landingLink('#contacto')} className="text-sm font-medium text-gray-300 hover:text-white transition-colors">Contacto</a>
             </nav>
 
             {/* Desktop Action Buttons */}
@@ -242,11 +358,11 @@ export const LoginPage: React.FC = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden bg-gradient-to-b from-[#1d1452] to-[#140d3a] border-t border-white/5 py-4 px-6 absolute top-20 left-0 w-full z-30 shadow-xl">
             <div className="flex flex-col gap-4">
-              <a href="/" className="text-base font-medium text-gray-300 hover:text-white py-1">Inicio</a>
-              <a href="/#caracteristicas" className="text-base font-medium text-gray-300 hover:text-white py-1">Características</a>
-              <a href="/#como-funciona" className="text-base font-medium text-gray-300 hover:text-white py-1">Cómo Funciona</a>
-              <a href="/#integraciones" className="text-base font-medium text-gray-300 hover:text-white py-1">Integraciones</a>
-              <a href="/#contacto" className="text-base font-medium text-gray-300 hover:text-white py-1">Contacto</a>
+              <a href={landingLink()} className="text-base font-medium text-gray-300 hover:text-white py-1">Inicio</a>
+              <a href={landingLink('#caracteristicas')} className="text-base font-medium text-gray-300 hover:text-white py-1">Características</a>
+              <a href={landingLink('#como-funciona')} className="text-base font-medium text-gray-300 hover:text-white py-1">Cómo Funciona</a>
+              <a href={landingLink('#integraciones')} className="text-base font-medium text-gray-300 hover:text-white py-1">Integraciones</a>
+              <a href={landingLink('#contacto')} className="text-base font-medium text-gray-300 hover:text-white py-1">Contacto</a>
               
               <hr className="border-white/5 my-2" />
               
@@ -281,7 +397,59 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-[550px]">
           {/* Card Principal */}
           <div className="shadow-lg border border-slate-100 rounded-2xl overflow-hidden bg-white p-6 md:p-8">
-            {!showForgotPassword ? (
+            {show2faInput ? (
+              // Formulario de Autenticación 2FA
+              <div className="space-y-6">
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShow2faInput(false);
+                      setTotpCode('');
+                    }}
+                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors mb-4 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Volver al login
+                  </button>
+                  <h2 className="text-2xl md:text-3xl font-normal text-center text-slate-800 tracking-tight flex justify-center items-center gap-1.5">
+                    <ShieldCheck className="w-6 h-6 text-emerald-600 animate-pulse" /> Verificación de 2 Pasos
+                  </h2>
+                  <p className="text-slate-500 text-sm text-center mt-2">
+                    Ingrese el código de 6 dígitos de su aplicación Google Authenticator.
+                  </p>
+                </div>
+
+                <form onSubmit={handle2faSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="2fa-code" className="text-xs font-bold uppercase text-slate-700 block text-center">
+                      Código de seguridad
+                    </Label>
+                    <Input
+                      id="2fa-code"
+                      type="text"
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      placeholder="000000"
+                      className="h-12 text-center text-2xl font-black font-mono tracking-widest border-slate-200 focus:border-[#C59B4E] bg-slate-50 rounded-lg"
+                      autoFocus
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#0B4B32] hover:bg-[#073623] text-white font-semibold h-11 text-sm rounded-lg mt-2 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+                    disabled={isLoading || totpCode.length !== 6}
+                  >
+                    {isLoading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>
+                    ) : (
+                      'Verificar y Entrar'
+                    )}
+                  </Button>
+                </form>
+              </div>
+            ) : !showForgotPassword ? (
               // Formulario de Iniciar Sesión (Vista por Defecto)
               <div className="space-y-6">
                 <h2 className="text-2xl md:text-3xl font-normal text-center text-slate-800 tracking-tight">
@@ -323,7 +491,7 @@ export const LoginPage: React.FC = () => {
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Contraseña"
-                        className={`border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 pr-10 text-slate-800 rounded-lg ${
+                        className={`border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 pl-4 pr-10 text-slate-800 rounded-lg ${
                           errors.password ? 'border-red-500' : ''
                         }`}
                         value={loginData.password}
@@ -389,12 +557,7 @@ export const LoginPage: React.FC = () => {
                 {/* Botón de Google */}
                 <button
                   type="button"
-                  onClick={() => {
-                    toast({
-                      title: "Google Login",
-                      description: "Iniciando sesión con Google...",
-                    });
-                  }}
+                  onClick={() => loginWithGoogle()}
                   className="w-full flex items-center justify-between p-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-left cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">

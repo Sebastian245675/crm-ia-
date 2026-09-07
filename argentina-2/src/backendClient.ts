@@ -48,6 +48,19 @@ const AUTH_SESSION_KEY = 'auth_user_session';
 const AUTH_TOKEN_KEY = 'auth_access_token';
 const AUTH_BACKDOOR_KEY = 'auth_backdoor_active';
 
+function buildUserMetadata(user: any) {
+  return {
+    name: user?.name,
+    sub_cuenta: user?.sub_cuenta,
+    liberta: user?.liberta,
+    account_role: user?.account_role,
+    agency_id: user?.agency_id,
+    parent_user_id: user?.parent_user_id,
+    permissions: user?.permissions || {},
+    active: user?.active !== false,
+  };
+}
+
 function getStoredAuthToken() {
   return localStorage.getItem(AUTH_TOKEN_KEY);
 }
@@ -534,11 +547,28 @@ export const auth = {
     const token = getStoredAuthToken();
     if (cached && token) {
       try {
-        const u = JSON.parse(cached);
+        let u = JSON.parse(cached);
+        try {
+          const response = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+          if (response.ok) {
+            const json = await response.json();
+            if (json?.user) {
+              u = json.user;
+              localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
+              if (json.user.access_token) localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+            }
+          } else if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem(AUTH_SESSION_KEY);
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            return { data: { session: null }, error: null };
+          }
+        } catch (_) {
+          // Si el servidor está temporalmente fuera de línea, conservar la sesión local existente.
+        }
         const mapped = {
           id: u.id,
           email: u.email,
-          user_metadata: { name: u.name, sub_cuenta: u.sub_cuenta, liberta: u.liberta },
+          user_metadata: buildUserMetadata(u),
           subscription: u.subscription || null
         };
         return { data: { session: { user: mapped, access_token: token } }, error: null };
@@ -557,7 +587,7 @@ export const auth = {
           userObj = {
             id: u.id,
             email: u.email,
-            user_metadata: { name: u.name, sub_cuenta: u.sub_cuenta, liberta: u.liberta },
+            user_metadata: buildUserMetadata(u),
             subscription: u.subscription || null
           };
         } catch (e) { }
@@ -594,6 +624,38 @@ export const auth = {
         body: JSON.stringify({ email, password })
       });
       const json = await res.json();
+      if (res.ok && json.success) {
+        if (json.require2fa) {
+          return { data: { require2fa: true, tempToken: json.tempToken, method: json.method, email: json.email }, error: null };
+        }
+        if (json.user) {
+          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
+          if (json.user.access_token) {
+            localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+          }
+          const mappedUser = {
+            id: json.user.id,
+            email: json.user.email,
+            user_metadata: buildUserMetadata(json.user),
+            subscription: json.user.subscription || null
+          };
+          return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
+        }
+      }
+      return { data: { user: null, session: null }, error: new Error(json.message || "Credenciales inválidas.") };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: err };
+    }
+  },
+
+  async signInWith2fa(tempToken: string, code: string) {
+    try {
+      const res = await fetch('/api/auth/login/2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken, code })
+      });
+      const json = await res.json();
       if (res.ok && json.success && json.user) {
         localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
         if (json.user.access_token) {
@@ -602,12 +664,39 @@ export const auth = {
         const mappedUser = {
           id: json.user.id,
           email: json.user.email,
-          user_metadata: { name: json.user.name, sub_cuenta: json.user.sub_cuenta, liberta: json.user.liberta },
+          user_metadata: buildUserMetadata(json.user),
           subscription: json.user.subscription || null
         };
         return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
       }
-      return { data: { user: null, session: null }, error: new Error(json.message || "Credenciales inválidas.") };
+      return { data: { user: null, session: null }, error: new Error(json.message || "Código 2FA incorrecto.") };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: err };
+    }
+  },
+
+  async signInWithGoogle(token: string) {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.user) {
+        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
+        if (json.user.access_token) {
+          localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+        }
+        const mappedUser = {
+          id: json.user.id,
+          email: json.user.email,
+          user_metadata: buildUserMetadata(json.user),
+          subscription: json.user.subscription || null
+        };
+        return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
+      }
+      return { data: { user: null, session: null }, error: new Error(json.message || "Fallo en autenticación con Google.") };
     } catch (err: any) {
       return { data: { user: null, session: null }, error: err };
     }
@@ -623,7 +712,8 @@ export const auth = {
           password,
           name: options?.data?.full_name || email.split('@')[0],
           phone: options?.data?.phone || '',
-          address: options?.data?.address || ''
+          address: options?.data?.address || '',
+          plan: options?.data?.plan || 'free'
         })
       });
       const json = await res.json();
@@ -635,7 +725,7 @@ export const auth = {
         const mappedUser = {
           id: json.user.id,
           email: json.user.email,
-          user_metadata: { name: json.user.name },
+          user_metadata: buildUserMetadata(json.user),
           subscription: json.user.subscription || null
         };
         return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };

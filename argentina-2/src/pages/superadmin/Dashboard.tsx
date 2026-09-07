@@ -374,8 +374,6 @@ export const SuperAdminDashboard: React.FC = () => {
 
   // Sidebar Menu Config - Translated entirely to Spanish
   const sidebarItems = [
-    { id: 'get-free-ai', icon: <Rocket className="h-5 w-5" />, label: 'Obtenga IA Gratis', isPlaceholder: true },
-    { id: 'ask-ai-tab', icon: <Bot className="h-5 w-5" />, label: 'Preguntar a la IA', isPlaceholder: true },
     { id: 'configurator', icon: <Sliders className="h-5 w-5" />, label: 'Configurador SaaS' },
     { id: 'prospecting', icon: <Search className="h-5 w-5" />, label: 'Prospección', isPlaceholder: true },
     { id: 'subaccounts', icon: <Building2 className="h-5 w-5" />, label: 'Subcuentas / Sitios' },
@@ -602,12 +600,6 @@ export const SuperAdminDashboard: React.FC = () => {
             {/* Translate Button */}
             <button className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 transition-colors" title="Traductor">
               <Languages className="h-4 w-4" />
-            </button>
-
-            {/* Ask AI purple button */}
-            <button className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-xs py-1.5 px-3.5 rounded-lg shadow-sm transition-all">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Preguntar a la IA</span>
             </button>
             
             {/* Megaphone (anuncios) */}

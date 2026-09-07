@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Package, SlidersHorizontal, Sparkles, Tags } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FunnelsManager } from './FunnelsManager';
 import { SitiosManager } from './SitiosManager';
 import { SeoManager } from './SeoManager';
 import { CommentsManager } from './CommentsManager';
 import { ProductAnalyticsView } from './ProductAnalytics';
 import { FormBuilder } from './FormBuilder';
+import { ReportsManager } from './ReportsManager';
 
 // Componente placeholder para pestañas adicionales
 const PlaceholderView: React.FC<{ title: string; description: string }> = ({ title, description }) => (
@@ -25,7 +27,13 @@ const PlaceholderView: React.FC<{ title: string; description: string }> = ({ tit
   </Card>
 );
 
-export const WebsiteManager: React.FC<{ initialTab?: string; isAdmin: boolean }> = ({ initialTab = 'funnels', isAdmin }) => {
+interface WebsiteManagerProps {
+  initialTab?: string;
+  isAdmin: boolean;
+  onNavigate?: (tab: string) => void;
+}
+
+export const WebsiteManager: React.FC<WebsiteManagerProps> = ({ initialTab = 'funnels', isAdmin, onNavigate }) => {
   const [activeSubTab, setActiveSubTab] = useState<string>(initialTab);
 
   // Definir pestañas para la navegación horizontal
@@ -34,6 +42,7 @@ export const WebsiteManager: React.FC<{ initialTab?: string; isAdmin: boolean }>
     { id: 'sitios', label: 'Sitios', type: 'active' },
     { id: 'seo', label: 'SEO', type: 'active', beta: true },
     ...(isAdmin ? [{ id: 'analytics', label: 'Analítica', type: 'active' }] : []),
+    { id: 'reportes', label: 'Reportes', type: 'active' },
     { id: 'comments', label: 'Comentarios', type: 'active' },
     { id: 'blogs', label: 'Blogs', type: 'placeholder' },
     { id: 'formularios', label: 'Formularios', type: 'active' }
@@ -49,6 +58,8 @@ export const WebsiteManager: React.FC<{ initialTab?: string; isAdmin: boolean }>
         return <SeoManager />;
       case 'analytics':
         return <ProductAnalyticsView />;
+      case 'reportes':
+        return <ReportsManager />;
       case 'comments':
         return <CommentsManager />;
       case 'blogs':
@@ -103,6 +114,32 @@ export const WebsiteManager: React.FC<{ initialTab?: string; isAdmin: boolean }>
               </button>
             );
           })}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="ml-1 grid h-9 w-9 place-items-center border border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                aria-label="Más herramientas del sitio web"
+                title="Más herramientas"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 rounded-none border-slate-200 bg-white p-1 shadow-lg">
+              <DropdownMenuItem onSelect={() => onNavigate?.('products')} className="flex cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-xs font-semibold text-slate-700">
+                <Package className="h-4 w-4 text-blue-600" />
+                Productos
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onNavigate?.('filters')} className="flex cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-xs font-semibold text-slate-700">
+                <SlidersHorizontal className="h-4 w-4 text-blue-600" />
+                Filtros
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onNavigate?.('categories')} className="flex cursor-pointer items-center gap-2 rounded-none px-3 py-2 text-xs font-semibold text-slate-700">
+                <Tags className="h-4 w-4 text-blue-600" />
+                Categorías
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

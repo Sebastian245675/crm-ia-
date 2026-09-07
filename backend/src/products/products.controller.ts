@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Body, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AgencyPermissionGuard } from '../auth/agency-permission.guard';
+import { RequireAgencyPermission } from '../auth/agency-permission.decorator';
 import * as express from 'express';
 
 @Controller('api/productos')
@@ -40,7 +42,8 @@ export class ProductsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('manageProducts')
   async createProducto(@Body() body: any, @Res() res: express.Response) {
     try {
       const nombre = body.nombre || body.name || '';
@@ -80,7 +83,8 @@ export class ProductsController {
   }
 
   @Post('update')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('manageProducts')
   async updateProducto(@Body() body: any, @Res() res: express.Response) {
     try {
       const prodId = body.id;
@@ -134,7 +138,8 @@ export class ProductsController {
   }
 
   @Post('delete')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('manageProducts')
   async deleteProducto(@Body() body: any, @Res() res: express.Response) {
     try {
       const prodId = body.id;

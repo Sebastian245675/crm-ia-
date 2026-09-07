@@ -28,6 +28,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from '@/components/ui/textarea';
+import { Check } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Utilidad para crear slugs SEO-friendly
 function slugify(text: string): string {
@@ -64,6 +69,24 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [liberta, setLiberta] = useState("no");
+
+  // Mercancía Pendiente / En Trámite
+  const [pendingMerchandise, setPendingMerchandise] = useState<any[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [isPendingFormOpen, setIsPendingFormOpen] = useState(false);
+  const [editingPending, setEditingPending] = useState<any | null>(null);
+  const [pendingFormData, setPendingFormData] = useState({
+    productName: '',
+    quantity: '',
+    supplier: '',
+    unitCost: '',
+    carrier: '',
+    trackingNumber: '',
+    shippingCost: '',
+    status: 'pending', // 'pending' | 'in_transit' | 'customs' | 'received'
+    expectedDate: '',
+    notes: ''
+  });
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'price-high' | 'price-low' | 'name-asc' | 'name-desc'>('recent');
   const [loadingImages, setLoadingImages] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
@@ -345,6 +368,196 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
     fetchProducts();
     if (onProductSelected) {
       onProductSelected();
+    }
+  };
+
+  const loadPendingMerchandise = useCallback(async () => {
+    setLoadingPending(true);
+    try {
+      if (isSupabase) {
+        const { data, error } = await db.from('pending_merchandise').select('*');
+        if (error) throw error;
+        const sorted = (data || []).sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setPendingMerchandise(sorted);
+      }
+    } catch (err) {
+      console.error('Error loading pending merchandise:', err);
+    } finally {
+      setLoadingPending(false);
+    }
+  }, [isSupabase]);
+
+  // Load pending merchandise when tabs change or on mount
+  useEffect(() => {
+    loadPendingMerchandise();
+  }, [loadPendingMerchandise]);
+
+  const handleSavePending = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingFormData.productName.trim() || !pendingFormData.quantity) {
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: "Por favor completa los campos obligatorios."
+      });
+      return;
+    }
+
+    try {
+      const payload = {
+        id: editingPending?.id || `pending-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        product_name: pendingFormData.productName.trim(),
+        quantity: parseInt(pendingFormData.quantity, 10) || 0,
+        supplier: pendingFormData.supplier.trim() || null,
+        unit_cost: parseFloat(pendingFormData.unitCost) || 0,
+        carrier: pendingFormData.carrier.trim() || null,
+        tracking_number: pendingFormData.trackingNumber.trim() || null,
+        shipping_cost: parseFloat(pendingFormData.shippingCost) || 0,
+        status: pendingFormData.status,
+        expected_date: pendingFormData.expectedDate || null,
+        notes: pendingFormData.notes.trim() || null,
+        created_at: editingPending?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await db.from('pending_merchandise').upsert(payload);
+      if (error) throw error;
+
+      toast({
+        title: editingPending ? "Registro actualizado" : "Registro creado",
+        description: "La mercancía pendiente se guardó correctamente."
+      });
+
+      setIsPendingFormOpen(false);
+      setEditingPending(null);
+      setPendingFormData({
+        productName: '',
+        quantity: '',
+        supplier: '',
+        unitCost: '',
+        carrier: '',
+        trackingNumber: '',
+        shippingCost: '',
+        status: 'pending',
+        expectedDate: '',
+        notes: ''
+      });
+      loadPendingMerchandise();
+    } catch (err: any) {
+      console.error('Error saving pending merchandise:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo guardar la mercancía pendiente."
+      });
+    }
+  };
+
+  const handleReceivePending = async (item: any) => {
+    if (!window.confirm(`¿Deseas dar ingreso a esta mercancía? Se ingresarán ${item.quantity} unidades del producto "${item.product_name}".`)) {
+      return;
+    }
+
+    try {
+      // 1. Search for matching product in catalog
+      const cleanName = item.product_name.trim();
+      const { data: matches, error: matchErr } = await db.from('products').select('*');
+      if (matchErr) throw matchErr;
+
+      const matchedProduct = (matches || []).find(p => p.name?.toLowerCase().trim() === cleanName.toLowerCase());
+
+      let finalProductId = null;
+      let newStock = parseInt(item.quantity, 10);
+      let isNewProduct = false;
+
+      if (matchedProduct) {
+        // Product exists - update stock
+        finalProductId = matchedProduct.id;
+        const currentStock = parseInt(matchedProduct.stock || 0, 10);
+        newStock = currentStock + parseInt(item.quantity, 10);
+
+        const { error: updateErr } = await db.from('products').update({ stock: newStock }).eq('id', finalProductId);
+        if (updateErr) throw updateErr;
+      } else {
+        // Product does not exist - create as draft
+        isNewProduct = true;
+        const newProductPayload = {
+          name: cleanName,
+          stock: newStock,
+          price: 0,
+          original_price: 0,
+          cost: parseFloat(item.unit_cost) || 0,
+          description: "Producto ingresado automáticamente desde la mercancía pendiente por llegar. Por favor, edítalo para completar precio, fotos, descripción y categorías.",
+          is_published: false,
+          is_offer: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          created_by: user?.email || "pending_intake"
+        };
+
+        const { data: newProd, error: insertErr } = await db.from('products').insert([newProductPayload]).select().single();
+        if (insertErr) throw insertErr;
+        finalProductId = newProd.id;
+      }
+
+      // 2. Mark pending shipment as received
+      const updatedItem = {
+        ...item,
+        product_id: finalProductId, // Link it for history
+        status: 'received',
+        updated_at: new Date().toISOString()
+      };
+      const { error: pendingErr } = await db.from('pending_merchandise').upsert(updatedItem);
+      if (pendingErr) throw pendingErr;
+
+      if (isNewProduct) {
+        toast({
+          title: "Producto Creado y Recibido",
+          description: `Se creó "${cleanName}" en el catálogo como borrador con un stock inicial de ${newStock} unidades.`,
+          className: "bg-green-50 border-green-200"
+        });
+      } else {
+        toast({
+          title: "Stock Actualizado",
+          description: `Se han sumado ${item.quantity} unidades a "${cleanName}". Nuevo stock: ${newStock}.`,
+          className: "bg-green-50 border-green-200"
+        });
+      }
+
+      // Reload lists
+      loadPendingMerchandise();
+      // Reload active products
+      fetchProducts();
+    } catch (err: any) {
+      console.error('Error receiving pending merchandise:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el stock o estado de la mercancía."
+      });
+    }
+  };
+
+  const handleDeletePending = async (id: string) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este registro de mercancía pendiente?")) return;
+    try {
+      const { error } = await db.from('pending_merchandise').delete().eq('id', id);
+      if (error) throw error;
+
+      toast({
+        title: "Registro eliminado",
+        description: "El registro de mercancía pendiente fue eliminado correctamente."
+      });
+      loadPendingMerchandise();
+    } catch (err: any) {
+      console.error('Error deleting pending item:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el registro."
+      });
     }
   };
 
@@ -898,7 +1111,18 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
       )}
 
       {/* Lista de Productos */}
-      <Card className="shadow-sm border border-slate-200">
+      <Tabs defaultValue="catalog" className="w-full">
+        <TabsList className="bg-slate-100 p-1 mb-4 flex border border-slate-200/50 w-fit">
+          <TabsTrigger value="catalog" className="text-xs font-bold px-4 py-2">
+            Inventario Activo
+          </TabsTrigger>
+          <TabsTrigger value="pending" className="text-xs font-bold px-4 py-2">
+            Mercancía en Trámite / Pendiente
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="catalog">
+          <Card className="shadow-sm border border-slate-200 bg-white">
         <CardHeader className="bg-white border-b border-slate-200 py-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1321,6 +1545,389 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
           )}
         </CardContent>
       </Card>
+    </TabsContent>
+
+    <TabsContent value="pending">
+      <Card className="shadow-sm border border-slate-200 bg-white">
+        <CardHeader className="bg-white border-b border-slate-200 py-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Package className="h-5 w-5 text-indigo-600" />
+                Mercancía en Trámite o Tránsito ({pendingMerchandise.length})
+              </CardTitle>
+              <p className="text-slate-500 text-xs mt-1">
+                Registra y haz seguimiento al embarque, couriers, costos y números de guía de mercancía pendiente de recibir.
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setEditingPending(null);
+                setPendingFormData({
+                  productName: '',
+                  quantity: '',
+                  supplier: '',
+                  unitCost: '',
+                  carrier: '',
+                  trackingNumber: '',
+                  shippingCost: '',
+                  status: 'pending',
+                  expectedDate: '',
+                  notes: ''
+                });
+                setIsPendingFormOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              Registrar Lote Pendiente
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          {loadingPending ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="flex flex-col items-center text-sky-600">
+                <Loader2 className="h-10 w-10 animate-spin mb-2" />
+                <p className="text-sm font-medium">Cargando mercancía pendiente...</p>
+              </div>
+            </div>
+          ) : pendingMerchandise.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+              <Package className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-600 font-bold text-base">No hay mercancía en trámite o pendiente</p>
+              <p className="text-slate-400 text-xs mt-1">Registra tu primer lote pendiente con número de guía para hacerle seguimiento.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {pendingMerchandise.map((item) => {
+                const isReceived = item.status === 'received';
+                return (
+                  <div 
+                    key={item.id} 
+                    className={cn(
+                      "flex flex-col p-5 border rounded-xl bg-white shadow-sm hover:border-slate-350 transition-all",
+                      isReceived && "bg-slate-50/50 opacity-80"
+                    )}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0 text-left space-y-2">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <h4 className="font-extrabold text-lg text-slate-800 truncate">{item.product_name}</h4>
+                          
+                          {/* Badges */}
+                          <Badge 
+                            className={cn(
+                              "text-xs font-bold px-2.5 py-0.5 border-none",
+                              item.status === 'pending' && "bg-orange-100 text-orange-850",
+                              item.status === 'in_transit' && "bg-blue-100 text-blue-850",
+                              item.status === 'customs' && "bg-purple-100 text-purple-855",
+                              item.status === 'received' && "bg-green-100 text-green-850"
+                            )}
+                          >
+                            {item.status === 'pending' && "Pendiente de Envío"}
+                            {item.status === 'in_transit' && "En Tránsito / Camino"}
+                            {item.status === 'customs' && "En Aduana / Trámite"}
+                            {item.status === 'received' && "Recibido / Ingresado"}
+                          </Badge>
+
+                          {item.product_id && (
+                            <Badge className="bg-slate-100 text-slate-600 text-[10px] font-bold border-none">
+                              Vinculado al Catálogo
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Specs row 1: Quantity, Supplier, Expected Date */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-xs font-medium text-slate-600 pt-1.5">
+                          <div>
+                            <span className="text-slate-400 font-normal">Cantidad esperada:</span>{' '}
+                            <div className="text-slate-800 font-extrabold text-sm mt-0.5">{item.quantity} uds</div>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-normal">Proveedor:</span>{' '}
+                            <div className="text-slate-800 font-bold mt-0.5 truncate">{item.supplier || '-'}</div>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-normal">Fecha llegada:</span>{' '}
+                            <div className="text-slate-800 font-bold mt-0.5">
+                              {item.expected_date ? new Date(item.expected_date).toLocaleDateString('es-ES') : '-'}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-normal">Costo Unitario:</span>{' '}
+                            <div className="text-green-700 font-extrabold mt-0.5">
+                              {item.unit_cost ? `$${parseFloat(item.unit_cost).toLocaleString()}` : '-'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Specs row 2: Tracking Number, Carrier, Shipping Cost */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-xs font-medium text-slate-600 pt-1.5 border-t border-slate-100">
+                          <div className="col-span-2">
+                            <span className="text-slate-400 font-normal">Número de Guía (Tracking):</span>{' '}
+                            <div className="text-slate-900 font-mono font-bold mt-0.5 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60 w-fit select-all">
+                              🚚 {item.tracking_number || 'Sin asignar'}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-normal">Transportadora / Courier:</span>{' '}
+                            <div className="text-slate-800 font-bold mt-0.5">{item.carrier || '-'}</div>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-normal">Costo Envío (Flete):</span>{' '}
+                            <div className="text-slate-800 font-bold mt-0.5">
+                              {item.shipping_cost ? `$${parseFloat(item.shipping_cost).toLocaleString()}` : '-'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {item.notes && (
+                          <div className="bg-slate-50 border border-slate-100 text-slate-600 rounded-lg p-3 text-xs italic mt-2.5 max-w-3xl leading-relaxed">
+                            📝 <strong>Observaciones:</strong> {item.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 mt-4 md:mt-0 shrink-0 self-end md:self-start">
+                        {!isReceived && (
+                          <Button
+                            onClick={() => handleReceivePending(item)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs"
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            Recibir e Ingresar Stock
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingPending(item);
+                            setPendingFormData({
+                              productName: item.product_name,
+                              quantity: String(item.quantity),
+                              supplier: item.supplier || '',
+                              unitCost: item.unit_cost ? String(item.unit_cost) : '',
+                              carrier: item.carrier || '',
+                              trackingNumber: item.tracking_number || '',
+                              shippingCost: item.shipping_cost ? String(item.shipping_cost) : '',
+                              status: item.status,
+                              expectedDate: item.expected_date || '',
+                              notes: item.notes || ''
+                            });
+                            setIsPendingFormOpen(true);
+                          }}
+                          className="border-slate-200 text-slate-600 hover:bg-slate-50"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeletePending(item.id)}
+                          className="border-slate-200 hover:border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  </Tabs>
+
+  {/* Dialog: Add/Edit Pending Merchandise */}
+  {isPendingFormOpen && (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+      <Card className="w-full max-w-lg rounded-2xl border-slate-100 shadow-xl overflow-hidden bg-white">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <h3 className="font-black text-slate-800 flex items-center gap-2 text-base">
+            <Package className="h-5 w-5 text-indigo-600" />
+            {editingPending ? "Editar Registro de Carga Pendiente" : "Registrar Nueva Carga Pendiente"}
+          </h3>
+          <button 
+            onClick={() => setIsPendingFormOpen(false)}
+            className="text-slate-450 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSavePending}>
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            
+            {/* Name */}
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="pending-name" className="text-xs font-bold text-slate-500 uppercase">Nombre del Producto / Lote de Carga *</Label>
+              <Input 
+                id="pending-name"
+                placeholder="Ej. Remeras Deportivas DryFit XL, Lote de Zapatillas"
+                value={pendingFormData.productName}
+                onChange={(e) => setPendingFormData(prev => ({ ...prev, productName: e.target.value }))}
+                className="rounded-xl border-slate-200"
+                required
+              />
+            </div>
+
+            {/* Quantity and status */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-qty" className="text-xs font-bold text-slate-500 uppercase">Cantidad Esperada *</Label>
+                <Input 
+                  id="pending-qty"
+                  type="number"
+                  placeholder="Ej. 150"
+                  value={pendingFormData.quantity}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                  className="rounded-xl border-slate-200"
+                  required
+                  min="1"
+                />
+              </div>
+              
+              <div className="space-y-1.5 text-left">
+                <Label className="text-xs font-bold text-slate-500 uppercase">Estado del Trámite</Label>
+                <Select
+                  value={pendingFormData.status}
+                  onValueChange={(val) => setPendingFormData(prev => ({ ...prev, status: val }))}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendiente de Envío / Compra</SelectItem>
+                    <SelectItem value="in_transit">En Tránsito / Courier</SelectItem>
+                    <SelectItem value="customs">En Aduana / Trámite</SelectItem>
+                    <SelectItem value="received">Recibido (Ingresado a Stock)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Tracking (Guía) and Carrier */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-tracking" className="text-xs font-bold text-slate-500 uppercase">Número de Guía (Tracking ID)</Label>
+                <Input 
+                  id="pending-tracking"
+                  placeholder="Ej. DHL-983172348"
+                  value={pendingFormData.trackingNumber}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                  className="rounded-xl border-slate-200 font-mono"
+                />
+              </div>
+              
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-carrier" className="text-xs font-bold text-slate-500 uppercase">Courier / Transportadora</Label>
+                <Input 
+                  id="pending-carrier"
+                  placeholder="Ej. DHL, FedEx, Agente de Carga"
+                  value={pendingFormData.carrier}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, carrier: e.target.value }))}
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+            </div>
+
+            {/* Financial cost inputs */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-cost" className="text-xs font-bold text-slate-500 uppercase">Costo Unitario ($) (Opcional)</Label>
+                <Input 
+                  id="pending-cost"
+                  type="number"
+                  placeholder="Ej. 1200"
+                  value={pendingFormData.unitCost}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, unitCost: e.target.value }))}
+                  className="rounded-xl border-slate-200"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-shipcost" className="text-xs font-bold text-slate-500 uppercase">Flete / Costo Envío Total ($) (Opcional)</Label>
+                <Input 
+                  id="pending-shipcost"
+                  type="number"
+                  placeholder="Ej. 25000"
+                  value={pendingFormData.shippingCost}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, shippingCost: e.target.value }))}
+                  className="rounded-xl border-slate-200"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            {/* Supplier and Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-supplier" className="text-xs font-bold text-slate-500 uppercase">Proveedor / Supply Chain</Label>
+                <Input 
+                  id="pending-supplier"
+                  placeholder="Ej. China Trading Co, Nike Factory"
+                  value={pendingFormData.supplier}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, supplier: e.target.value }))}
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+              
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="pending-date" className="text-xs font-bold text-slate-500 uppercase">Fecha llegada estimada</Label>
+                <Input 
+                  id="pending-date"
+                  type="date"
+                  value={pendingFormData.expectedDate}
+                  onChange={(e) => setPendingFormData(prev => ({ ...prev, expectedDate: e.target.value }))}
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="pending-notes" className="text-xs font-bold text-slate-500 uppercase">Observaciones / Detalles</Label>
+              <Textarea
+                id="pending-notes"
+                placeholder="Indica detalles de la aduana, puerto de embarque, condiciones de la mercadería, etc."
+                value={pendingFormData.notes}
+                onChange={(e) => setPendingFormData(prev => ({ ...prev, notes: e.target.value }))}
+                className="rounded-xl border-slate-200 min-h-[90px]"
+              />
+            </div>
+          </div>
+
+          <div className="p-6 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setIsPendingFormOpen(false)}
+              className="rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
+            >
+              {editingPending ? "Guardar Cambios" : "Registrar Compra"}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
-  );
+  )}
+</div>
+);
 };

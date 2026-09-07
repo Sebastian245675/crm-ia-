@@ -12,6 +12,8 @@ import {
   ArrowLeft, ArrowRight, CheckCircle2, Loader2, Home, ChevronDown
 } from 'lucide-react';
 import { auth, db } from "@/firebase";
+import { auth as backendAuth } from '@/backendClient';
+import { useGoogleLogin } from '@react-oauth/google';
 // Mocks para evitar errores de compilación ya que Firebase fue removido
 const createUserWithEmailAndPassword = (...args: any[]) => Promise.resolve({ user: { uid: 'mock-uid' } });
 const signInWithEmailAndPassword = (...args: any[]) => Promise.resolve({ user: { uid: 'mock-uid' } });
@@ -77,6 +79,43 @@ export const AuthPage: React.FC = () => {
   });
 
   const [resetPasswordEmail, setResetPasswordEmail] = useState('');
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      const { data, error } = await backendAuth.signInWithGoogle(tokenResponse.access_token);
+      if (error || !data?.session) {
+        toast({
+          title: "Error",
+          description: error?.message || "No se pudo iniciar sesión con Google",
+          variant: "destructive",
+        });
+      } else {
+        const sessionRaw = localStorage.getItem('auth_user_session');
+        let isSaasAdmin = false;
+        if (sessionRaw) {
+          try {
+            const u = JSON.parse(sessionRaw);
+            isSaasAdmin = u.sub_cuenta === 'saas-admin' || u.subCuenta === 'saas-admin';
+          } catch (e) {}
+        }
+        
+        if (isSaasAdmin) {
+          window.location.href = '/superadmin';
+        } else {
+          window.location.href = '/admin';
+        }
+      }
+      setIsLoading(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Autenticación de Google cancelada o fallida",
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleQuickAdminLogin = async () => {
     setIsLoading(true);
@@ -155,7 +194,11 @@ export const AuthPage: React.FC = () => {
         title: "¡Bienvenido!",
         description: "Has iniciado sesión correctamente",
       });
-      navigate('/');
+      if (loginData.email.toLowerCase() === 'saas-admin@gmail.com') {
+        navigate('/superadmin');
+      } else {
+        navigate('/admin');
+      }
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
         setErrors(prev => ({ ...prev, loginEmail: 'No existe una cuenta con este email' }));
@@ -422,17 +465,17 @@ export const AuthPage: React.FC = () => {
                   <h3 className="text-2xl font-bold text-slate-800">¡Cuenta creada exitosamente!</h3>
                   <p className="text-slate-500 text-sm">
                     Hemos enviado un correo de bienvenida a <span className="font-semibold text-slate-700">{registerData.email}</span>.
-                    Tu cuenta ya está activa y puedes comenzar a comprar de inmediato.
+                    Tu cuenta ya está activa y puedes acceder a tu panel CRM de inmediato.
                   </p>
                 </div>
                 <Button
                   className="w-full bg-[#3498db] hover:bg-[#2980b9] text-white font-semibold h-11 text-sm rounded-lg"
                   onClick={() => {
-                    navigate('/');
+                    navigate('/admin');
                     setRegisterStep('personal');
                   }}
                 >
-                  Comenzar a comprar
+                  Ir al Panel CRM
                 </Button>
               </div>
             ) : activeTab === 'login' ? (
@@ -476,7 +519,7 @@ export const AuthPage: React.FC = () => {
                         id="login-password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Contraseña"
-                        className={`border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 pr-10 text-slate-800 rounded-lg ${errors.loginPassword ? 'border-red-500' : ''
+                        className={`border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 pl-4 pr-10 text-slate-800 rounded-lg ${errors.loginPassword ? 'border-red-500' : ''
                           }`}
                         value={loginData.password}
                         onChange={(e) => {
@@ -536,12 +579,7 @@ export const AuthPage: React.FC = () => {
                 {/* Botón de Google */}
                 <button
                   type="button"
-                  onClick={() => {
-                    toast({
-                      title: "Google Login",
-                      description: "Iniciando sesión con Google...",
-                    });
-                  }}
+                  onClick={() => loginWithGoogle()}
                   className="w-full flex items-center justify-between p-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-left cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
@@ -639,18 +677,7 @@ export const AuthPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="space-y-1.5">
-                        <Label htmlFor="register-address" className="text-sm font-medium text-slate-700">
-                          Dirección <span className="text-xs text-slate-400 font-normal">(opcional)</span>
-                        </Label>
-                        <Input
-                          id="register-address"
-                          placeholder="Calle 123 #45-67"
-                          className="border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg"
-                          value={registerData.address}
-                          onChange={(e) => setRegisterData({ ...registerData, address: e.target.value })}
-                        />
-                      </div>
+
                     </>
                   ) : (
                     <>
@@ -687,7 +714,7 @@ export const AuthPage: React.FC = () => {
                             id="register-password"
                             type={showRegisterPassword ? "text" : "password"}
                             placeholder="••••••••"
-                            className={`border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 pr-10 text-slate-800 rounded-lg ${errors.registerPassword ? 'border-red-500' : ''
+                            className={`border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 pl-4 pr-10 text-slate-800 rounded-lg ${errors.registerPassword ? 'border-red-500' : ''
                               }`}
                             value={registerData.password}
                             onChange={(e) => {

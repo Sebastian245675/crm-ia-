@@ -11,6 +11,15 @@ import { AgentController } from './agent/agent.controller';
 import { AgentService } from './agent/agent.service';
 import { VentasController } from './ventas/ventas.controller';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { EmailsController } from './emails/emails.controller';
+import { EmailsService } from './emails/emails.service';
+import { TikTokController } from './tiktok/tiktok.controller';
+import { FacturacionController } from './facturacion/facturacion.controller';
+import { FacturacionService } from './facturacion/facturacion.service';
+import { ContabilidadController } from './contabilidad/contabilidad.controller';
+import { SubaccountsController } from './subaccounts/subaccounts.controller';
+import { AgencyPermissionGuard } from './auth/agency-permission.guard';
+import { PublicFormsController } from './forms/public-forms.controller';
 
 @Module({
   imports: [],
@@ -22,8 +31,24 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     UploadController,
     AgentController,
     VentasController,
+    EmailsController,
+    TikTokController,
+    FacturacionController,
+    ContabilidadController,
+    SubaccountsController,
+    PublicFormsController,
   ],
-  providers: [AppService, DatabaseService, AgentService, AuthService, JwtAuthGuard],
+  providers: [
+    AppService,
+    DatabaseService,
+    AgentService,
+    AuthService,
+    JwtAuthGuard,
+    AgencyPermissionGuard,
+    EmailsService,
+    FacturacionService,
+  ],
   exports: [DatabaseService, AgentService, AuthService],
 })
 export class AppModule {}
+

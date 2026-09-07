@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Mail, Eye, EyeOff, Save } from 'lucide-react';
+import { db } from '@/firebase';
 
 export const MailConfiguration: React.FC = () => {
   const [mailConfig, setMailConfig] = useState({
@@ -17,17 +18,96 @@ export const MailConfiguration: React.FC = () => {
   });
   const [showMailPassword, setShowMailPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
+  useEffect(() => {
+    loadMailConfig();
+
+    const handleUpdate = () => {
+      loadMailConfig();
+    };
+    window.addEventListener('mailConfigUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('mailConfigUpdated', handleUpdate);
+    };
+  }, []);
+
+  const loadMailConfig = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await db
+        .from('mail_config')
+        .select()
+        .eq('id', 'default_mail')
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Error al cargar config de correo:', error);
+      } else if (data) {
+        setMailConfig({
+          email: data.email || '',
+          password: data.password || '',
+          imapHost: data.imap_host || 'imap.hostinger.com',
+          imapPort: data.imap_port || '993',
+          smtpHost: data.smtp_host || 'smtp.hostinger.com',
+          smtpPort: data.smtp_port || '465'
+        });
+      }
+    } catch (e) {
+      console.error('Error in loadMailConfig:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const payload = {
+        id: 'default_mail',
+        email: mailConfig.email,
+        password: mailConfig.password,
+        imap_host: mailConfig.imapHost,
+        imap_port: mailConfig.imapPort,
+        smtp_host: mailConfig.smtpHost,
+        smtp_port: mailConfig.smtpPort,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await db
+        .from('mail_config')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (error) {
+        throw new Error(error.message || 'Error desconocido');
+      }
+
+      // Dispatch custom event to notify other components (e.g. MessagingManager)
+      window.dispatchEvent(new CustomEvent('mailConfigUpdated'));
+
       toast({ 
         title: "Configuración guardada", 
         description: "Los ajustes de correo han sido guardados exitosamente." 
       });
-    }, 800);
+    } catch (e: any) {
+      console.error('Error al guardar config de correo:', e);
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: e.message || "No se pudo guardar la configuración de correo."
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -56,7 +136,21 @@ export const MailConfiguration: React.FC = () => {
                 id="email"
                 placeholder="tu@correo.com" 
                 value={mailConfig.email}
-                onChange={(e) => setMailConfig({...mailConfig, email: e.target.value})}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const updates: any = { email: val };
+                  const domain = val.trim().split('@')[1]?.toLowerCase();
+                  if (domain === 'gmail.com') {
+                    updates.imapHost = 'imap.gmail.com';
+                    updates.smtpHost = 'smtp.gmail.com';
+                  } else if (domain === 'outlook.com' || domain === 'hotmail.com') {
+                    updates.imapHost = 'outlook.office365.com';
+                    updates.imapPort = '993';
+                    updates.smtpHost = 'smtp.office365.com';
+                    updates.smtpPort = '587';
+                  }
+                  setMailConfig(prev => ({ ...prev, ...updates }));
+                }}
               />
             </div>
             <div className="space-y-2 relative">

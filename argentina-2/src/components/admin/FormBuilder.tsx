@@ -4,11 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Plus, Trash2, ArrowUp, ArrowDown, Clipboard, Play, Save, CheckCircle, 
   Settings, ChevronRight, Check, Eye, HelpCircle, Layers, Mail, 
   Phone, List, FileSpreadsheet, Search, CheckCircle2, ChevronLeft,
   LayoutGrid, Trash, Sparkles, Copy, Calendar, MessageSquare, Info, Sliders
+  ,ExternalLink, Link2, Monitor
 } from 'lucide-react';
 
 // Interfaces for custom forms
@@ -19,6 +22,7 @@ export interface FormField {
   placeholder?: string;
   required: boolean;
   options?: string[]; // for select dropdown
+  section?: string;
 }
 
 export interface CustomForm {
@@ -29,6 +33,10 @@ export interface CustomForm {
   successMessage: string;
   fields: FormField[];
   createdAt: string;
+  description?: string;
+  owner_id?: string;
+  website_id?: string;
+  published?: boolean;
 }
 
 export interface FormSubmission {
@@ -38,9 +46,67 @@ export interface FormSubmission {
   submittedAt: string;
   ip: string;
   status: 'new' | 'read' | 'archived';
+  owner_id?: string;
+  website_id?: string;
 }
 
+const WEBSY_OWNER_EMAIL = 'juansalazat100@gmail.com';
+const WEBSY_WEBSITE_ID = 'websy-multiservicios';
+const WEBSY_FORM_ID = 'websy-cuestionario-multiservicios-2026';
+
+const createWebsyQuestionnaire = (ownerId: string): CustomForm => {
+  const mailQuestions = [
+    '¿Cuántas personas usan un mail de la empresa hoy? Decinos el nombre de cada una y qué mail usa.',
+    '¿Con qué programa revisan el mail hoy? (Outlook, Gmail, el navegador, etc.)',
+    'La página web y el mail de la empresa, ¿con qué empresa los tienen contratados hoy? (el lugar donde pagan el hosting o el dominio)',
+    '¿Quién tiene el usuario y la contraseña para entrar a administrar eso? (no hace falta pasárnoslo todavía, solo decirnos quién lo tiene)',
+    '¿Van a seguir con el mismo nombre de dominio (lo de después de la @) o quieren cambiarlo?',
+    'Además de los mails, ¿usan también agenda, calendario o contactos guardados ahí que no quieran perder?',
+    '¿Hay algún horario (una tarde, una noche) en que la empresa pueda estar sin mail un rato para hacer el cambio tranquilos?',
+    '¿Quién de la empresa es la persona de contacto para este tema, por si necesitamos algo puntual?',
+    '¿Tienen pensado seguir usando lo mismo de siempre, o les gustaría pasarse a otra cosa (por ejemplo, Gmail para empresas)?',
+    '¿Hay algo puntual que les preocupe de este cambio? (por ejemplo, perder mails viejos, que se corte el servicio, etc.)',
+  ];
+  const appQuestions = [
+    '¿Para qué quieren la aplicación? Contanos con sus palabras qué problema resuelve.',
+    '¿Quién la va a usar: la gente de la empresa, sus clientes, o los dos?',
+    'Más o menos, ¿cuántas personas la usarían?',
+    '¿Qué les gustaría que haga? (por ejemplo: anotar datos, hacer cotizaciones, mandar avisos, cobrar online)',
+    '¿La quieren para usar desde la computadora, desde el celular, o ambos?',
+    '¿Para cuándo les gustaría tenerla lista?',
+    'Una vez lista, ¿qué esperan de nosotros? (por ejemplo: arreglar algún error, sumar cosas nuevas más adelante, ayudarlos si tienen dudas)',
+  ];
+  const makeFields = (questions: string[], prefix: string, section: string): FormField[] => questions.map((label, index) => ({
+    id: `${prefix}-${index + 1}`,
+    type: 'textarea',
+    label: `${index + 1}. ${label}`,
+    placeholder: 'Escribí tu respuesta…',
+    required: false,
+    section,
+  }));
+
+  return {
+    id: WEBSY_FORM_ID,
+    name: 'Cuestionario para arrancar Multiservicios',
+    title: 'WEBSY — Cuestionario para arrancar Multiservicios',
+    description: '6 de septiembre de 2026\n\n¡Hola! Para poder arrancar con la copia de seguridad de los mails y con la idea de la aplicación, necesitamos que nos cuenten estos datos. No hace falta que sea técnico ni que esté perfecto: con que nos cuenten lo que saben, alcanza. Pueden responder debajo de cada pregunta o mandarnos las respuestas por WhatsApp o mail.',
+    buttonText: 'Enviar respuestas a Websy',
+    successMessage: '¡Gracias! Recibimos las respuestas. Agustín, de Websy, se pondrá en contacto si necesita aclarar algún punto.',
+    createdAt: '2026-09-06T00:00:00.000Z',
+    owner_id: ownerId,
+    website_id: WEBSY_WEBSITE_ID,
+    fields: [
+      ...makeFields(mailQuestions, 'mails', '1. Copia de seguridad y pase de los mails'),
+      ...makeFields(appQuestions, 'app', '2. La aplicación que quieren armar'),
+    ],
+  };
+};
+
 export const FormBuilder: React.FC = () => {
+  const { user } = useAuth();
+  const agencyOwnerId = user?.accountRole === 'agency_user'
+    ? String(user.agencyId || user.parentUserId || user.id)
+    : String(user?.id || '');
   // Websites from local storage
   const [websites, setWebsites] = useState<any[]>([]);
   const [selectedWebId, setSelectedWebId] = useState<string>('');
@@ -64,18 +130,36 @@ export const FormBuilder: React.FC = () => {
   // Interactive Live Preview State
   const [previewFormData, setPreviewFormData] = useState<Record<string, string>>({});
   const [previewSubmitted, setPreviewSubmitted] = useState(false);
+  const [isPublicPreviewOpen, setIsPublicPreviewOpen] = useState(false);
 
   // Load Websites first
   useEffect(() => {
-    const savedWebsites = localStorage.getItem('admin_websites');
-    if (savedWebsites) {
-      const parsed = JSON.parse(savedWebsites);
-      setWebsites(parsed);
-      if (parsed.length > 0) {
-        setSelectedWebId(parsed[0].id);
+    if (!agencyOwnerId) return;
+    let cancelled = false;
+    const loadWebsites = async () => {
+      const savedWebsites = localStorage.getItem('admin_websites');
+      const parsed = user?.accountRole === 'agency_user'
+        ? []
+        : (savedWebsites ? JSON.parse(savedWebsites) : []);
+      const { data: agencyForms } = await db.from('website_forms').select();
+      (agencyForms || [])
+        .filter((form: CustomForm) => String(form.owner_id) === agencyOwnerId && form.website_id)
+        .forEach((form: CustomForm) => {
+          if (!parsed.some((website: any) => website.id === form.website_id)) {
+            parsed.push({
+              id: form.website_id,
+              name: form.website_id === WEBSY_WEBSITE_ID ? 'Multiservicios — Websy' : form.website_id,
+            });
+          }
+        });
+      if (!cancelled) {
+        setWebsites(parsed);
+        setSelectedWebId(current => current && parsed.some((website: any) => website.id === current) ? current : parsed[0]?.id || '');
       }
-    }
-  }, []);
+    };
+    loadWebsites();
+    return () => { cancelled = true; };
+  }, [agencyOwnerId, user?.accountRole]);
 
   // Default templates to pre-populate custom forms if empty
   const getDefaultTemplates = (webId: string): CustomForm[] => {
@@ -155,38 +239,40 @@ export const FormBuilder: React.FC = () => {
   // Load Forms & Submissions when Selected Web ID changes
   useEffect(() => {
     if (!selectedWebId) return;
+    let cancelled = false;
+    const load = async () => {
+      const [{ data: formRows }, { data: submissionRows }] = await Promise.all([
+        db.from('website_forms').select(),
+        db.from('website_form_submissions').select(),
+      ]);
+      if (cancelled) return;
+      let loadedForms = (formRows || []).filter((form: CustomForm) => String(form.owner_id) === agencyOwnerId && form.website_id === selectedWebId);
+      if (user?.email?.toLowerCase() === WEBSY_OWNER_EMAIL && selectedWebId === WEBSY_WEBSITE_ID && !loadedForms.some((form: CustomForm) => form.id === WEBSY_FORM_ID)) {
+        const questionnaire = createWebsyQuestionnaire(user.id);
+        const { error } = await db.from('website_forms').upsert(questionnaire);
+        if (!error) loadedForms = [questionnaire, ...loadedForms];
+      }
+      setForms(loadedForms);
+      setActiveFormId(loadedForms[0]?.id || null);
+      setActiveForm(loadedForms[0] || null);
+      setSubmissions((submissionRows || []).filter((submission: FormSubmission) => String(submission.owner_id) === agencyOwnerId && submission.website_id === selectedWebId));
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [selectedWebId, user?.email, agencyOwnerId]);
 
-    // Load custom forms
-    const formsKey = `admin_custom_forms_${selectedWebId}`;
-    const savedForms = localStorage.getItem(formsKey);
-    let loadedForms: CustomForm[] = [];
+  const persistForm = async (form: CustomForm) => {
+    if (!agencyOwnerId || !selectedWebId) return;
+    const record = { ...form, owner_id: agencyOwnerId, website_id: selectedWebId };
+    const { error } = await db.from('website_forms').upsert(record);
+    if (error) toast({ title: 'No se pudo guardar el formulario', description: error.message, variant: 'destructive' });
+  };
 
-    if (savedForms) {
-      // Filter out the previously pre-populated default templates (containing form-news or form-contact IDs)
-      loadedForms = JSON.parse(savedForms).filter(
-        (f: any) => !f.id.startsWith('form-news-') && !f.id.startsWith('form-contact-')
-      );
-      localStorage.setItem(formsKey, JSON.stringify(loadedForms));
-    }
-    setForms(loadedForms);
-
-    // Set first form active by default if there is one
-    if (loadedForms.length > 0) {
-      setActiveFormId(loadedForms[0].id);
-      setActiveForm(loadedForms[0]);
-    } else {
-      setActiveFormId(null);
-      setActiveForm(null);
-    }
-
-    // Load Submissions
-    const savedSubmissions = localStorage.getItem('admin_form_submissions');
-    if (savedSubmissions) {
-      setSubmissions(JSON.parse(savedSubmissions));
-    } else {
-      setSubmissions([]);
-    }
-  }, [selectedWebId]);
+  const persistSubmission = async (submission: FormSubmission) => {
+    if (!agencyOwnerId || !selectedWebId) return;
+    const { error } = await db.from('website_form_submissions').insert({ ...submission, owner_id: agencyOwnerId, website_id: selectedWebId });
+    if (error) throw error;
+  };
 
   // Synchronize Active Form edits to forms array and Local Storage
   const saveFormToStorage = (updatedForm: CustomForm) => {
@@ -195,6 +281,7 @@ export const FormBuilder: React.FC = () => {
     const updatedForms = forms.map(f => f.id === updatedForm.id ? updatedForm : f);
     setForms(updatedForms);
     localStorage.setItem(formsKey, JSON.stringify(updatedForms));
+    persistForm(updatedForm);
   };
 
   const handleUpdateFormMeta = (key: keyof CustomForm, value: string) => {
@@ -232,6 +319,9 @@ export const FormBuilder: React.FC = () => {
       buttonText: 'Enviar Formulario',
       successMessage: '¡Formulario enviado con éxito! Nos pondremos en contacto contigo.',
       createdAt: new Date().toISOString(),
+      owner_id: agencyOwnerId,
+      website_id: selectedWebId,
+      published: true,
       fields: [
         {
           id: `field-${Date.now()}-1`,
@@ -254,6 +344,7 @@ export const FormBuilder: React.FC = () => {
     const updatedForms = [...forms, newForm];
     setForms(updatedForms);
     localStorage.setItem(formsKey, JSON.stringify(updatedForms));
+    persistForm(newForm);
 
     setActiveFormId(newForm.id);
     setActiveForm(newForm);
@@ -276,11 +367,15 @@ export const FormBuilder: React.FC = () => {
     const updatedForms = forms.filter(f => f.id !== formId);
     setForms(updatedForms);
     localStorage.setItem(formsKey, JSON.stringify(updatedForms));
+    db.from('website_forms').delete().eq('id', formId);
 
     // Clear submissions for this form
     const filteredSubmissions = submissions.filter(s => s.formId !== formId);
     setSubmissions(filteredSubmissions);
     localStorage.setItem('admin_form_submissions', JSON.stringify(filteredSubmissions));
+    submissions.filter(s => s.formId === formId).forEach(submission => {
+      db.from('website_form_submissions').delete().eq('id', submission.id);
+    });
 
     if (activeFormId === formId) {
       if (updatedForms.length > 0) {
@@ -308,12 +403,15 @@ export const FormBuilder: React.FC = () => {
       name: `${formToCopy.name} (Copia)`,
       createdAt: new Date().toISOString(),
       fields: formToCopy.fields.map(f => ({ ...f, id: `field-copy-${Math.random().toString(36).substr(2, 9)}` }))
+      ,owner_id: agencyOwnerId,
+      website_id: selectedWebId,
     };
 
     const formsKey = `admin_custom_forms_${selectedWebId}`;
     const updatedForms = [...forms, duplicated];
     setForms(updatedForms);
     localStorage.setItem(formsKey, JSON.stringify(updatedForms));
+    persistForm(duplicated);
 
     setActiveFormId(duplicated.id);
     setActiveForm(duplicated);
@@ -415,7 +513,7 @@ export const FormBuilder: React.FC = () => {
   };
 
   // Mock Submit inside Preview Panel
-  const handlePreviewSubmit = (e: React.FormEvent) => {
+  const handlePreviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeForm) return;
 
@@ -439,12 +537,20 @@ export const FormBuilder: React.FC = () => {
       submittedAt: new Date().toISOString(),
       ip: `192.168.1.${Math.floor(Math.random() * 254) + 1} (Vista Previa)`,
       status: 'new'
+      ,owner_id: agencyOwnerId,
+      website_id: selectedWebId,
     };
 
     const updatedSubmissions = [newSubmission, ...submissions];
     setSubmissions(updatedSubmissions);
     localStorage.setItem('admin_form_submissions', JSON.stringify(updatedSubmissions));
 
+    try {
+      await persistSubmission(newSubmission);
+    } catch (error: any) {
+      toast({ title: 'No se pudo enviar el formulario', description: error.message, variant: 'destructive' });
+      return;
+    }
     setPreviewSubmitted(true);
     toast({
       title: "Envío Registrado",
@@ -503,6 +609,9 @@ export const FormBuilder: React.FC = () => {
     const remaining = submissions.filter(s => s.formId !== formId);
     setSubmissions(remaining);
     localStorage.setItem('admin_form_submissions', JSON.stringify(remaining));
+    submissions.filter(s => s.formId === formId).forEach(submission => {
+      db.from('website_form_submissions').delete().eq('id', submission.id);
+    });
     setSelectedSubmission(null);
     toast({
       title: "Respuestas vaciadas",
@@ -522,6 +631,17 @@ export const FormBuilder: React.FC = () => {
         );
       })
     : [];
+
+  const publicFormPath = activeForm ? `/formularios/${encodeURIComponent(activeForm.id)}` : '';
+  const publicFormUrl = typeof window !== 'undefined' && publicFormPath
+    ? `${window.location.origin}${publicFormPath}`
+    : publicFormPath;
+
+  const handleCopyPublicUrl = async () => {
+    if (!publicFormUrl) return;
+    await navigator.clipboard.writeText(publicFormUrl);
+    toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo con el cliente.' });
+  };
 
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-2xl min-h-[580px] flex flex-col md:flex-row shadow-xs overflow-hidden">
@@ -647,8 +767,23 @@ export const FormBuilder: React.FC = () => {
               </p>
             </div>
 
-            {/* Sub-tab view toggle (Diseño vs Respuestas) */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 w-fit">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setIsPublicPreviewOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <Monitor className="h-3.5 w-3.5" /> Vista previa
+              </button>
+              <a
+                href={publicFormPath}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Abrir formulario
+              </a>
+              {/* Sub-tab view toggle (Diseño vs Respuestas) */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 w-fit">
               <button
                 onClick={() => setActiveSubTab('designer')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
@@ -674,15 +809,33 @@ export const FormBuilder: React.FC = () => {
                   <span className="h-2 w-2 rounded-full bg-blue-600 absolute top-1 right-1 animate-pulse" />
                 )}
               </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-b border-slate-200 bg-white px-6 py-3">
+            <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3.5 py-3 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                  <Link2 className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Enlace público activo</p>
+                  <p className="truncate text-xs font-medium text-slate-700">{publicFormUrl}</p>
+                </div>
+              </div>
+              <button onClick={handleCopyPublicUrl} className="flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50">
+                <Copy className="h-3.5 w-3.5" /> Copiar enlace
+              </button>
             </div>
           </div>
 
           {/* VIEW A: DESIGNER (Form editor & preview split) */}
           {activeSubTab === 'designer' && (
-            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-[500px]">
+            <div className="flex-1 overflow-hidden min-h-[500px]">
               
               {/* Left Panel: Field config & edit */}
-              <div className="flex-1 p-5 overflow-y-auto space-y-5 border-r border-slate-200">
+              <div className="h-full p-5 overflow-y-auto space-y-5">
                 
                 {/* Form Meta Settings Group */}
                 <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
@@ -709,6 +862,17 @@ export const FormBuilder: React.FC = () => {
                         className="h-8.5 text-xs"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Introducción</label>
+                    <textarea
+                      value={activeForm.description || ''}
+                      onChange={(e) => handleUpdateFormMeta('description', e.target.value)}
+                      placeholder="Explica brevemente para qué sirve el formulario"
+                      rows={4}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
 
                   <div className="space-y-1 text-left">
@@ -864,7 +1028,7 @@ export const FormBuilder: React.FC = () => {
               </div>
 
               {/* Right Panel: Interactive Live Preview */}
-              <div className="w-full lg:w-[360px] bg-slate-100 p-5 flex flex-col justify-start border-t lg:border-t-0 lg:border-l border-slate-200 overflow-y-auto select-none">
+              <div className="hidden">
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-3 text-left">
                   Vista Previa Interactiva
                 </span>
@@ -892,19 +1056,28 @@ export const FormBuilder: React.FC = () => {
                     </div>
                   ) : (
                     <form onSubmit={handlePreviewSubmit} className="space-y-3.5">
-                      <div className="border-b pb-2">
-                        <span className="text-xs font-extrabold text-slate-800 block truncate">
-                          {activeForm.title || 'Contáctanos'}
-                        </span>
-                      </div>
+                        <div className="border-b pb-3 space-y-2">
+                          <span className="text-sm font-extrabold text-slate-800 block">
+                            {activeForm.title || 'Contáctanos'}
+                          </span>
+                          {activeForm.description && (
+                            <p className="text-[10px] whitespace-pre-line leading-relaxed text-slate-500">{activeForm.description}</p>
+                          )}
+                        </div>
 
                       {activeForm.fields.length === 0 ? (
                         <div className="py-8 text-center text-slate-400 text-xs italic">
                           Añade campos para verlos acá.
                         </div>
                       ) : (
-                        activeForm.fields.map((field) => (
-                          <div key={field.id} className="space-y-1">
+                        activeForm.fields.map((field, fieldIndex) => (
+                          <React.Fragment key={field.id}>
+                          {field.section && (fieldIndex === 0 || activeForm.fields[fieldIndex - 1]?.section !== field.section) && (
+                            <div className="pt-3 pb-1 border-b border-slate-200">
+                              <h3 className="text-[11px] font-extrabold text-slate-800">{field.section}</h3>
+                            </div>
+                          )}
+                          <div className="space-y-1.5">
                             <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-0.5">
                               <span>{field.label}</span>
                               {field.required && <span className="text-red-500">*</span>}
@@ -956,6 +1129,7 @@ export const FormBuilder: React.FC = () => {
                               />
                             )}
                           </div>
+                          </React.Fragment>
                         ))
                       )}
 
@@ -977,7 +1151,7 @@ export const FormBuilder: React.FC = () => {
                     <span className="text-[9px] font-extrabold uppercase tracking-wide">Prueba Interactiva</span>
                   </div>
                   <p className="text-[9.5px] text-slate-500 leading-normal">
-                    Rellena este formulario de vista previa y envíalo. Se registrará un lead simulado en la pestaña <strong>Respuestas</strong> de forma automática.
+                    Rellena el formulario y envíalo. La respuesta se guardará en la cuenta de la agencia y aparecerá en <strong>Respuestas</strong>.
                   </p>
                 </div>
               </div>
@@ -1098,6 +1272,34 @@ export const FormBuilder: React.FC = () => {
           <p className="text-xs max-w-sm text-center text-slate-500">
             Selecciona un formulario de la lista izquierda o haz clic en "+" para empezar a recopilar información y leads.
           </p>
+        </div>
+      )}
+
+      {/* Vista previa real en modal: no modifica la altura del diseñador */}
+      {isPublicPreviewOpen && activeForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6">
+          <div className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3 text-left">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  <Monitor className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900">Vista previa pública</p>
+                  <p className="truncate text-xs text-slate-500">{publicFormUrl}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={publicFormPath} target="_blank" rel="noreferrer" className="hidden h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 sm:flex">
+                  <ExternalLink className="h-3.5 w-3.5" /> Abrir aparte
+                </a>
+                <button onClick={() => setIsPublicPreviewOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Cerrar vista previa">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <iframe key={publicFormPath} src={publicFormPath} title={`Vista previa de ${activeForm.title}`} className="min-h-0 flex-1 w-full bg-slate-50" />
+          </div>
         </div>
       )}
 

@@ -79,6 +79,23 @@ interface CustomFieldDefinition {
   label: string;
 }
 
+const safeParseTags = (tagsVal: any): string[] => {
+  if (!tagsVal) return [];
+  if (Array.isArray(tagsVal)) return tagsVal;
+  if (typeof tagsVal === 'string') {
+    try {
+      const parsed = JSON.parse(tagsVal);
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === 'string') {
+        return parsed.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+    } catch {
+      return tagsVal.split(',').map((t: string) => t.trim()).filter(Boolean);
+    }
+  }
+  return [];
+};
+
 export const ContactsManager: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -211,7 +228,7 @@ export const ContactsManager: React.FC = () => {
         const promises = contacts
           .filter(c => selectedContacts.includes(c.id))
           .map(c => {
-            const currentTags = c.tags || [];
+            const currentTags = safeParseTags(c.tags);
             if (!currentTags.includes(cleanTag)) {
               return db.from('contacts').update({ tags: [...currentTags, cleanTag] }).eq('id', c.id);
             }
@@ -247,7 +264,7 @@ export const ContactsManager: React.FC = () => {
         const promises = contacts
           .filter(c => selectedContacts.includes(c.id))
           .map(c => {
-            const currentTags = c.tags || [];
+            const currentTags = safeParseTags(c.tags);
             if (currentTags.includes(cleanTag)) {
               return db.from('contacts').update({ tags: currentTags.filter(t => t !== cleanTag) }).eq('id', c.id);
             }
@@ -308,7 +325,7 @@ export const ContactsManager: React.FC = () => {
             email: data[0].email || '',
             company: data[0].company || '',
             createdAt: new Date(data[0].created_at),
-            tags: data[0].tags || [],
+            tags: safeParseTags(data[0].tags),
             avatar: data[0].avatar || '',
             customFields: newContact.customFields
           };
@@ -392,7 +409,7 @@ export const ContactsManager: React.FC = () => {
   const handleAssociateTag = async (contactId: string, tag: string) => {
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) return;
-    const tags = Array.from(new Set([...(contact.tags || []), tag]));
+    const tags = Array.from(new Set([...safeParseTags(contact.tags), tag]));
     const success = await updateContactTags(contactId, tags);
     if (success) {
       toast({ title: 'Etiqueta asociada', description: `La etiqueta '${tag}' se agregó al contacto.` });
@@ -402,7 +419,7 @@ export const ContactsManager: React.FC = () => {
   const handleRemoveTag = async (contactId: string, tag: string) => {
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) return;
-    const tags = (contact.tags || []).filter(t => t !== tag);
+    const tags = safeParseTags(contact.tags).filter(t => t !== tag);
     await updateContactTags(contactId, tags);
   };
 
@@ -426,7 +443,7 @@ export const ContactsManager: React.FC = () => {
             company: contact.company || '',
             createdAt: contact.created_at ? new Date(contact.created_at) : new Date(),
             lastActivity: contact.last_activity ? new Date(contact.last_activity) : undefined,
-            tags: contact.tags || [],
+            tags: safeParseTags(contact.tags),
             avatar: contact.avatar || '',
             customFields: contact.custom_fields || contact.customFields || {}
           }));
@@ -449,7 +466,7 @@ export const ContactsManager: React.FC = () => {
             company: data.company || '',
             createdAt: data.createdAt?.toDate() || new Date(),
             lastActivity: data.lastActivity?.toDate(),
-            tags: data.tags || [],
+            tags: safeParseTags(data.tags),
             avatar: data.avatar || '',
             customFields: data.customFields || {}
           });
@@ -1174,7 +1191,55 @@ export const ContactsManager: React.FC = () => {
             </div>
           </div>
 
-          <Card className="shadow-sm border border-slate-200 overflow-hidden">
+          {/* Mobile Task Card View */}
+          <div className="grid grid-cols-1 gap-4 lg:hidden">
+            {filteredTasks.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-sm">
+                <CheckSquare className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                <h3 className="font-bold text-slate-900">Sin tareas</h3>
+                <p className="text-slate-500 text-sm">No hay tareas pendientes disponibles.</p>
+              </div>
+            ) : (
+              filteredTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm leading-snug">{task.title}</h4>
+                      {task.description && (
+                        <p className="text-xs text-slate-500 mt-1 leading-normal">{task.description}</p>
+                      )}
+                    </div>
+                    <Badge variant={task.status === 'done' ? 'secondary' : task.status === 'in-progress' ? 'outline' : 'destructive'} className="text-[10px] uppercase font-bold shrink-0">
+                      {task.status.replace('-', ' ')}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <div>
+                      <span className="text-slate-400 block font-medium uppercase tracking-wider text-[9px] mb-0.5">Contacto</span>
+                      <span className="font-semibold text-slate-700 truncate block">{getContactName(task.contactId)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block font-medium uppercase tracking-wider text-[9px] mb-0.5">Vencimiento</span>
+                      <span className="font-semibold text-slate-700 block">
+                        {task.dueDate ? formatDate(task.dueDate).split(',')[0] : 'Sin fecha'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1">
+                    <span>Creado: {formatDate(task.createdAt).split(',')[0]}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Tasks Table - Desktop Only */}
+          <Card className="shadow-sm border border-slate-200 overflow-hidden hidden lg:block">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">

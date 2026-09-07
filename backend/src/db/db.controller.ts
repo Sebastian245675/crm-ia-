@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Param, Body, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { AgencyPermissionGuard } from '../auth/agency-permission.guard';
+import { RequireAgencyPermission } from '../auth/agency-permission.decorator';
 import * as express from 'express';
 
 @Controller('api/db/:table_name')
@@ -13,6 +15,12 @@ export class DbController {
         return res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
           message: 'Nombre de tabla inválido',
+        });
+      }
+      if (['users', 'usuarios'].includes(tableName.toLowerCase())) {
+        return res.status(HttpStatus.FORBIDDEN).json({
+          success: false,
+          message: 'Las cuentas se administran únicamente desde el módulo seguro de subcuentas',
         });
       }
 
@@ -44,6 +52,8 @@ export class DbController {
   }
 
   @Post()
+  @UseGuards(AgencyPermissionGuard)
+  @RequireAgencyPermission('table')
   async execute(
     @Param('table_name') tableName: string,
     @Body() body: any,
@@ -54,6 +64,12 @@ export class DbController {
         return res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
           message: 'Nombre de tabla inválido',
+        });
+      }
+      if (['users', 'usuarios'].includes(tableName.toLowerCase())) {
+        return res.status(HttpStatus.FORBIDDEN).json({
+          success: false,
+          message: 'Las cuentas se administran únicamente desde el módulo seguro de subcuentas',
         });
       }
 

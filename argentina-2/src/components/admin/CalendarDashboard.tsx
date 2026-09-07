@@ -27,8 +27,10 @@ import {
   MoreVertical,
   Trash2,
   Edit,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CalendarEvent {
   id: string;
@@ -61,6 +63,19 @@ const DEFAULT_CALENDARS: CustomCalendar[] = [
 
 export const CalendarDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'calendar' | 'list' | 'settings'>('calendar');
+  const [isMobile, setIsMobile] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 1280;
+      setIsMobile(mobile);
+      setShowFilters(!mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const [calendarViewMode, setCalendarViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -486,114 +501,133 @@ export const CalendarDashboard: React.FC = () => {
   return (
     <div className="flex flex-col xl:flex-row gap-6 min-h-screen bg-slate-50 p-1">
       {/* Sidebar Filters */}
-      <div className="w-full xl:w-72 flex-shrink-0 space-y-5">
+      <div className="w-full xl:w-72 flex-shrink-0">
         <Card className="border-slate-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-bold text-slate-800">Gestionar la Vista</CardTitle>
-            <CardDescription>Filtros y clasificaciones rápidas</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Filter by Type */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ver por Tipo</Label>
+          <div
+            onClick={() => isMobile && setShowFilters(!showFilters)}
+            className={cn(
+              "p-4 flex items-center justify-between select-none",
+              isMobile ? "cursor-pointer hover:bg-slate-50/50" : ""
+            )}
+          >
+            <div>
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <Filter className="h-4 w-4 text-blue-600 xl:text-slate-400" />
+                Filtros del Calendario
+              </CardTitle>
+              {isMobile && !showFilters && (
+                <p className="text-[11px] text-slate-400 mt-0.5">Toca para buscar o filtrar citas</p>
+              )}
+            </div>
+            {isMobile && (
+              <ChevronDown className={cn("h-4 w-4 text-slate-500 transition-transform duration-200", showFilters && "rotate-180")} />
+            )}
+          </div>
+
+          {showFilters && (
+            <CardContent className="space-y-5 border-t border-slate-100 p-4 pt-4 xl:p-6 xl:pt-0">
+              {/* Filter by Type */}
               <div className="space-y-2">
-                <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="type-filter"
-                    checked={selectedTypeFilter === 'all'}
-                    onChange={() => setSelectedTypeFilter('all')}
-                    className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                  />
-                  <span>Todo</span>
-                </label>
-                <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="type-filter"
-                    checked={selectedTypeFilter === 'cita'}
-                    onChange={() => setSelectedTypeFilter('cita')}
-                    className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                  />
-                  <span>Citas</span>
-                </label>
-                <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="type-filter"
-                    checked={selectedTypeFilter === 'bloqueo'}
-                    onChange={() => setSelectedTypeFilter('bloqueo')}
-                    className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                  />
-                  <span>Franjas horarias bloqueadas</span>
-                </label>
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ver por Tipo</Label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="type-filter"
+                      checked={selectedTypeFilter === 'all'}
+                      onChange={() => setSelectedTypeFilter('all')}
+                      className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    />
+                    <span>Todo</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="type-filter"
+                      checked={selectedTypeFilter === 'cita'}
+                      onChange={() => setSelectedTypeFilter('cita')}
+                      className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    />
+                    <span>Citas</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="type-filter"
+                      checked={selectedTypeFilter === 'bloqueo'}
+                      onChange={() => setSelectedTypeFilter('bloqueo')}
+                      className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                    />
+                    <span>Franjas horarias bloqueadas</span>
+                  </label>
+                </div>
               </div>
-            </div>
 
-            {/* Filter by Calendar */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Calendarios</Label>
-              <Select value={selectedCalendarFilter} onValueChange={setSelectedCalendarFilter}>
-                <SelectTrigger className="h-10 bg-white">
-                  <SelectValue placeholder="Seleccionar calendario" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los calendarios</SelectItem>
-                  {customCalendars.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <span className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                        {c.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Search Input */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Buscar</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar clientes o notas..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 bg-white"
-                />
+              {/* Filter by Calendar */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Calendarios</Label>
+                <Select value={selectedCalendarFilter} onValueChange={setSelectedCalendarFilter}>
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder="Seleccionar calendario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los calendarios</SelectItem>
+                    {customCalendars.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                          {c.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
 
-            {/* Filter by User */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Usuarios / Asesores</Label>
-              <div className="max-h-48 overflow-y-auto space-y-2 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
-                <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="user-filter"
-                    checked={selectedUserFilter === 'all'}
-                    onChange={() => setSelectedUserFilter('all')}
-                    className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+              {/* Search Input */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Buscar</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Buscar clientes o notas..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-10 bg-white"
                   />
-                  <strong>Todos los usuarios</strong>
-                </label>
-                {usersList.map(user => (
-                  <label key={user} className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
+                </div>
+              </div>
+
+              {/* Filter by User */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Usuarios / Asesores</Label>
+                <div className="max-h-48 overflow-y-auto space-y-2 border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
+                  <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
                     <input
                       type="radio"
                       name="user-filter"
-                      checked={selectedUserFilter === user}
-                      onChange={() => setSelectedUserFilter(user)}
+                      checked={selectedUserFilter === 'all'}
+                      onChange={() => setSelectedUserFilter('all')}
                       className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
                     />
-                    <span className="truncate">{user}</span>
+                    <strong>Todos los usuarios</strong>
                   </label>
-                ))}
+                  {usersList.map(user => (
+                    <label key={user} className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="user-filter"
+                        checked={selectedUserFilter === user}
+                        onChange={() => setSelectedUserFilter(user)}
+                        className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                      />
+                      <span className="truncate">{user}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
       </div>
 
@@ -602,24 +636,24 @@ export const CalendarDashboard: React.FC = () => {
         {/* Navigation Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           {/* View Toggle Tabs */}
-          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
+          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
             <button
               onClick={() => setActiveView('calendar')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${activeView === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${activeView === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <Grid className="w-3.5 h-3.5" />
               Vista Calendario
             </button>
             <button
               onClick={() => setActiveView('list')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${activeView === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${activeView === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <List className="w-3.5 h-3.5" />
               Lista de Citas
             </button>
             <button
               onClick={() => setActiveView('settings')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${activeView === 'settings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${activeView === 'settings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <Settings className="w-3.5 h-3.5" />
               Ajustes
@@ -628,25 +662,25 @@ export const CalendarDashboard: React.FC = () => {
 
           {/* Date Navigator (Visible only when in calendar view) */}
           {activeView === 'calendar' && (
-            <div className="flex items-center space-x-3">
-              <Button variant="outline" size="sm" onClick={handleToday} className="h-9 font-semibold">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={handleToday} className="h-9 font-semibold flex-1 sm:flex-none">
                 Hoy
               </Button>
-              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
-                <Button variant="ghost" size="icon" onClick={handlePrev} className="h-9 w-9 rounded-none border-r border-slate-200">
+              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white flex-[2] sm:flex-none justify-between">
+                <Button variant="ghost" size="icon" onClick={handlePrev} className="h-9 w-9 rounded-none border-r border-slate-200 flex-shrink-0">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <div className="px-3 text-xs font-bold text-slate-700 min-w-[120px] text-center select-none">
+                <div className="px-2 text-[11px] sm:text-xs font-bold text-slate-700 text-center select-none truncate flex-1 min-w-[100px]">
                   {dateRangeLabel}
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleNext} className="h-9 w-9 rounded-none border-l border-slate-200">
+                <Button variant="ghost" size="icon" onClick={handleNext} className="h-9 w-9 rounded-none border-l border-slate-200 flex-shrink-0">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
 
               {/* View Mode Select */}
               <Select value={calendarViewMode} onValueChange={(val: any) => setCalendarViewMode(val)}>
-                <SelectTrigger className="w-32 h-9 bg-white text-xs font-bold">
+                <SelectTrigger className="w-full sm:w-32 h-9 bg-white text-xs font-bold flex-1 sm:flex-none">
                   <SelectValue placeholder="Vista" />
                 </SelectTrigger>
                 <SelectContent>
@@ -659,7 +693,7 @@ export const CalendarDashboard: React.FC = () => {
           )}
 
           {/* Action button */}
-          <Button onClick={() => openCreateModal()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-9">
+          <Button onClick={() => openCreateModal()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-9 w-full sm:w-auto shadow-md">
             <Plus className="h-4 w-4 mr-1.5" /> Nuevo
           </Button>
         </div>
@@ -831,11 +865,14 @@ export const CalendarDashboard: React.FC = () => {
                 </div>
               ) : (
                 /* Monthly View Grid */
-                <div className="p-4 bg-slate-50/50">
-                  <div className="grid grid-cols-7 gap-2">
+                <div className="p-2 sm:p-4 bg-slate-50/50">
+                  <div className="grid grid-cols-7 gap-1 sm:gap-2">
                     {/* Days Header */}
                     {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingos'].map(day => (
-                      <div key={day} className="p-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">{day}</div>
+                      <div key={day} className="p-1 sm:p-2 text-center text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider truncate">
+                        <span className="hidden sm:inline">{day}</span>
+                        <span className="sm:hidden">{day.substring(0, 1)}</span>
+                      </div>
                     ))}
 
                     {/* Month Slots */}
@@ -853,10 +890,10 @@ export const CalendarDashboard: React.FC = () => {
                         <div
                           key={idx}
                           onClick={() => openCreateModal(dateStr)}
-                          className={`min-h-[100px] border border-slate-200 rounded-lg p-2 flex flex-col justify-between cursor-pointer transition-colors ${isCurrentMonth ? 'bg-white' : 'bg-slate-100/60 opacity-60'} hover:bg-slate-50`}
+                          className={`min-h-[70px] sm:min-h-[100px] border border-slate-200 rounded-lg p-1 sm:p-2 flex flex-col justify-between cursor-pointer transition-colors ${isCurrentMonth ? 'bg-white' : 'bg-slate-100/60 opacity-60'} hover:bg-slate-50`}
                         >
-                          <div className="text-xs font-black text-slate-600">{date.getDate()}</div>
-                          <div className="flex-1 flex flex-col gap-1 mt-1 overflow-y-auto max-h-[70px]">
+                          <div className="text-[10px] sm:text-xs font-black text-slate-600">{date.getDate()}</div>
+                          <div className="flex-1 flex flex-col gap-0.5 mt-0.5 sm:mt-1 overflow-y-auto max-h-[45px] sm:max-h-[70px]">
                             {dayEvents.map(e => (
                               <div
                                 key={e.id}
@@ -864,7 +901,7 @@ export const CalendarDashboard: React.FC = () => {
                                   ev.stopPropagation();
                                   openEditModal(e);
                                 }}
-                                className="text-[9px] font-black truncate px-1 py-0.5 rounded"
+                                className="text-[8px] sm:text-[9px] font-black truncate px-1 py-0.5 rounded leading-tight"
                                 style={{
                                   backgroundColor: `${customCalendars.find(c => c.id === e.calendarId)?.color || '#3b82f6'}15`,
                                   color: customCalendars.find(c => c.id === e.calendarId)?.color || '#3b82f6'
@@ -887,12 +924,77 @@ export const CalendarDashboard: React.FC = () => {
         {/* Appointment List View */}
         {activeView === 'list' && (
           <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
-            <CardHeader>
-              <CardTitle>Listado General de Citas</CardTitle>
-              <CardDescription>Busca y gestiona tus reservas pendientes</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Listado General de Citas</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Busca y gestiona tus reservas pendientes</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Mobile Card List View */}
+              <div className="divide-y divide-slate-100 lg:hidden">
+                {filteredEvents.filter(e => e.type === 'cita').length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-xs">
+                    No se encontraron citas agendadas con los filtros seleccionados.
+                  </div>
+                ) : (
+                  filteredEvents.filter(e => e.type === 'cita').map((e) => {
+                    const calendarColor = customCalendars.find(c => c.id === e.calendarId)?.color || '#3b82f6';
+                    return (
+                      <div key={e.id} className="p-4 space-y-2.5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-bold text-slate-900 text-sm">{e.clientName}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">{e.clientEmail} | {e.clientPhone}</div>
+                          </div>
+                          <Badge className={
+                            e.status === 'confirmada' ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50' :
+                              e.status === 'cancelada' ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-50' :
+                                'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50'
+                          }>
+                            {e.status.toUpperCase()}
+                          </Badge>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-[11px] text-slate-700 space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Asunto:</span>
+                            <span className="font-semibold text-right max-w-[70%] truncate">{e.title}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Fecha/Hora:</span>
+                            <span className="font-mono font-semibold">{e.date} ({e.startTime} - {e.endTime})</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Asesor:</span>
+                            <span className="font-semibold">{e.assignedUser}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditModal(e)}
+                            className="h-8 text-blue-600 hover:text-blue-800 border-slate-200"
+                          >
+                            <Edit className="w-3.5 h-3.5 mr-1" /> Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteEvent(e.id)}
+                            className="h-8 text-red-500 hover:text-red-700 border-slate-200"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                   <thead className="bg-slate-50">
                     <tr>

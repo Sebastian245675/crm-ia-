@@ -14,7 +14,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  getAuthHeaders
 } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,18 +73,19 @@ import {
   Copy,
   Trash2,
   Edit,
-  UserX
+  UserX,
+  Menu
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { CustomClock } from '@/components/ui/CustomClock';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 const ProductFormWithWizard = lazy(() => import('@/components/admin/ProductFormWizard').then(m => ({ default: m.ProductFormWithWizard })));
 const ProductForm = lazy(() => import('@/components/admin/ProductForm').then(m => ({ default: m.ProductForm })));
 const OrdersList = lazy(() => import('@/components/admin/OrdersList').then(m => ({ default: m.OrdersList })));
 const CategoryManager = lazy(() => import('@/components/admin/CategoryManager').then(m => ({ default: m.CategoryManager })));
 const RevisionList = lazy(() => import('@/components/admin/RevisionList').then(m => ({ default: m.RevisionList })));
 const ProductAnalyticsView = lazy(() => import('@/components/admin/ProductAnalytics').then(m => ({ default: m.ProductAnalyticsView })));
-const InfoManager = lazy(() => import('@/components/admin/InfoManager'));
+
 const EmployeeManager = lazy(() => import('@/components/admin/EmployeeManager').then(m => ({ default: m.default || m })));
 const CompanyConfiguration = lazy(() => import('@/components/admin/CompanyConfiguration').then(m => ({ default: m.CompanyConfiguration })));
 const ConfigurationPanel = lazy(() => import('@/components/admin/ConfigurationPanel').then(m => ({ default: m.ConfigurationPanel })));
@@ -99,11 +101,16 @@ const SitiosManager = lazy(() => import('@/components/admin/SitiosManager').then
 const SeoManager = lazy(() => import('@/components/admin/SeoManager').then(m => ({ default: m.SeoManager })));
 const WebsiteManager = lazy(() => import('@/components/admin/WebsiteManager').then(m => ({ default: m.WebsiteManager })));
 const PaymentGatewayManager = lazy(() => import('@/components/admin/PaymentGatewayManager').then(m => ({ default: m.PaymentGatewayManager })));
+const FacturacionManager = lazy(() => import('@/components/admin/FacturacionManager').then(m => ({ default: m.FacturacionManager })));
+const SeguridadManager = lazy(() => import('@/components/admin/SeguridadManager').then(m => ({ default: m.SeguridadManager })));
 const CalendarDashboard = lazy(() => import('@/components/admin/CalendarDashboard').then(m => ({ default: m.CalendarDashboard })));
 const MarketingManager = lazy(() => import('@/components/admin/MarketingManager').then(m => ({ default: m.MarketingManager })));
 const MediaLibrary = lazy(() => import('@/components/admin/MediaLibrary').then(m => ({ default: m.MediaLibrary })));
 const OpportunitiesKanban = lazy(() => import('@/components/admin/OpportunitiesKanban').then(m => ({ default: m.OpportunitiesKanban })));
 const ModalitiesManager = lazy(() => import('@/components/admin/ModalitiesManager').then(m => ({ default: m.ModalitiesManager })));
+const ReportsManager = lazy(() => import('@/components/admin/ReportsManager').then(m => ({ default: m.ReportsManager })));
+const AccountingManager = lazy(() => import('@/components/admin/AccountingManager').then(m => ({ default: m.AccountingManager })));
+const ERPManager = lazy(() => import('@/components/admin/ERPManager').then(m => ({ default: m.ERPManager })));
 
 
 
@@ -117,6 +124,13 @@ import { Briefcase, Share2 } from 'lucide-react';
 import { useSubAccountRenderFix } from '@/hooks/use-subaccount-render-fix';
 import { useStockNotifications } from '@/hooks/use-stock-notifications';
 import { DashboardStats } from '@/components/admin/DashboardStats';
+import {
+  AGENCY_PERMISSIONS,
+  EMPTY_AGENCY_PERMISSIONS,
+  canAccessAdminTab,
+  firstAllowedAdminTab,
+  isAgencySubAccount,
+} from '@/lib/agency-permissions';
 
 const createUserWithEmailAndPassword = async (...args: any[]) => ({ user: { uid: 'mock-uid' } }) as any;
 const Timestamp = {
@@ -132,7 +146,64 @@ const LoadingFallback = () => (
   </div>
 );
 
+const ADMIN_TAB_PATHS: Record<string, string> = {
+  dashboard: 'inicio',
+  mensajeria: 'mensajes',
+  contacts: 'contactos',
+  calendars: 'calendario',
+  opportunities: 'oportunidades',
+  products: 'productos',
+  orders: 'pedidos',
+  marketing: 'marketing',
+  media: 'marketing/biblioteca',
+  erp: 'erp',
+  website: 'sitio-web',
+  funnels: 'sitio-web/funnels',
+  sitios: 'sitio-web/sitios',
+  seo: 'sitio-web/seo',
+  analytics: 'sitio-web/analitica',
+  comments: 'sitio-web/comentarios',
+  filters: 'sitio-web/filtros',
+  categories: 'sitio-web/categorias',
+  'ai-assistant': 'asistente-ia',
+  reportes: 'reportes',
+  contabilidad: 'contabilidad',
+  facturacion: 'facturacion',
+  seguridad: 'seguridad',
+  configuration: 'configuracion',
+  subaccounts: 'configuracion/subcuentas',
+  wpp: 'configuracion/whatsapp',
+  'mail-config': 'configuracion/correo',
+  'payment-gateways': 'configuracion/pagos',
+  revisiones: 'configuracion/revisiones',
+  modalities: 'configuracion/modalidades',
+  employees: 'empleados',
+  'help-manual': 'ayuda',
+  planes: 'planes',
+  info: 'informacion',
+};
+
+const getAdminTabFromPath = (pathname: string): string => {
+  const route = decodeURIComponent(pathname)
+    .replace(/^\/admin\/?/, '')
+    .replace(/\/+$/, '');
+  if (!route) return 'dashboard';
+
+  const mapped = Object.entries(ADMIN_TAB_PATHS).find(([, path]) => path === route)?.[0];
+  if (mapped) return mapped;
+
+  const nested = Object.entries(ADMIN_TAB_PATHS)
+    .sort(([, first], [, second]) => second.length - first.length)
+    .find(([, path]) => route.startsWith(`${path}/`))?.[0];
+  if (nested) return nested;
+
+  // Compatibilidad con enlaces antiguos del tipo /admin/orders.
+  return Object.prototype.hasOwnProperty.call(ADMIN_TAB_PATHS, route) ? route : 'dashboard';
+};
+
 export const AdminPanel: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const isSupabase = typeof (db as any)?.from === 'function';
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSubAdmin, setIsSubAdmin] = useState(false);
@@ -152,18 +223,53 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTabState] = useState(() => getAdminTabFromPath(window.location.pathname));
+  const setActiveTab = useCallback((tab: string) => {
+    const requestedTab = ADMIN_TAB_PATHS[tab] ? tab : 'dashboard';
+    const safeTab = canAccessAdminTab(user, requestedTab) ? requestedTab : firstAllowedAdminTab(user);
+    if (safeTab !== requestedTab) {
+      toast({ title: 'Acceso restringido', description: 'Tu cuenta no tiene permiso para abrir ese módulo.', variant: 'destructive' });
+    }
+    setActiveTabState(safeTab);
+    const nextPath = `/admin/${ADMIN_TAB_PATHS[safeTab]}`;
+    if (window.location.pathname !== nextPath) navigate(nextPath);
+  }, [navigate, user]);
+
+  useEffect(() => {
+    const requestedTab = getAdminTabFromPath(location.pathname);
+    const tabFromUrl = canAccessAdminTab(user, requestedTab) ? requestedTab : firstAllowedAdminTab(user);
+    setActiveTabState(current => current === tabFromUrl ? current : tabFromUrl);
+    const canonicalPath = `/admin/${ADMIN_TAB_PATHS[tabFromUrl]}`;
+    const relativePath = location.pathname.replace(/^\/admin\/?/, '').replace(/\/+$/, '');
+    const isRecognizedPath = Object.values(ADMIN_TAB_PATHS).some(path => relativePath === path || relativePath.startsWith(`${path}/`));
+    if (!isRecognizedPath || tabFromUrl !== requestedTab) navigate(canonicalPath, { replace: true });
+  }, [location.pathname, navigate, user]);
+
+  const remainingDays = useMemo(() => {
+    if (user?.subscription?.trial_ends_at) {
+      const diff = new Date(user.subscription.trial_ends_at).getTime() - Date.now();
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+    const localEnds = localStorage.getItem('merco_trial_ends_at');
+    if (localEnds) {
+      const diff = new Date(localEnds).getTime() - Date.now();
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+    const userCreated = (user as any)?.created_at || (user?.subscription as any)?.created_at;
+    if (userCreated) {
+      const expires = new Date(new Date(userCreated).getTime() + 15 * 24 * 60 * 60 * 1000);
+      const diff = expires.getTime() - Date.now();
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+    return 14;
+  }, [user]);
+
   const [orders, setOrders] = useState<any[]>([]);
   const [subName, setSubName] = useState('');
   const [subEmail, setSubEmail] = useState('');
   const [subPassword, setSubPassword] = useState('');
   const [subPermissions, setSubPermissions] = useState<Record<string, boolean>>({
-    manageProducts: false,
-    manageOrders: false,
-    manageContacts: false,
-    manageUsers: false,
-    viewAnalytics: false,
-    manageSettings: false,
+    ...EMPTY_AGENCY_PERMISSIONS,
   });
   const [subLoading, setSubLoading] = useState(false);
   const [subAccounts, setSubAccounts] = useState<any[]>([]);
@@ -172,6 +278,16 @@ export const AdminPanel: React.FC = () => {
   const [showCreateSubForm, setShowCreateSubForm] = useState(false);
   const [subAccountSearch, setSubAccountSearch] = useState('');
   const [subAccountRoleFilter, setSubAccountRoleFilter] = useState<string>('all');
+
+  // Estados para Edición de Subcuentas
+  const [editingSubAccount, setEditingSubAccount] = useState<any | null>(null);
+  const [editSubName, setEditSubName] = useState('');
+  const [editSubPhone, setEditSubPhone] = useState('');
+  const [editSubPassword, setEditSubPassword] = useState('');
+  const [editSubPermissions, setEditSubPermissions] = useState<Record<string, boolean>>({
+    ...EMPTY_AGENCY_PERMISSIONS,
+  });
+
   const [products, setProducts] = useState<any[]>([]);
   const [sessionTime, setSessionTime] = useState<string>("00:00:00");
   const [sessionStart, setSessionStart] = useState<Date>(new Date());
@@ -179,36 +295,107 @@ export const AdminPanel: React.FC = () => {
   const [todaySalesLoading, setTodaySalesLoading] = useState<boolean>(true);
   const [monthlySales, setMonthlySales] = useState<number>(0);
   const [monthlySalesLoading, setMonthlySalesLoading] = useState<boolean>(true);
+  const [avgConversations, setAvgConversations] = useState<number>(0);
+  const [avgConversationsLoading, setAvgConversationsLoading] = useState<boolean>(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPlanIADialog, setShowPlanIADialog] = useState(false);
   const [showAnunciosDialog, setShowAnunciosDialog] = useState(false);
   const [activeNotificationTab, setActiveNotificationTab] = useState<'sistema' | 'alertas'>('sistema');
-  const [systemNotifications, setSystemNotifications] = useState<any[]>([
-    {
-      id: 'sys-1',
-      title: 'Conexión con base de datos exitosa',
-      message: 'Se ha establecido la conexión con Supabase de forma correcta.',
-      timestamp: new Date(Date.now() - 5 * 60000),
-      read: false,
-      type: 'success'
-    },
-    {
-      id: 'sys-2',
-      title: 'Respaldo de datos diario',
-      message: 'El backup diario de base de datos se ha completado exitosamente.',
-      timestamp: new Date(Date.now() - 2 * 3600000),
-      read: false,
-      type: 'info'
-    },
-    {
-      id: 'sys-3',
-      title: 'Actualización del sistema',
-      message: 'Se aplicaron parches de seguridad a la API del servidor.',
-      timestamp: new Date(Date.now() - 24 * 3600000),
-      read: true,
-      type: 'info'
+
+  // Notificaciones reales del sistema basadas en el usuario, plan y actividad real
+  const generateRealNotifications = useCallback(() => {
+    try {
+      const readIds = new Set(JSON.parse(localStorage.getItem('merco_read_notifications') || '[]'));
+      const deletedIds = new Set(JSON.parse(localStorage.getItem('merco_deleted_notifications') || '[]'));
+
+      const notifs: any[] = [];
+      const now = Date.now();
+
+      // 1. Notificación sobre el plan / días restantes de prueba
+      const planNotifId = `notif-plan-${user?.id || 'main'}-${remainingDays}`;
+      if (!deletedIds.has(planNotifId)) {
+        const isExpiringSoon = remainingDays <= 3;
+        notifs.push({
+          id: planNotifId,
+          icon: isExpiringSoon ? '⚠️' : '⏳',
+          title: isExpiringSoon
+            ? `Tu periodo de prueba está por vencer (${remainingDays} ${remainingDays === 1 ? 'día' : 'días'})`
+            : `Periodo de prueba activo (${remainingDays} ${remainingDays === 1 ? 'día restante' : 'días restantes'})`,
+          message: isExpiringSoon
+            ? `Te quedan solo ${remainingDays} días de prueba. Elige un plan para no interrumpir el acceso a tus comprobantes, contabilidad y catálogo.`
+            : `Disfrutas de acceso completo a todos los módulos. Recuerda revisar los planes disponibles antes del vencimiento.`,
+          timestamp: new Date(now - 1000 * 60 * 25),
+          read: readIds.has(planNotifId),
+          type: isExpiringSoon ? 'warning' : 'info',
+          actionTab: 'planes'
+        });
+      }
+
+      // 2. Bienvenida al sistema (cuenta registrada)
+      const welcomeId = `notif-welcome-${user?.id || 'main'}`;
+      if (!deletedIds.has(welcomeId)) {
+        notifs.push({
+          id: welcomeId,
+          icon: '👋',
+          title: `¡Bienvenido a MERCO, ${user?.name || 'Administrador'}!`,
+          message: 'Tu cuenta y espacio de trabajo han sido configurados. Puedes comenzar explorando tus módulos de ERP, Contabilidad y Tienda.',
+          timestamp: new Date((user as any)?.created_at || now - 3600000 * 3),
+          read: readIds.has(welcomeId),
+          type: 'welcome',
+          actionTab: 'dashboard'
+        });
+      }
+
+      // 3. Recomendación de Seguridad / Doble Factor (2FA)
+      const secNotifId = `notif-sec-${user?.id || 'main'}`;
+      if (!deletedIds.has(secNotifId)) {
+        const has2fa = (user as any)?.email_2fa_enabled || (user as any)?.totp_secret;
+        if (!has2fa) {
+          notifs.push({
+            id: secNotifId,
+            icon: '🔒',
+            title: 'Refuerza la seguridad de tu acceso',
+            message: 'Protege tu panel administrativo activando la verificación en dos pasos (2FA) con código por correo o autenticador.',
+            timestamp: new Date(now - 3600000 * 8),
+            read: readIds.has(secNotifId),
+            type: 'security',
+            actionTab: 'seguridad'
+          });
+        }
+      }
+
+      // 4. Notificación de Pedidos reales si existen
+      if (orders && orders.length > 0) {
+        const orderNotifId = `notif-orders-${orders.length}`;
+        if (!deletedIds.has(orderNotifId)) {
+          const pending = orders.filter((o: any) => o.status === 'Pendiente' || o.status === 'pending');
+          notifs.push({
+            id: orderNotifId,
+            icon: '🛍️',
+            title: pending.length > 0
+              ? `${pending.length} pedidos pendientes por despachar`
+              : `${orders.length} pedidos registrados en total`,
+            message: 'Accede al módulo de Pedidos para revisar estados de entrega y pagos de clientes.',
+            timestamp: new Date(now - 3600000 * 1),
+            read: readIds.has(orderNotifId),
+            type: 'order',
+            actionTab: 'orders'
+          });
+        }
+      }
+
+      return notifs;
+    } catch {
+      return [];
     }
-  ]);
+  }, [user, remainingDays, orders]);
+
+  const [systemNotifications, setSystemNotifications] = useState<any[]>(() => generateRealNotifications());
+
+  useEffect(() => {
+    setSystemNotifications(generateRealNotifications());
+  }, [generateRealNotifications]);
+
   const [aiAssistantInput, setAiAssistantInput] = useState('');
   const [aiAssistantMessages, setAiAssistantMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
     { role: 'assistant', content: '¡Hola! Soy tu asistente IA. ¿En qué puedo ayudarte hoy con tu tienda?' }
@@ -224,7 +411,6 @@ export const AdminPanel: React.FC = () => {
 
   // Implementar el hook para prevenir problemas de pantalla blanca en subcuentas
   const { hasRenderIssues, manualRefresh } = useSubAccountRenderFix(user?.subCuenta === "si");
-
   // Hook para notificaciones de stock
   const {
     notifications: stockNotifications,
@@ -233,15 +419,6 @@ export const AdminPanel: React.FC = () => {
     markAllAsRead,
     removeNotification
   } = useStockNotifications();
-
-  // Cleanup al desmontar
-  useEffect(() => {
-    return () => {
-      if (aiTypingRef.current) {
-        clearTimeout(aiTypingRef.current);
-      }
-    };
-  }, []);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -324,26 +501,27 @@ export const AdminPanel: React.FC = () => {
 
   useEffect(() => {
     if (isSupabase) {
-      const isUserAdmin = user?.email?.toLowerCase() === "admin@gmail.com" ||
-        user?.email?.toLowerCase() === "admin@tienda.com";
-      setIsAdmin(isUserAdmin);
-      setIsSubAdmin(user?.subCuenta === "si");
+      if (!user) {
+        navigate('/login');
+        setLoading(false);
+        return;
+      }
 
-      if (user?.subCuenta === "si") {
+      const userIsSubAccount = isAgencySubAccount(user);
+      const isUserAdmin = user?.accountRole === 'agency_owner' ||
+        user?.email?.toLowerCase() === "admin@gmail.com" ||
+        user?.email?.toLowerCase() === "admin@tienda.com" ||
+        !userIsSubAccount;
+
+      setIsAdmin(isUserAdmin);
+      setIsSubAdmin(userIsSubAccount);
+
+      if (userIsSubAccount) {
         document.documentElement.classList.add('notranslate');
         document.body.setAttribute('translate', 'no');
       }
 
       setSessionStart(new Date());
-
-      // Si no es admin ni subadmin, y ya terminó de cargar, redirigir
-      if (!isUserAdmin && user?.subCuenta !== "si") {
-        // Solo redirigir si el usuario existe pero no tiene permisos
-        if (user) {
-          navigate('/');
-        }
-      }
-
       setLoading(false);
       return;
     }
@@ -354,6 +532,7 @@ export const AdminPanel: React.FC = () => {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
           const userData = userDoc.data();
           const lowEmail = firebaseUser.email?.toLowerCase();
+
           if (lowEmail === "admin@gmail.com" || lowEmail === "admin@tienda.com") {
             setIsAdmin(true);
             setIsSubAdmin(false);
@@ -377,7 +556,8 @@ export const AdminPanel: React.FC = () => {
               });
             }, 500);
           } else {
-            setIsAdmin(false);
+            // Un usuario registrado que no es subcuenta es el dueño/admin de su CRM
+            setIsAdmin(true);
             setIsSubAdmin(false);
           }
           setSessionStart(new Date());
@@ -392,6 +572,7 @@ export const AdminPanel: React.FC = () => {
         setIsAdmin(false);
         setIsSubAdmin(false);
         setLoading(false);
+        navigate('/login');
       }
     });
     return () => unsubscribe();
@@ -595,6 +776,65 @@ export const AdminPanel: React.FC = () => {
     }
   }, [activeTab]); // No incluir todaySales para evitar loops
 
+  // Calcular conversaciones promedio
+  useEffect(() => {
+    const calculateAvgConversations = async () => {
+      setAvgConversationsLoading(true);
+      try {
+        let contactsData: any[] = [];
+        if (isSupabase) {
+          const { data, error } = await db.from('contacts').select('created_at');
+          if (!error && data) {
+            contactsData = data;
+          }
+        } else {
+          try {
+            const querySnapshot = await getDocs(collection(db, "contacts"));
+            contactsData = querySnapshot.docs.map(doc => {
+              const d = doc.data();
+              return { created_at: d.created_at || d.createdAt?.toDate?.()?.toISOString() || d.createdAt };
+            });
+          } catch (e) {
+            console.warn("Could not query Firebase contacts:", e);
+          }
+        }
+
+        if (contactsData.length === 0) {
+          setAvgConversations(0);
+          return;
+        }
+
+        const uniqueDays = new Set<string>();
+        contactsData.forEach(c => {
+          const dateStr = c.created_at;
+          if (dateStr) {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              uniqueDays.add(date.toISOString().split('T')[0]);
+            }
+          }
+        });
+
+        const totalDays = uniqueDays.size || 1;
+        const avg = Number((contactsData.length / totalDays).toFixed(1));
+        setAvgConversations(avg);
+      } catch (err) {
+        console.error("Error calculating average conversations:", err);
+        setAvgConversations(0);
+      } finally {
+        setAvgConversationsLoading(false);
+      }
+    };
+
+    if (activeTab === 'dashboard') {
+      const timeoutId = setTimeout(calculateAvgConversations, 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setAvgConversations(0);
+      setAvgConversationsLoading(false);
+    }
+  }, [activeTab, isSupabase]);
+
   // Escuchar eventos de actualización del dashboard (siempre activo para ventas físicas)
   useEffect(() => {
     const handleDashboardUpdate = (event: CustomEvent) => {
@@ -777,83 +1017,33 @@ export const AdminPanel: React.FC = () => {
     e.preventDefault();
     setSubLoading(true);
     try {
-      if (isSupabase) {
-        // Crear usuario en Supabase Auth
-        const { data: authData, error: authError } = await (db as any).auth.signUp({
-          email: subEmail,
-          password: subPassword,
-          options: {
-            data: {
-              name: subName,
-              sub_cuenta: 'si',
-              permissions: subPermissions
-            }
-          }
-        });
+      if (!isAdmin || isAgencySubAccount(user)) throw new Error('Solo la cuenta principal puede crear colaboradores.');
+      const response = await fetch('/api/subaccounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ name: subName, email: subEmail, password: subPassword, permissions: subPermissions })
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.message || 'No se pudo crear la subcuenta.');
 
-        if (authError) throw authError;
-
-        // Crear registro en tabla users
-        const { error: dbError } = await (db as any)
-          .from('users')
-          .insert({
-            id: authData.user?.id,
-            name: subName,
-            email: subEmail,
-            sub_cuenta: 'si',
-            is_admin: false,
-            department_number: '',
-            phone: '',
-            address: '',
-            permissions: subPermissions
-          });
-
-        if (dbError) throw dbError;
-
-        toast({
-          title: "Subcuenta creada",
-          description: "El sub-administrador fue creado exitosamente.",
-        });
-      } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, subEmail, subPassword);
-        await setDoc(doc(db, "users", userCredential.user.uid), {
-          uid: userCredential.user.uid,
-          name: subName,
-          email: subEmail,
-          subCuenta: "si",
-          permissions: subPermissions
-        });
-        toast({
-          title: "Subcuenta creada",
-          description: "El sub-administrador fue creado exitosamente.",
-        });
-      }
+      toast({
+        title: "Colaborador creado",
+        description: "Quedó vinculado a esta agencia con los permisos seleccionados.",
+      });
 
       setSubName('');
       setSubEmail('');
       setSubPassword('');
       setSubPermissions({
-        manageProducts: false,
-        manageOrders: false,
-        manageContacts: false,
-        manageUsers: false,
-        viewAnalytics: false,
-        manageSettings: false,
+        ...EMPTY_AGENCY_PERMISSIONS,
       });
       setShowCreateSubForm(false);
       fetchSubAccounts(); // Recargar la lista
     } catch (error: any) {
-      const status = error?.status;
-      const code = error?.code;
       const msg = error?.message || "No se pudo crear la subcuenta";
-      const is429 = status === 429 || code === 'over_email_send_rate_limit' ||
-        msg?.toLowerCase?.().includes('429') || msg?.toLowerCase?.().includes('rate limit');
-      const description = is429
-        ? "Demasiados intentos. Supabase limita a 2 registros por hora. Espera 1 hora e intenta de nuevo."
-        : msg;
       toast({
         title: "Error",
-        description,
+        description: msg,
         variant: "destructive"
       });
     } finally {
@@ -864,24 +1054,13 @@ export const AdminPanel: React.FC = () => {
   const fetchSubAccounts = async () => {
     setSubAccountsLoading(true);
     try {
-      if (isSupabase) {
-        const { data, error } = await (db as any)
-          .from('users')
-          .select('*')
-          .eq('sub_cuenta', 'si');
-
-        if (error) throw error;
-
-        setSubAccounts(data || []);
-      } else {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        const subs = querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as { id: string; subCuenta?: string; name?: string; email?: string }))
-          .filter(u => u.subCuenta === "si");
-        setSubAccounts(subs);
-      }
-    } catch (e) {
-      toast({ title: "Error", description: "No se pudieron cargar las subcuentas", variant: "destructive" });
+      if (!isAdmin || isAgencySubAccount(user)) return;
+      const response = await fetch('/api/subaccounts', { headers: getAuthHeaders() });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.message || 'No se pudieron cargar las subcuentas.');
+      setSubAccounts(result.data || []);
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No se pudieron cargar las subcuentas", variant: "destructive" });
     }
     setSubAccountsLoading(false);
   };
@@ -890,74 +1069,76 @@ export const AdminPanel: React.FC = () => {
     if (!window.confirm("¿Seguro que deseas eliminar esta subcuenta? Esta acción no se puede deshacer.")) return;
     setDeletingId(uid);
     try {
-      if (isSupabase) {
-        const { error } = await (db as any)
-          .from('users')
-          .delete()
-          .eq('id', uid);
-
-        if (error) throw error;
-
-        setSubAccounts(subAccounts.filter(u => u.id !== uid));
-        toast({ title: "Subcuenta eliminada", description: "La subcuenta fue eliminada correctamente." });
-      } else {
-        await setDoc(doc(db, "users", uid), {}, { merge: false });
-        setSubAccounts(subAccounts.filter(u => u.id !== uid));
-        toast({ title: "Subcuenta eliminada", description: "La subcuenta fue eliminada correctamente." });
-      }
+      const response = await fetch(`/api/subaccounts/${encodeURIComponent(uid)}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.message || 'No se pudo eliminar la subcuenta.');
+      setSubAccounts(current => current.filter(account => account.id !== uid));
+      toast({ title: "Subcuenta eliminada", description: "El acceso fue eliminado de esta agencia." });
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "No se pudo eliminar", variant: "destructive" });
     }
     setDeletingId(null);
   };
 
-  const handleDarLiberta = async (uid: string) => {
+  const handleUpdateSubAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSubAccount) return;
+    setSubLoading(true);
     try {
-      if (isSupabase) {
-        const { error } = await (db as any)
-          .from('users')
-          .update({ liberta: "si" })
-          .eq('id', uid);
-        if (error) throw error;
-      } else {
-        await setDoc(doc(db, "users", uid), { liberta: "si" }, { merge: true });
-      }
-      toast({
-        title: "Liberta otorgada",
-        description: "La subcuenta ahora tiene liberta.",
+      const response = await fetch(`/api/subaccounts/${encodeURIComponent(editingSubAccount.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          name: editSubName,
+          phone: editSubPhone,
+          permissions: editSubPermissions,
+          active: editingSubAccount.active !== false,
+          ...(editSubPassword ? { password: editSubPassword } : {}),
+        })
       });
-      setSubAccounts(subAccounts.map(u =>
-        u.id === uid ? { ...u, liberta: "si" } : u
-      ));
-    } catch (e: any) {
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.message || 'No se pudo actualizar la subcuenta.');
+
       toast({
-        title: "Error",
-        description: e?.message || "No se pudo dar liberta",
+        title: "Subcuenta actualizada",
+        description: "Los cambios fueron guardados exitosamente.",
+      });
+
+      setEditingSubAccount(null);
+      setEditSubPassword('');
+      fetchSubAccounts();
+    } catch (error: any) {
+      toast({
+        title: "Error al actualizar",
+        description: error?.message || "No se pudo actualizar la subcuenta",
         variant: "destructive"
       });
+    } finally {
+      setSubLoading(false);
     }
   };
 
   const handleToggleLiberta = async (uid: string, current: string) => {
     const newValue = current === "si" ? "no" : "si";
     try {
-      if (isSupabase) {
-        const { error } = await (db as any)
-          .from('users')
-          .update({ liberta: newValue })
-          .eq('id', uid);
-        if (error) throw error;
-      } else {
-        await setDoc(doc(db, "users", uid), { liberta: newValue }, { merge: true });
-      }
+      const account = subAccounts.find(item => item.id === uid);
+      if (!account) throw new Error('No se encontró la subcuenta.');
+      const permissions = { ...(account.permissions || {}), publishProducts: newValue === 'si' };
+      const response = await fetch(`/api/subaccounts/${encodeURIComponent(uid)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ name: account.name, phone: account.phone || '', permissions, active: account.active !== false })
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.message || 'No se pudo actualizar el permiso.');
       toast({
-        title: newValue === "si" ? "Liberta otorgada" : "Liberta retirada",
+        title: newValue === "si" ? "Publicación directa habilitada" : "Revisión obligatoria habilitada",
         description: newValue === "si"
-          ? "La subcuenta ahora tiene liberta."
-          : "La subcuenta ya no tiene liberta.",
+          ? "El colaborador puede publicar productos sin aprobación."
+          : "Los cambios de productos deberán ser aprobados por la cuenta principal.",
       });
       setSubAccounts(subAccounts.map(u =>
-        u.id === uid ? { ...u, liberta: newValue } : u
+        u.id === uid ? { ...u, ...result.data } : u
       ));
     } catch (e: any) {
       toast({
@@ -965,6 +1146,32 @@ export const AdminPanel: React.FC = () => {
         description: e?.message || "No se pudo actualizar liberta",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleToggleSubAccountStatus = async (account: any) => {
+    try {
+      const response = await fetch(`/api/subaccounts/${encodeURIComponent(account.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          name: account.name,
+          phone: account.phone || '',
+          permissions: account.permissions || {},
+          active: account.active === false,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) throw new Error(result?.message || 'No se pudo cambiar el estado.');
+      setSubAccounts(current => current.map(item => item.id === account.id ? { ...item, ...result.data } : item));
+      toast({
+        title: result.data.active ? 'Acceso habilitado' : 'Acceso suspendido',
+        description: result.data.active
+          ? 'El colaborador puede volver a iniciar sesión.'
+          : 'La sesión y el acceso del colaborador quedaron bloqueados.',
+      });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error?.message || 'No se pudo cambiar el estado.', variant: 'destructive' });
     }
   };
 
@@ -1009,13 +1216,10 @@ export const AdminPanel: React.FC = () => {
       );
     }
 
-    // Filtrar por rol
+    // Filtrar por estado. Todas las filas son colaboradores; nunca administradores de agencia.
     if (subAccountRoleFilter !== 'all') {
-      if (subAccountRoleFilter === 'admin') {
-        filtered = filtered.filter(sub => sub.liberta === "si" || sub.isAdmin);
-      } else if (subAccountRoleFilter === 'user') {
-        filtered = filtered.filter(sub => sub.liberta !== "si" && !sub.isAdmin);
-      }
+      if (subAccountRoleFilter === 'active') filtered = filtered.filter(sub => sub.active !== false);
+      if (subAccountRoleFilter === 'suspended') filtered = filtered.filter(sub => sub.active === false);
     }
 
     return filtered;
@@ -1046,9 +1250,9 @@ export const AdminPanel: React.FC = () => {
                 onChange={(e) => setSubAccountRoleFilter(e.target.value)}
                 className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
               >
-                <option value="all">Usuario Rol</option>
-                <option value="admin">ACCOUNT-ADMIN</option>
-                <option value="user">ACCOUNT-USER</option>
+                <option value="all">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="suspended">Suspendidos</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
             </div>
@@ -1111,15 +1315,8 @@ export const AdminPanel: React.FC = () => {
                 <div>
                   <h5 className="text-sm font-semibold text-slate-900 mb-2">Permisos del usuario</h5>
                   <p className="text-xs text-slate-500 mb-3">Selecciona los permisos que deseas asignar al nuevo usuario.</p>
-                  <div className="space-y-2">
-                    {[
-                      { key: 'manageProducts', label: 'Gestionar Productos' },
-                      { key: 'manageOrders', label: 'Gestionar Pedidos' },
-                      { key: 'manageContacts', label: 'Gestionar Contactos' },
-                      { key: 'manageUsers', label: 'Gestionar Usuarios' },
-                      { key: 'viewAnalytics', label: 'Ver Analytics' },
-                      { key: 'manageSettings', label: 'Configuración y Ajustes' },
-                    ].map((item) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {AGENCY_PERMISSIONS.map((item) => (
                       <label key={item.key} className="flex items-center gap-3 text-sm text-slate-700">
                         <input
                           type="checkbox"
@@ -1137,14 +1334,12 @@ export const AdminPanel: React.FC = () => {
                 </div>
                 <div className="text-sm text-slate-500">
                   <p className="font-semibold text-slate-800 mb-2">¿Qué hace cada permiso?</p>
-                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Gestionar Productos:</strong> crear, editar y eliminar productos en el catálogo.</li>
-                    <li><strong>Gestionar Pedidos:</strong> ver y actualizar el estado de pedidos y devoluciones.</li>
-                    <li><strong>Gestionar Contactos:</strong> acceder a contactos, comentarios y tareas asociadas.</li>
-                    <li><strong>Gestionar Usuarios:</strong> crear o editar subcuentas y permisos.</li>
-                    <li><strong>Ver Analytics:</strong> consultar métricas de ventas, tráfico y comportamiento.</li>
-                    <li><strong>Configuración y Ajustes:</strong> cambiar ajustes generales del panel o integraciones.</li>
-                  </ul>
+                  <div className="max-h-64 space-y-2 overflow-y-auto pr-2">
+                    {AGENCY_PERMISSIONS.map(item => (
+                      <p key={item.key}><strong>{item.label}:</strong> {item.description}</p>
+                    ))}
+                    <p className="border-t border-slate-200 pt-2 font-medium text-slate-700">La administración de colaboradores siempre queda reservada a la cuenta principal.</p>
+                  </div>
                 </div>
               </div>
 
@@ -1164,12 +1359,7 @@ export const AdminPanel: React.FC = () => {
                     setSubEmail('');
                     setSubPassword('');
                     setSubPermissions({
-                      manageProducts: false,
-                      manageOrders: false,
-                      manageContacts: false,
-                      manageUsers: false,
-                      viewAnalytics: false,
-                      manageSettings: false,
+                      ...EMPTY_AGENCY_PERMISSIONS,
                     });
                   }}
                   variant="outline"
@@ -1204,6 +1394,7 @@ export const AdminPanel: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correo electrónico</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de usuario</th>
@@ -1213,7 +1404,7 @@ export const AdminPanel: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredSubAccounts.map(sub => {
                     const encryptedId = generateEncryptedId(sub.email || '', sub.id);
-                    const userType = sub.liberta === "si" || sub.isAdmin ? "ACCOUNT-ADMIN" : "ACCOUNT-USER";
+                    const userType = 'COLABORADOR';
                     const initials = sub.name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || sub.email?.substring(0, 2).toUpperCase() || 'U';
 
                     return (
@@ -1232,6 +1423,21 @@ export const AdminPanel: React.FC = () => {
                               <div className="text-sm font-medium text-gray-900">{sub.name || 'Sin nombre'}</div>
                             </div>
                           </div>
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSubAccountStatus(sub)}
+                            className={cn(
+                              "inline-flex px-2 py-1 text-xs font-semibold border transition-colors",
+                              sub.active !== false
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                : "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            )}
+                          >
+                            {sub.active !== false ? 'Activo' : 'Suspendido'}
+                          </button>
                         </td>
 
                         {/* Correo electrónico */}
@@ -1256,10 +1462,7 @@ export const AdminPanel: React.FC = () => {
 
                         {/* Tipo de usuario */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${userType === "ACCOUNT-ADMIN"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-gray-100 text-gray-800"
-                            }`}>
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-700">
                             {userType}
                           </span>
                         </td>
@@ -1275,16 +1478,17 @@ export const AdminPanel: React.FC = () => {
                                   ? "bg-green-100 text-green-700 hover:bg-green-200"
                                   : "bg-amber-100 text-amber-700 hover:bg-amber-200"
                               )}
-                              title={sub.liberta === "si" ? "Quitar Liberta" : "Dar Liberta"}
+                              title={sub.liberta === "si" ? "Exigir revisión" : "Permitir publicación directa"}
                             >
-                              {sub.liberta === "si" ? "Con Liberta" : "Dar Liberta"}
+                              {sub.liberta === "si" ? "Publicación directa" : "Requiere revisión"}
                             </button>
                             <button
                               onClick={() => {
-                                toast({
-                                  title: "Editar usuario",
-                                  description: `Editar ${sub.name}`,
-                                });
+                                setEditingSubAccount(sub);
+                                setEditSubName(sub.name || '');
+                                setEditSubPhone(sub.phone || sub.telefono || '');
+                                setEditSubPassword('');
+                                setEditSubPermissions({ ...EMPTY_AGENCY_PERMISSIONS, ...(sub.permissions || {}) });
                               }}
                               className="text-gray-400 hover:text-blue-600 transition-colors"
                               title="Editar"
@@ -1313,6 +1517,105 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Dialog for editing subaccount */}
+        <Dialog open={!!editingSubAccount} onOpenChange={(open) => { if (!open) setEditingSubAccount(null); }}>
+          <DialogContent className="max-w-xl bg-white border border-neutral-200 shadow-xl rounded-lg p-6 z-50 text-slate-800">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-800 uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                Editar Subcuenta / Usuario
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 pt-1">
+                Modifica los datos y permisos de {editingSubAccount?.name || editingSubAccount?.email}.
+              </DialogDescription>
+            </DialogHeader>
+
+            {editingSubAccount && (
+              <form onSubmit={handleUpdateSubAccount} className="space-y-4 py-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase">Nombre Completo *</label>
+                    <Input
+                      value={editSubName}
+                      onChange={e => setEditSubName(e.target.value)}
+                      className="bg-white text-sm"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase">Teléfono</label>
+                    <Input
+                      value={editSubPhone}
+                      onChange={e => setEditSubPhone(e.target.value)}
+                      className="bg-white text-sm"
+                      placeholder="Ej. +54 9 11 1234-5678"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase">Restablecer contraseña</label>
+                  <Input
+                    value={editSubPassword}
+                    onChange={e => setEditSubPassword(e.target.value)}
+                    type="password"
+                    minLength={8}
+                    className="bg-white text-sm"
+                    placeholder="Dejar en blanco para conservar la actual"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  <div>
+                    <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Permisos Asignados</h5>
+                    <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-2 sm:grid-cols-2">
+                      {AGENCY_PERMISSIONS.map((item) => (
+                        <label key={item.key} className="flex items-center gap-3 text-xs text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editSubPermissions[item.key] || false}
+                            onChange={() => setEditSubPermissions(prev => ({
+                              ...prev,
+                              [item.key]: !prev[item.key],
+                            }))}
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    <p className="font-semibold text-slate-800 mb-1.5">Guía de Roles:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Marcar permisos le otorgará acceso directo a los módulos elegidos.</li>
+                      <li>Los cambios se aplicarán de inmediato la próxima vez que el colaborador inicie sesión.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <DialogFooter className="border-t pt-3 flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditingSubAccount(null)}
+                    className="h-10 text-xs font-semibold rounded-md"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={subLoading}
+                    className="h-10 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white px-4"
+                  >
+                    {subLoading ? 'Guardando...' : 'Guardar Cambios'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   };
@@ -1362,24 +1665,37 @@ export const AdminPanel: React.FC = () => {
       </div>
 
       {/* Main Content Area - Con margen izquierdo para el sidebar */}
-      <div className="flex-1 flex flex-col ml-0 lg:ml-[220px] overflow-x-hidden">
-        {/* Top Notification Bar - Solid Blue */}
-        <div className="bg-blue-600 text-white px-6 py-2.5 flex items-center justify-between text-sm font-medium">
-          <div className="flex items-center space-x-2 flex-1 justify-center">
-            <span className="uppercase tracking-widest font-black text-base">FREE MERCO</span>
+      <div className="flex-1 flex flex-col ml-0 overflow-x-hidden lg:ml-[220px]">
+        {/* Single Consolidated Header Bar */}
+        <header className="bg-gradient-to-b from-[#f7fafc] to-[#dceaf3] text-[#244d68] border-b border-[#a8c0d1] px-4 sm:px-6 py-2 sticky top-0 z-40 flex items-center justify-between text-xs font-medium min-w-0 w-full shadow-xs">
+          {/* Left Section: Mobile Menu + Enterprise Title + Plan actual */}
+          <div className="flex items-center space-x-2 shrink-0 min-w-0">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggleSidebar'))}
+              className="lg:hidden p-1 -ml-1 rounded text-slate-600 hover:bg-slate-200/70 active:scale-95 transition-all"
+              type="button"
+              title="Abrir menú"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="uppercase tracking-wide font-bold shrink-0">MERCO Business Software</span>
+            <span className="hidden sm:inline text-slate-500">• {remainingDays} {remainingDays === 1 ? 'día restante' : 'días restantes'}</span>
             <button
               onClick={() => setActiveTab('planes')}
-              className="ml-4 bg-blue-700 hover:bg-blue-800 text-white px-4 py-1 rounded-md text-xs font-bold transition-colors"
+              className="bg-white hover:bg-[#edf6fb] text-[#245878] border border-[#9fb9ca] px-3 py-1 text-[11px] font-semibold transition-colors rounded shadow-xs"
             >
-              Resolve
+              Plan actual
             </button>
           </div>
-        </div>
 
-        {/* Main Header Toolbar - Solo iconos circulares */}
-        <header className="bg-white border-b border-slate-100 flex items-center justify-end px-6 py-3 sticky top-0 z-40 flex-shrink-0 min-w-0 w-full">
+          {/* El ERP inserta aquí su navegación secundaria para aprovechar el encabezado */}
+          <div
+            id="erp-header-navigation"
+            className={cn('hidden md:block min-w-0 flex-1 px-4', activeTab !== 'erp' && 'md:hidden')}
+          />
+
           {/* Circular Action Icons */}
-          <div className="flex items-center space-x-1.5 flex-shrink-0">
+          <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
             {/* Home Button - Ir a la tienda */}
             <button
               onClick={() => navigate('/')}
@@ -1454,8 +1770,8 @@ export const AdminPanel: React.FC = () => {
                     <p className="text-xs text-slate-500">{user?.email || "admin@gmail.com"}</p>
                   </div>
                   <ul>
-                    <li>
-                      <button 
+                    {canAccessAdminTab(user, 'configuration') && <li>
+                      <button
                         onClick={() => {
                           setActiveTab('configuration');
                           setShowUserMenu(false);
@@ -1465,7 +1781,7 @@ export const AdminPanel: React.FC = () => {
                         <Settings className="h-4 w-4 text-slate-400" />
                         <span>Configuración</span>
                       </button>
-                    </li>
+                    </li>}
                     <li className="border-t border-slate-100 mt-1 pt-1">
                       <button
                         onClick={handleLogout}
@@ -1477,6 +1793,7 @@ export const AdminPanel: React.FC = () => {
                     </li>
                   </ul>
                 </div>
+
               )}
             </div>
           </div>
@@ -1533,7 +1850,6 @@ export const AdminPanel: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Problemas de visualización detectados</h3>
                 <div className="mt-2 text-xs text-red-700">
                   <p>Se detectaron problemas en la visualización del panel. Haz clic en el botón para reparar.</p>
                 </div>
@@ -1553,14 +1869,19 @@ export const AdminPanel: React.FC = () => {
 
         {/* Main content area */}
         <div className="flex-1 flex flex-col overflow-auto overflow-x-hidden admin-panel-content critical-ui-container" translate="no">
-          <div className="px-4 md:px-6 pt-0 pb-4 md:pb-6 max-w-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <div className={cn(
+            "px-3 md:px-5 max-w-full",
+            activeTab === 'mensajeria' ? "pt-2 pb-2" : "pt-4 md:pt-5 pb-4 md:pb-6"
+          )}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-0">
               {/* Hidden tabs list for state management - visual only */}
               <TabsList className="hidden">
-                {!isSubAdmin && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="products">Products</TabsTrigger>
                 <TabsTrigger value="orders">Orders</TabsTrigger>
                 <TabsTrigger value="categories">Categories</TabsTrigger>
+                <TabsTrigger value="reportes">Reportes</TabsTrigger>
+                <TabsTrigger value="erp">ERP Integral</TabsTrigger>
                 {/* Tabs comunes entre admin y subadmin */}
                 <TabsTrigger value="info">Info</TabsTrigger>
                 <TabsTrigger value="configuration">Configuración</TabsTrigger>
@@ -1585,35 +1906,42 @@ export const AdminPanel: React.FC = () => {
 
                 {!isSubAdmin && (
                   <>
-                    <TabsTrigger value="subaccounts">Subaccounts</TabsTrigger>
+                    <TabsTrigger value="subaccounts">Subcuentas</TabsTrigger>
                     <TabsTrigger value="revisiones">Revisiones</TabsTrigger>
-                    <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                    <TabsTrigger value="analytics">Analítica</TabsTrigger>
                     <TabsTrigger value="employees">Empleados</TabsTrigger>
                   </>
                 )}
               </TabsList>
 
-              {/* Tab Contents */}
-              {!isSubAdmin && (
-                <TabsContent value="dashboard" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-                    {/* Estado del Sistema - Teal/Azul */}
+              <TabsContent value="dashboard" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
                     <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
                       <CardContent className="p-5 relative z-10">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <h3 className="text-3xl font-bold mb-1">Activo</h3>
-                            <p className="text-sm text-teal-50 opacity-90">Estado del Sistema</p>
+                            {avgConversationsLoading ? (
+                              <div className="flex items-center space-x-2 mb-1">
+                                <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                                <span className="text-2xl font-bold">...</span>
+                              </div>
+                            ) : (
+                              <h3 className="text-3xl font-bold mb-1">{avgConversations}</h3>
+                            )}
+                            <p className="text-sm text-teal-50 opacity-90">Conversaciones</p>
                           </div>
                           <div className="opacity-20">
-                            <BarChart3 className="h-16 w-16" />
+                            <MessagesSquare className="h-16 w-16" />
                           </div>
                         </div>
                         <div className="mt-4 pt-3 border-t border-teal-400/30">
-                          <a href="#" className="text-xs text-teal-50 hover:text-white transition-colors flex items-center group">
-                            Más información
+                          <button
+                            onClick={() => setActiveTab('mensajeria')}
+                            className="text-xs text-teal-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                          >
+                            Ir a Mensajes
                             <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                          </a>
+                          </button>
                         </div>
                       </CardContent>
                     </Card>
@@ -1661,123 +1989,39 @@ export const AdminPanel: React.FC = () => {
                             )}
                             <p className="text-sm text-yellow-50 opacity-90">Ingresos Mensuales</p>
                           </div>
-                          <div className="opacity-20">
-                            <TrendingUp className="h-16 w-16" />
-                          </div>
+                          <TrendingUp className="h-12 w-12 opacity-20" />
                         </div>
-                        <div className="mt-4 pt-3 border-t border-yellow-400/30">
-                          <p className="text-xs text-yellow-50 opacity-80 mb-1">
-                            Actualizado {new Date().toLocaleDateString('es-AR')}
-                          </p>
-                          <a href="#" className="text-xs text-yellow-50 hover:text-white transition-colors flex items-center group">
-                            Más información
+                        <div className="mt-4 pt-3 border-t border-orange-400/30">
+                          <button
+                            onClick={() => setActiveTab('orders')}
+                            className="text-xs text-orange-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                          >
+                            Ver pedidos
                             <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                          </a>
+                          </button>
                         </div>
                       </CardContent>
                     </Card>
-
-                    {/* Estadísticas - Rojo */}
-                    <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
-                      <CardContent className="p-5 relative z-10">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="text-3xl font-bold mb-1">Activo</h3>
-                            <p className="text-sm text-red-50 opacity-90">Estadísticas</p>
-                          </div>
-                          <div className="opacity-20">
-                            <ChartBar className="h-16 w-16" />
-                          </div>
-                        </div>
-                        <div className="mt-4 pt-3 border-t border-red-400/30">
-                          <a href="#" className="text-xs text-red-50 hover:text-white transition-colors flex items-center group">
-                            Más información
-                            <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                          </a>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <button className="dashboard-refresh-button hidden" onClick={() => console.log("Refresh button clicked")}></button>
                   </div>
                   <DashboardStats orders={orders} />
-                </TabsContent>
-              )}
+              </TabsContent>
 
               <TabsContent value="products" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <ProductFormWithWizard
-                    key={selectedProductId || 'new-product'}
-                    selectedProductId={selectedProductId}
-                    onProductSelected={() => setSelectedProductId(null)}
-                  />
+                  <ProductFormWithWizard key={selectedProductId || 'new-product'} selectedProductId={selectedProductId} onProductSelected={() => setSelectedProductId(null)} />
                 </Suspense>
               </TabsContent>
 
               <TabsContent value="orders" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}>
-                  <div className="mb-6">
-                    <OrdersList />
-                  </div>
-
-                  {/* Botón flotante para acciones rápidas en móvil */}
-                  <button
-                    className="fixed z-30 md:hidden bottom-24 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center shadow-lg text-white"
-                  >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </button>
-                </Suspense>
+                <Suspense fallback={<LoadingFallback />}><OrdersList /></Suspense>
               </TabsContent>
 
               <TabsContent value="categories" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}>
-                  <CategoryManager />
-                </Suspense>
+                <Suspense fallback={<LoadingFallback />}><CategoryManager /></Suspense>
               </TabsContent>
 
-              {/* Manual de Ayuda - disponible para todos (admin y subadmin) */}
               <TabsContent value="help-manual" className="space-y-6">
                 <div className="bg-slate-50 rounded-xl border border-slate-200 p-6 md:p-8 overflow-hidden">
-                  {/* Encabezado */}
-                  <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6">
-                    <div className="w-14 h-14 rounded-xl bg-[hsl(214,100%,38%)] flex items-center justify-center shadow-sm">
-                      <HelpCircle className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-2xl md:text-3xl font-bold text-slate-800">
-                        Manual de Ayuda
-                      </h2>
-                      <p className="mt-1 text-slate-600">
-                        Todo lo que necesitas saber para gestionar tu tienda de manera efectiva
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-[hsl(214,100%,38%)] transition-colors rounded-lg">Primeros Pasos</Badge>
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-[hsl(214,100%,38%)] transition-colors rounded-lg">Gestión de Productos</Badge>
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-[hsl(214,100%,38%)] transition-colors rounded-lg">Pedidos</Badge>
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-[hsl(214,100%,38%)] transition-colors rounded-lg">Usuarios</Badge>
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-[hsl(214,100%,38%)] transition-colors rounded-lg">Analítica</Badge>
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-[hsl(214,100%,38%)] transition-colors rounded-lg">Configuración</Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mensaje de bienvenida */}
-                  <div className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 mb-8 shadow-sm">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-[hsl(214,100%,38%)]/10 flex items-center justify-center flex-shrink-0">
-                        <Lightbulb className="h-5 w-5 text-[hsl(214,100%,38%)]" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-slate-800">Bienvenido al Manual de Ayuda</h4>
-                        <p className="text-slate-600 text-sm mt-1">
-                          Este manual te guía paso a paso por las funcionalidades del panel de administración. Encontrarás configuración inicial, gestión de productos (incluyendo importación desde Excel), pedidos, punto de venta (POS), subcuentas, analítica y solución de problemas frecuentes.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Sección de guías principales */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                     {/* Guía de Primeros Pasos */}
@@ -2596,7 +2840,7 @@ export const AdminPanel: React.FC = () => {
 
                   <TabsContent value="analytics" className="space-y-6">
                     <Suspense fallback={<LoadingFallback />}>
-                      <WebsiteManager initialTab="analytics" isAdmin={isAdmin} />
+                      <WebsiteManager initialTab="analytics" isAdmin={isAdmin} onNavigate={setActiveTab} />
                     </Suspense>
                   </TabsContent>
 
@@ -2621,12 +2865,6 @@ export const AdminPanel: React.FC = () => {
                 </>
               )}
 
-              {/* Info tab - disponible para admin y subadmin */}
-              <TabsContent value="info" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}>
-                  <InfoManager />
-                </Suspense>
-              </TabsContent>
 
               {/* Configuration tab - disponible para admin y subadmin */}
               <TabsContent value="configuration" className="space-y-6">
@@ -2698,6 +2936,40 @@ export const AdminPanel: React.FC = () => {
                 </Suspense>
               </TabsContent>
 
+              <TabsContent value="reportes" className="space-y-6">
+                <Suspense fallback={<LoadingFallback />}>
+                  <ReportsManager />
+                </Suspense>
+              </TabsContent>
+
+              {/* Facturacion tab */}
+              <TabsContent value="facturacion" className="space-y-6">
+                <Suspense fallback={<LoadingFallback />}>
+                  <FacturacionManager />
+                </Suspense>
+              </TabsContent>
+
+              {/* Seguridad tab */}
+              <TabsContent value="seguridad" className="space-y-6">
+                <Suspense fallback={<LoadingFallback />}>
+                  <SeguridadManager />
+                </Suspense>
+              </TabsContent>
+
+              {/* Contabilidad tab */}
+              <TabsContent value="contabilidad" className="space-y-6">
+                <Suspense fallback={<LoadingFallback />}>
+                  <AccountingManager standalone />
+                </Suspense>
+              </TabsContent>
+
+              {/* Centro ERP integral */}
+              <TabsContent value="erp" className="space-y-0 m-0 p-0 border-none outline-none mt-0">
+                <Suspense fallback={<LoadingFallback />}>
+                  <ERPManager onExit={() => setActiveTab('dashboard')} />
+                </Suspense>
+              </TabsContent>
+
               <TabsContent value="contacts" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
                   <ContactsManager />
@@ -2707,35 +2979,35 @@ export const AdminPanel: React.FC = () => {
               {/* Sitio Web principal */}
               <TabsContent value="website" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="funnels" isAdmin={isAdmin} />
+                  <WebsiteManager initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* Comments tab */}
               <TabsContent value="comments" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="comments" isAdmin={isAdmin} />
+                  <WebsiteManager initialTab="comments" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* Funnels tab */}
               <TabsContent value="funnels" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="funnels" isAdmin={isAdmin} />
+                  <WebsiteManager initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* Sitios tab */}
               <TabsContent value="sitios" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="sitios" isAdmin={isAdmin} />
+                  <WebsiteManager initialTab="sitios" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* SEO tab */}
               <TabsContent value="seo" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="seo" isAdmin={isAdmin} />
+                  <WebsiteManager initialTab="seo" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
@@ -2765,9 +3037,12 @@ export const AdminPanel: React.FC = () => {
               </TabsContent>
 
               {/* Mensajería (WhatsApp simulation and config) */}
-              <TabsContent value="mensajeria" className="m-0 p-0 border-none outline-none mt-0">
+              <TabsContent value="mensajeria" forceMount className="m-0 p-0 border-none outline-none mt-0 data-[state=inactive]:hidden">
                 <Suspense fallback={<LoadingFallback />}>
-                  <MessagingManager onNavigateToConfig={() => setActiveTab('wpp')} />
+                  <MessagingManager
+                    isActive={activeTab === 'mensajeria'}
+                    onNavigateToConfig={() => setActiveTab('wpp')}
+                  />
                 </Suspense>
               </TabsContent>
 
@@ -3084,7 +3359,13 @@ export const AdminPanel: React.FC = () => {
           <button
             onClick={() => {
               if (activeNotificationTab === 'sistema') {
-                setSystemNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                setSystemNotifications(prev => {
+                  const updated = prev.map(n => ({ ...n, read: true }));
+                  try {
+                    localStorage.setItem('merco_read_notifications', JSON.stringify(updated.map(n => n.id)));
+                  } catch {}
+                  return updated;
+                });
                 toast({ title: "Notificaciones leídas", description: "Se marcaron todas las notificaciones del sistema como leídas." });
               } else {
                 markAllAsRead();
@@ -3104,14 +3385,24 @@ export const AdminPanel: React.FC = () => {
             systemNotifications.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12 text-slate-400">
                 <Bell className="h-8 w-8 mb-2 opacity-30 animate-pulse" />
-                <p className="text-sm">No se encontraron notificaciones</p>
+                <p className="text-sm">No tienes notificaciones pendientes</p>
               </div>
             ) : (
               systemNotifications.map((n) => (
                 <div
                   key={n.id}
                   onClick={() => {
-                    setSystemNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+                    setSystemNotifications(prev => {
+                      const updated = prev.map(item => item.id === n.id ? { ...item, read: true } : item);
+                      try {
+                        localStorage.setItem('merco_read_notifications', JSON.stringify(updated.filter(i => i.read).map(i => i.id)));
+                      } catch {}
+                      return updated;
+                    });
+                    if (n.actionTab) {
+                      setActiveTab(n.actionTab);
+                      setShowNotifications(false);
+                    }
                   }}
                   className={cn(
                     "p-3 rounded-lg border transition-colors cursor-pointer relative group flex items-start gap-3",
@@ -3121,11 +3412,16 @@ export const AdminPanel: React.FC = () => {
                   )}
                 >
                   <div className="text-lg mt-0.5 flex-shrink-0">
-                    {n.type === 'success' ? '⚙️' : 'ℹ️'}
+                    {n.icon || (n.type === 'success' ? '✅' : n.type === 'warning' ? '⚠️' : n.type === 'welcome' ? '👋' : n.type === 'security' ? '🔒' : 'ℹ️')}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold leading-snug">{n.title}</p>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">{n.message}</p>
+                    {n.actionTab && (
+                      <span className="text-[10px] text-blue-600 font-semibold hover:underline mt-1.5 inline-block">
+                        Abrir módulo →
+                      </span>
+                    )}
                     <p className="text-[10px] text-slate-400 mt-2 flex items-center">
                       <CustomClock className="h-3 w-3 mr-1" />
                       {formatNotificationTime(n.timestamp)}

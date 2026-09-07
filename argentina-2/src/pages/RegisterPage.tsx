@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,8 @@ type RegisterStep = 'personal' | 'account' | 'verification';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isTrialRegistration = searchParams.get('trial') === 'true';
   const { user, register, resendVerificationEmail } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -20,12 +22,23 @@ export const RegisterPage: React.FC = () => {
   // Redirigir si ya está logueado
   React.useEffect(() => {
     if (user) {
-      navigate('/');
+      if (user.subCuenta === 'saas-admin') {
+        navigate('/superadmin');
+      } else {
+        navigate('/admin');
+      }
     }
   }, [user, navigate]);
   const [resendLoading, setResendLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [registerStep, setRegisterStep] = useState<RegisterStep>('personal');
+  const [selectedPlan, setSelectedPlan] = useState<'trial' | 'free' | 'base' | 'intermediate' | 'advanced'>(
+    isTrialRegistration ? 'trial' : 'free'
+  );
+
+  React.useEffect(() => {
+    if (isTrialRegistration) setSelectedPlan('trial');
+  }, [isTrialRegistration]);
 
   const [registerData, setRegisterData] = useState({
     name: '',
@@ -51,7 +64,7 @@ export const RegisterPage: React.FC = () => {
     return emailRegex.test(email);
   };
 
-  const validatePassword = (password: string) => password.length >= 6;
+  const validatePassword = (password: string) => password.length >= 8;
 
   const validatePhoneNumber = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
@@ -93,7 +106,7 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (!registerData.password || !validatePassword(registerData.password)) {
-      newErrors.password = 'Contrasena debe tener al menos 6 caracteres';
+      newErrors.password = 'Contrasena debe tener al menos 8 caracteres';
     }
 
     if (registerData.password !== registerData.confirmPassword) {
@@ -122,13 +135,14 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const result = await register({
+       const result = await register({
         email: registerData.email,
         password: registerData.password,
         name: registerData.name,
         phone: registerData.phone,
         address: registerData.address,
-        departmentNumber: "" // Requerido por la interfaz User
+        departmentNumber: "", // Requerido por la interfaz User
+        plan: selectedPlan
       });
       
       if (!result.success) throw new Error(result.error);
@@ -141,7 +155,7 @@ export const RegisterPage: React.FC = () => {
 
       // Redirigir automáticamente después de 2 segundos
       setTimeout(() => {
-        navigate('/');
+        navigate('/admin');
       }, 2000);
     } catch (error: any) {
       toast({
@@ -341,13 +355,13 @@ export const RegisterPage: React.FC = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-2">¡Registro Exitoso!</h2>
                 <p className="text-slate-600 mb-6 text-sm">
-                  Bienvenido a nuestra tienda, <span className="font-semibold text-slate-900">{registerData.name}</span>. 
-                  Estamos preparando todo para que empieces a comprar.
+                  Te damos la bienvenida, <span className="font-semibold text-slate-900">{registerData.name}</span>. 
+                  Estamos preparando todo para que accedas a tu panel CRM.
                 </p>
                 
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-10 h-10 border-4 border-[#3498db] border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-slate-400 italic">Redirigiendo a la tienda...</p>
+                  <p className="text-xs text-slate-400 italic">Redirigiendo al panel CRM...</p>
                 </div>
               </div>
             ) : (
@@ -384,7 +398,7 @@ export const RegisterPage: React.FC = () => {
                               setRegisterData({ ...registerData, name: e.target.value });
                               setErrors({ ...errors, name: '' });
                             }}
-                            className={`pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg ${
+                            className={`pl-10 pr-4 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 text-slate-800 rounded-lg ${
                               errors.name ? 'border-red-500' : ''
                             }`}
                           />
@@ -410,7 +424,7 @@ export const RegisterPage: React.FC = () => {
                               setRegisterData({ ...registerData, email: e.target.value });
                               setErrors({ ...errors, email: '' });
                             }}
-                            className={`pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg ${
+                            className={`pl-10 pr-4 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 text-slate-800 rounded-lg ${
                               errors.email ? 'border-red-500' : ''
                             }`}
                           />
@@ -436,7 +450,7 @@ export const RegisterPage: React.FC = () => {
                               setRegisterData({ ...registerData, phone: e.target.value });
                               setErrors({ ...errors, phone: '' });
                             }}
-                            className={`pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg ${
+                            className={`pl-10 pr-4 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 text-slate-800 rounded-lg ${
                               errors.phone ? 'border-red-500' : ''
                             }`}
                           />
@@ -474,7 +488,7 @@ export const RegisterPage: React.FC = () => {
                               setRegisterData({ ...registerData, password: e.target.value });
                               setErrors({ ...errors, password: '' });
                             }}
-                            className={`pl-10 pr-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg ${
+                            className={`pl-10 pr-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 text-slate-800 rounded-lg ${
                               errors.password ? 'border-red-500' : ''
                             }`}
                           />
@@ -511,7 +525,7 @@ export const RegisterPage: React.FC = () => {
                               setRegisterData({ ...registerData, confirmPassword: e.target.value });
                               setErrors({ ...errors, confirmPassword: '' });
                             }}
-                            className={`pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg ${
+                            className={`pl-10 pr-4 border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 text-slate-800 rounded-lg ${
                               errors.confirmPassword ? 'border-red-500' : ''
                             }`}
                           />
@@ -521,20 +535,7 @@ export const RegisterPage: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Address */}
-                      <div className="space-y-1.5">
-                        <Label htmlFor="address" className="text-sm font-medium text-slate-700">
-                          Dirección (opcional)
-                        </Label>
-                        <Input
-                          id="address"
-                          type="text"
-                          placeholder="Tu dirección"
-                          value={registerData.address}
-                          onChange={(e) => setRegisterData({ ...registerData, address: e.target.value })}
-                          className="border-slate-200 focus:border-blue-500 focus:ring-blue-500 bg-[#f0f4ff]/20 h-11 px-4 text-slate-800 rounded-lg"
-                        />
-                      </div>
+
 
                       <div className="flex gap-3 mt-6">
                         <Button
@@ -558,15 +559,139 @@ export const RegisterPage: React.FC = () => {
                   {/* Step 3: Verification */}
                   {registerStep === 'verification' && (
                     <div className="space-y-5">
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-4">
-                        <div className="flex gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-[#3498db] flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h3 className="font-semibold text-slate-800 text-sm mb-1.5">Resumen de registro</h3>
-                            <div className="text-xs text-slate-500 space-y-1">
-                              <p><strong>Nombre:</strong> {registerData.name}</p>
-                              <p><strong>Email:</strong> {registerData.email}</p>
-                              <p><strong>Teléfono:</strong> {registerData.phone}</p>
+
+
+                      {/* Plan Selection */}
+                      <div className="space-y-3 mb-4">
+                        <Label className="text-sm font-semibold text-slate-700 block mb-1">
+                          {isTrialRegistration ? 'Tu prueba gratuita' : 'Selecciona tu Plan'}
+                        </Label>
+                        {isTrialRegistration && (
+                          <div className="border-2 border-blue-500 bg-blue-50 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3">
+                                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                                <div className="text-left">
+                                  <h4 className="text-sm font-bold text-slate-900">Acceso completo durante 15 dias</h4>
+                                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                                    Explora el CRM, ERP, automatizaciones y herramientas de gestion. No se realiza ningun cobro automatico.
+                                  </p>
+                                  <p className="mt-2 text-[11px] font-medium text-slate-500">
+                                    Al finalizar el periodo deberas contratar un plan para conservar el acceso.
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="shrink-0 bg-blue-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                                15 dias
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className={`${isTrialRegistration ? 'hidden' : 'grid'} grid-cols-1 gap-2.5`}>
+                          {/* Plan Gratuito */}
+                          <div
+                            onClick={() => setSelectedPlan('free')}
+                            className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                              selectedPlan === 'free'
+                                ? 'border-blue-500 bg-blue-50/30'
+                                : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                selectedPlan === 'free' ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300'
+                              }`}>
+                                {selectedPlan === 'free' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                              </div>
+                              <div className="text-left">
+                                <h4 className="text-sm font-bold text-slate-800">Plan Gratuito</h4>
+                                <p className="text-[11px] text-slate-500">Prueba la plataforma con funciones esenciales</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-extrabold text-slate-900">Gratis</span>
+                            </div>
+                          </div>
+
+                          {/* Plan Base */}
+                          <div
+                            onClick={() => setSelectedPlan('base')}
+                            className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                              selectedPlan === 'base'
+                                ? 'border-blue-500 bg-blue-50/30'
+                                : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                selectedPlan === 'base' ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300'
+                              }`}>
+                                {selectedPlan === 'base' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                              </div>
+                              <div className="text-left">
+                                <h4 className="text-sm font-bold text-slate-800">Plan Base</h4>
+                                <p className="text-[11px] text-slate-500">Hasta 300 productos, 1 Agente de IA básico</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-extrabold text-slate-900">$50</span>
+                              <span className="text-[9px] text-slate-400 block -mt-0.5">USD/mes</span>
+                            </div>
+                          </div>
+
+                          {/* Plan Intermedio */}
+                          <div
+                            onClick={() => setSelectedPlan('intermediate')}
+                            className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between relative overflow-hidden ${
+                              selectedPlan === 'intermediate'
+                                ? 'border-blue-500 bg-blue-50/30'
+                                : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                            }`}
+                          >
+                            {/* Popular Badge */}
+                            <div className="absolute top-0 right-0 bg-blue-500 text-white text-[8px] font-bold uppercase py-0.5 px-2 rounded-bl">
+                              Recomendado
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                selectedPlan === 'intermediate' ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300'
+                              }`}>
+                                {selectedPlan === 'intermediate' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                              </div>
+                              <div className="text-left">
+                                <h4 className="text-sm font-bold text-slate-800">Plan Intermedio</h4>
+                                <p className="text-[11px] text-slate-500">Hasta 1,000 productos, Agente IA avanzado</p>
+                              </div>
+                            </div>
+                            <div className="text-right pt-2.5">
+                              <span className="text-sm font-extrabold text-slate-900">$120</span>
+                              <span className="text-[9px] text-slate-400 block -mt-0.5">USD/mes</span>
+                            </div>
+                          </div>
+
+                          {/* Plan Avanzado */}
+                          <div
+                            onClick={() => setSelectedPlan('advanced')}
+                            className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                              selectedPlan === 'advanced'
+                                ? 'border-blue-500 bg-blue-50/30'
+                                : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                selectedPlan === 'advanced' ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300'
+                              }`}>
+                                {selectedPlan === 'advanced' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                              </div>
+                              <div className="text-left">
+                                <h4 className="text-sm font-bold text-slate-800">Plan Avanzado</h4>
+                                <p className="text-[11px] text-slate-500">Productos, agentes y canales ilimitados</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-extrabold text-slate-900">$500</span>
+                              <span className="text-[9px] text-slate-400 block -mt-0.5">USD/mes</span>
                             </div>
                           </div>
                         </div>

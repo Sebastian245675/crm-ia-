@@ -31,6 +31,7 @@ const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const CartPage = lazy(() => import("./pages/CartPage").then(m => ({ default: m.CartPage })));
 const OrderSuccess = lazy(() => import("./pages/OrderSuccess").then(m => ({ default: m.OrderSuccess })));
 const SuperAdminDashboard = lazy(() => import("./pages/superadmin/Dashboard").then(m => ({ default: m.SuperAdminDashboard })));
+const PublicFormPage = lazy(() => import("./pages/PublicFormPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,7 +102,8 @@ const App = () => {
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/cart" element={<CartPage />} />
                     <Route path="/order-success" element={<OrderSuccess />} />
-                    <Route path="/admin" element={<AdminPanel />} />
+                    <Route path="/formularios/:formId" element={<PublicFormPage />} />
+                    <Route path="/admin/*" element={<AdminPanel />} />
                     <Route path="/superadmin" element={<SuperAdminDashboard />} />
                     <Route path="/perfil" element={<UserProfile />} />
                     <Route path="/producto/:slug" element={<ProductDetailPage />} />

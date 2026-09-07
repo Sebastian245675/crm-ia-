@@ -15,7 +15,6 @@ services:
       - UPLOADS_DIR=/usr/src/app/uploads
     volumes:
       - ./uploads:/usr/src/app/uploads
-      - backend_node_modules:/usr/src/app/node_modules
     depends_on:
       - postgres
 
@@ -32,5 +31,4 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  backend_node_modules:
   postgres_data:

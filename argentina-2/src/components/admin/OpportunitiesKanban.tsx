@@ -124,6 +124,15 @@ export const OpportunitiesKanban: React.FC = () => {
   const [sortConfig, setSortConfig]       = useState<SortConfig | null>(null);
   const [filters, setFilters]             = useState<FilterConfig[]>([]);
   const [dragOverCol, setDragOverCol]     = useState<string | null>(null);
+  const [isMobile, setIsMobile]           = useState(false);
+  const [activeMobileStageId, setActiveMobileStageId] = useState<string>('');
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Modals
   const [isCreateOpen,   setIsCreateOpen]   = useState(false);
@@ -339,6 +348,12 @@ export const OpportunitiesKanban: React.FC = () => {
   // ── Filtering / Sorting ───────────────────────────────────────────────────
   const sortedStages = useMemo(() => [...stages].sort((a, b) => a.order - b.order), [stages]);
 
+  useEffect(() => {
+    if (sortedStages.length > 0 && (!activeMobileStageId || !sortedStages.some(s => s.id === activeMobileStageId))) {
+      setActiveMobileStageId(sortedStages[0].id);
+    }
+  }, [sortedStages, activeMobileStageId]);
+
   const processedOpportunities = useMemo(() => {
     let list = [...opportunities];
     if (searchQuery.trim()) {
@@ -462,8 +477,8 @@ export const OpportunitiesKanban: React.FC = () => {
   return (
     <div className="bg-[#f9fafb] min-h-screen flex flex-col">
 
-      {/* ── TOOLBAR ────────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      {/* ── TOOLBAR (DESKTOP) ────────────────────────────────────────────────── */}
+      <div className="hidden md:flex bg-white border-b border-slate-200 px-6 py-3 items-center justify-between gap-3">
         {/* Left */}
         <div className="flex items-center gap-3">
           <h1 className="text-base font-bold text-slate-900 mr-1">Clientes Potenciales</h1>
@@ -498,7 +513,7 @@ export const OpportunitiesKanban: React.FC = () => {
             </button>
           </div>
 
-          {/* Gestionar etapas ← NEW button */}
+          {/* Gestionar etapas */}
           <button onClick={() => setIsStagesOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg text-sm font-semibold transition-colors">
             <Kanban className="h-3.5 w-3.5" />
@@ -544,8 +559,116 @@ export const OpportunitiesKanban: React.FC = () => {
         </div>
       </div>
 
-      {/* ── FILTER BAR ─────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between gap-4">
+      {/* ── TOOLBAR (MOBILE) ─────────────────────────────────────────────────── */}
+      <div className="flex md:hidden flex-col bg-white border-b border-slate-200 px-4 py-3 gap-2.5">
+        {/* Row 1: Title & Pipeline Selector */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-base font-bold text-slate-900">Clientes Potenciales</h1>
+          <div className="relative">
+            <select value={selectedPipeline} onChange={e => setSelectedPipeline(e.target.value)}
+              className="appearance-none bg-white border border-slate-300 text-slate-800 text-xs font-semibold rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+              <option>Comercial B2B</option>
+              <option>Servicios Premium</option>
+              <option>Suscripciones SaaS</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Row 2: Status Details */}
+        <div className="flex items-center justify-between text-xs text-slate-500 font-medium bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+          <span>
+            <span className="font-bold text-slate-700">{processedOpportunities.length}</span>{' '}
+            {processedOpportunities.length === 1 ? 'prospecto' : 'prospectos'}
+          </span>
+          <span className="font-bold text-slate-600">
+            Pipeline: ${totalPipeline.toLocaleString()} USD
+          </span>
+        </div>
+
+        {/* Row 3: Search & Add button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar..."
+              className="pl-8 h-9 text-xs border-slate-200 bg-slate-50 focus:bg-white w-full" />
+          </div>
+          <button onClick={() => { resetForm(); setIsCreateOpen(true); }}
+            className="flex items-center justify-center p-2.5 h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm shrink-0"
+            title="Añadir oportunidad">
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Row 4: Horizontal Scroll Actions Toolbar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 -mx-4 px-4 no-scrollbar">
+          {/* Filtros */}
+          <button onClick={() => setIsFiltersOpen(true)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shrink-0 ${filters.length > 0 ? 'border-blue-300 text-blue-700 bg-blue-50' : 'border-slate-200 text-slate-600 bg-white'}`}>
+            <SlidersHorizontal className="h-3 w-3" />
+            Filtros{filters.length > 0 ? ` (${filters.length})` : ''}
+          </button>
+          
+          {/* Ordenar */}
+          <button onClick={() => setIsSortOpen(true)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shrink-0 ${sortConfig ? 'border-blue-300 text-blue-700 bg-blue-50' : 'border-slate-200 text-slate-600 bg-white'}`}>
+            <ArrowUpDown className="h-3 w-3" />
+            Ordenar{sortConfig ? ' (1)' : ''}
+          </button>
+
+          {/* Etapas */}
+          <button onClick={() => setIsStagesOpen(true)}
+            className="flex items-center gap-1 px-3 py-1.5 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg text-xs font-semibold transition-colors shrink-0">
+            <Kanban className="h-3 w-3" />
+            Etapas ({stages.length})
+          </button>
+
+          {/* Campos */}
+          <button onClick={() => setIsFieldsOpen(true)}
+            className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-semibold transition-colors shrink-0">
+            <Settings className="h-3 w-3" />
+            Campos
+          </button>
+
+          {/* View toggle */}
+          <div className="flex items-center border border-slate-200 rounded-lg p-0.5 bg-slate-50 shrink-0">
+            <button onClick={() => setViewMode('grid')}
+              className={`p-1 rounded transition-colors ${viewMode==='grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setViewMode('list')}
+              className={`p-1 rounded transition-colors ${viewMode==='list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}>
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* 3-dot dropdown menu */}
+          <div className="relative shrink-0">
+            <button onClick={() => setIsMenuOpen(p => !p)}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 bg-white hover:bg-slate-50 transition-colors">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+            {isMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
+                <div className="absolute right-0 bottom-full mb-1.5 w-36 bg-white rounded-xl border border-slate-200 shadow-lg z-20 py-1">
+                  <button onClick={() => { setIsMenuOpen(false); setIsImportOpen(true); }}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
+                    <Upload className="h-3 w-3 text-slate-400" /> Importar CSV
+                  </button>
+                  <button onClick={() => { setIsMenuOpen(false); handleExport(); }}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
+                    <Download className="h-3 w-3 text-slate-400" /> Exportar CSV
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── FILTER BAR (DESKTOP ONLY) ───────────────────────────────────────── */}
+      <div className="hidden md:flex bg-white border-b border-slate-200 px-6 py-2 items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <button onClick={() => setIsFiltersOpen(true)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${filters.length>0 ? 'border-blue-300 text-blue-700 bg-blue-50' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
@@ -631,86 +754,219 @@ export const OpportunitiesKanban: React.FC = () => {
 
         ) : viewMode === 'grid' ? (
           /* ── KANBAN BOARD ── */
-          <div className="overflow-x-auto pb-4 -mx-6 px-6">
-            <div className="flex gap-4 min-w-max items-start">
-              {sortedStages.map(col => {
-                const clr = getColor(col.color);
-                const { list, totalValue } = columnsData[col.id] ?? { list: [], totalValue: 0 };
-                const isOver = dragOverCol === col.id;
-                return (
-                  <div key={col.id}
-                    onDragOver={e => onDragOver(e, col.id)} onDragLeave={onDragLeave} onDrop={e => onDrop(e, col.id)}
-                    className={`flex flex-col w-64 rounded-xl border-2 border-t-4 ${clr.top} transition-colors ${isOver ? 'border-blue-400 bg-blue-50/30' : 'border-slate-200 bg-slate-100/40'}`}>
-                    {/* Column Header */}
-                    <div className="px-3 pt-2.5 pb-2.5 border-b border-slate-200 bg-white rounded-t-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider truncate">{col.title}</span>
-                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full ml-1.5 flex-shrink-0">{list.length}</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-medium">${totalValue.toLocaleString('es-AR', { minimumFractionDigits: 0 })} USD</span>
-                    </div>
-                    {/* Cards */}
-                    <div className="flex-1 p-2 space-y-1.5 min-h-[65vh] overflow-y-auto">
-                      {list.length === 0 ? (
-                        <div className={`h-full min-h-[100px] rounded-lg border-2 border-dashed flex items-center justify-center text-[10px] text-slate-300 transition-colors ${isOver ? 'border-blue-300 bg-blue-50/60 text-blue-400' : 'border-slate-200'}`}>
-                          Arrastra aquí
-                        </div>
-                      ) : list.map(opp => {
-                        const pr = PRIORITY_LABELS[opp.priority || 'medium'];
-                        return (
-                          <div key={opp.id} draggable onDragStart={e => onDragStart(e, opp.id)} onClick={() => openDetail(opp)}
-                            className="bg-white rounded-md border border-slate-200/80 px-2.5 py-1.5 hover:border-slate-300 hover:bg-slate-50/40 cursor-pointer group transition-all relative overflow-hidden">
-                            <div className={`absolute inset-y-0 left-0 w-0.5 ${clr.dot}`} />
-                            <div className="pl-2">
-                              {/* Title + priority badge inline */}
-                              <div className="flex items-start justify-between gap-1.5 mb-0.5">
-                                <h4 className="text-[11px] font-semibold text-slate-800 group-hover:text-blue-600 transition-colors leading-tight flex-1">{opp.title}</h4>
-                                {isFieldVisible('priority') && (
-                                  <span className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded leading-none ${pr.color}`}>{pr.label}</span>
-                                )}
-                              </div>
-                              {/* Secondary info — all on one compact row */}
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
-                                {isFieldVisible('client_name') && opp.client_name && (
-                                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5 leading-none"><User className="h-2.5 w-2.5 flex-shrink-0" />{opp.client_name}</span>
-                                )}
-                                {isFieldVisible('company_name') && opp.company_name && (
-                                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5 leading-none"><Briefcase className="h-2.5 w-2.5 flex-shrink-0" />{opp.company_name}</span>
-                                )}
-                                {isFieldVisible('email') && opp.email && (
-                                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5 leading-none"><Mail className="h-2.5 w-2.5 flex-shrink-0" />{opp.email}</span>
-                                )}
-                                {isFieldVisible('phone') && opp.phone && (
-                                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5 leading-none"><Phone className="h-2.5 w-2.5 flex-shrink-0" />{opp.phone}</span>
-                                )}
-                                {isFieldVisible('expected_close') && opp.expected_close && (
-                                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5 leading-none"><Calendar className="h-2.5 w-2.5 flex-shrink-0" />{opp.expected_close}</span>
-                                )}
-                              </div>
-                              {/* Value — tiny, right-aligned, no border */}
-                              {isFieldVisible('value') && opp.value > 0 && (
-                                <div className="flex justify-end mt-1">
-                                  <span className="text-[10px] font-bold text-slate-500">${opp.value.toLocaleString()}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {/* Add button at bottom of column */}
-                    <button onClick={() => { resetForm(); setFormStage(col.id); setIsCreateOpen(true); }}
-                      className="mx-2 mb-2 flex items-center gap-1 px-2 py-1.5 rounded-md border border-dashed border-slate-300/70 text-[10px] text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                      <Plus className="h-3 w-3" /> Añadir
+          <div className="flex flex-col gap-4">
+            {/* Stage Tabs for Mobile */}
+            {isMobile && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
+                {sortedStages.map(stage => {
+                  const clr = getColor(stage.color);
+                  const isActive = activeMobileStageId === stage.id;
+                  const count = (columnsData[stage.id]?.list ?? []).length;
+                  return (
+                    <button
+                      key={stage.id}
+                      onClick={() => setActiveMobileStageId(stage.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${
+                        isActive
+                          ? `bg-slate-900 border-slate-900 text-white shadow-sm`
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${clr.dot}`} />
+                      <span>{stage.title}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                      }`}>{count}</span>
                     </button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Kanban Columns container */}
+            <div className={`${isMobile ? 'flex flex-col w-full' : 'overflow-x-auto pb-4 -mx-6 px-6'}`}>
+              <div className={`${isMobile ? 'w-full' : 'flex gap-4 min-w-max items-start'}`}>
+                {sortedStages
+                  .filter(col => !isMobile || col.id === activeMobileStageId)
+                  .map(col => {
+                    const clr = getColor(col.color);
+                    const { list, totalValue } = columnsData[col.id] ?? { list: [], totalValue: 0 };
+                    const isOver = dragOverCol === col.id;
+                    
+                    // Mobile navigation helpers for columns
+                    const colIdx = sortedStages.findIndex(s => s.id === col.id);
+                    const hasPrev = colIdx > 0;
+                    const hasNext = colIdx < sortedStages.length - 1;
+                    
+                    const handlePrevStage = () => {
+                      if (hasPrev) setActiveMobileStageId(sortedStages[colIdx - 1].id);
+                    };
+                    const handleNextStage = () => {
+                      if (hasNext) setActiveMobileStageId(sortedStages[colIdx + 1].id);
+                    };
+
+                    return (
+                      <div key={col.id}
+                        onDragOver={e => onDragOver(e, col.id)} onDragLeave={onDragLeave} onDrop={e => onDrop(e, col.id)}
+                        className={`flex flex-col ${isMobile ? 'w-full' : 'w-64'} rounded-xl border-2 border-t-4 ${clr.top} transition-colors ${isOver ? 'border-blue-400 bg-blue-50/30' : 'border-slate-200 bg-slate-100/40'}`}>
+                        
+                        {/* Column Header */}
+                        <div className="px-3 pt-2.5 pb-2.5 border-b border-slate-200 bg-white rounded-t-lg">
+                          <div className="flex items-center justify-between">
+                            {isMobile && (
+                              <button
+                                onClick={handlePrevStage}
+                                disabled={!hasPrev}
+                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 transition-colors"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </button>
+                            )}
+                            <div className="flex flex-col items-center flex-1 text-center truncate px-1">
+                              <span className="text-[12px] md:text-[11px] font-bold text-slate-700 uppercase tracking-wider truncate w-full">
+                                {col.title}
+                              </span>
+                              <span className="text-[11px] md:text-[10px] text-slate-400 font-medium mt-0.5">
+                                ${totalValue.toLocaleString('es-AR', { minimumFractionDigits: 0 })} USD
+                              </span>
+                            </div>
+                            {isMobile && (
+                              <button
+                                onClick={handleNextStage}
+                                disabled={!hasNext}
+                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 transition-colors"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                            )}
+                            {!isMobile && (
+                              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full ml-1.5 flex-shrink-0">
+                                {list.length}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Cards container */}
+                        <div className={`flex-1 p-2 space-y-2.5 ${isMobile ? 'min-h-[50vh] max-h-[65vh]' : 'min-h-[65vh]'} overflow-y-auto`}>
+                          {list.length === 0 ? (
+                            <div className={`h-full min-h-[120px] rounded-lg border-2 border-dashed flex items-center justify-center text-[11px] text-slate-300 transition-colors ${isOver ? 'border-blue-300 bg-blue-50/60 text-blue-400' : 'border-slate-200'}`}>
+                              Arrastra aquí o pulsa añadir abajo
+                            </div>
+                          ) : list.map(opp => {
+                            const pr = PRIORITY_LABELS[opp.priority || 'medium'];
+                            return (
+                              <div key={opp.id} draggable={!isMobile} onDragStart={e => !isMobile && onDragStart(e, opp.id)} onClick={() => openDetail(opp)}
+                                className={`bg-white rounded-xl border border-slate-200/80 ${isMobile ? 'p-3.5 shadow-sm' : 'px-2.5 py-1.5'} hover:border-slate-300 hover:bg-slate-50/40 cursor-pointer group transition-all relative overflow-hidden`}>
+                                <div className={`absolute inset-y-0 left-0 w-1 ${clr.dot}`} />
+                                <div className="pl-2.5">
+                                  {/* Title + priority badge inline */}
+                                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                                    <h4 className={`font-semibold text-slate-800 group-hover:text-blue-600 transition-colors leading-snug flex-1 ${isMobile ? 'text-[13px]' : 'text-[11px]'}`}>
+                                      {opp.title}
+                                    </h4>
+                                    {isFieldVisible('priority') && (
+                                      <span className={`shrink-0 font-bold px-1.5 py-0.5 rounded leading-none ${isMobile ? 'text-[10px]' : 'text-[9px]'} ${pr.color}`}>
+                                        {pr.label}
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Secondary info fields */}
+                                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                                    {isFieldVisible('client_name') && opp.client_name && (
+                                      <span className="text-[11px] md:text-[10px] text-slate-500 flex items-center gap-1 leading-none"><User className="h-3 w-3 md:h-2.5 md:w-2.5 flex-shrink-0" />{opp.client_name}</span>
+                                    )}
+                                    {isFieldVisible('company_name') && opp.company_name && (
+                                      <span className="text-[11px] md:text-[10px] text-slate-500 flex items-center gap-1 leading-none"><Briefcase className="h-3 w-3 md:h-2.5 md:w-2.5 flex-shrink-0" />{opp.company_name}</span>
+                                    )}
+                                    {isFieldVisible('email') && opp.email && (
+                                      <span className="text-[11px] md:text-[10px] text-slate-500 flex items-center gap-1 leading-none"><Mail className="h-3 w-3 md:h-2.5 md:w-2.5 flex-shrink-0" />{opp.email}</span>
+                                    )}
+                                    {isFieldVisible('phone') && opp.phone && (
+                                      <span className="text-[11px] md:text-[10px] text-slate-500 flex items-center gap-1 leading-none"><Phone className="h-3 w-3 md:h-2.5 md:w-2.5 flex-shrink-0" />{opp.phone}</span>
+                                    )}
+                                    {isFieldVisible('expected_close') && opp.expected_close && (
+                                      <span className="text-[11px] md:text-[10px] text-slate-500 flex items-center gap-1 leading-none"><Calendar className="h-3 w-3 md:h-2.5 md:w-2.5 flex-shrink-0" />{opp.expected_close}</span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Value */}
+                                  {isFieldVisible('value') && opp.value > 0 && (
+                                    <div className="flex justify-end mt-2">
+                                      <span className={`font-bold text-slate-600 ${isMobile ? 'text-xs bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100' : 'text-[10px]'}`}>
+                                        ${opp.value.toLocaleString()} USD
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Add button at bottom of column */}
+                        <button onClick={() => { resetForm(); setFormStage(col.id); setIsCreateOpen(true); }}
+                          className="mx-2 mb-2 flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border border-dashed border-slate-300 text-[11px] text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                          <Plus className="h-3.5 w-3.5" /> Añadir prospecto
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
 
+        ) : isMobile ? (
+          /* ── MOBILE LIST VIEW ── */
+          <div className="space-y-3">
+            {processedOpportunities.map(opp => {
+              const col = stages.find(s => s.id === opp.stage);
+              const clr = getColor(col?.color ?? 'slate');
+              const pr = PRIORITY_LABELS[opp.priority || 'medium'];
+              return (
+                <div key={opp.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col gap-2 relative overflow-hidden">
+                  <div className={`absolute inset-y-0 left-0 w-1 ${clr.dot}`} />
+                  <div className="pl-2 flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold text-slate-800 text-[13px] leading-snug">{opp.title}</h4>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pr.color}`}>{pr.label}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-500">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Cliente</span>
+                        <span className="font-medium text-slate-700">{opp.client_name}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Empresa</span>
+                        <span className="font-medium text-slate-700">{opp.company_name || '—'}</span>
+                      </div>
+                      <div className="mt-1">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Valor</span>
+                        <span className="font-bold text-slate-800">${opp.value.toLocaleString()} USD</span>
+                      </div>
+                      <div className="mt-1">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Etapa</span>
+                        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${clr.badge}`}>{col?.title ?? opp.stage}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2.5 mt-1">
+                      <button onClick={() => openDetail(opp)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors">
+                        <Edit className="h-3.5 w-3.5" /> Editar
+                      </button>
+                      <button onClick={() => handleDelete(opp.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-100 transition-colors">
+                        <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          /* ── LIST VIEW ─────────────────────────────────────────────────── */
+          /* ── DESKTOP LIST VIEW ── */
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
@@ -754,13 +1010,16 @@ export const OpportunitiesKanban: React.FC = () => {
 
       {/* ── CREATE OPP ─────────────────────────────────────────────────────── */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[520px] rounded-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[520px] rounded-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-blue-500" /> Nueva Oportunidad</DialogTitle>
             <DialogDescription>Registra los datos del cliente potencial.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreate}>{renderOpportunityForm()}
-            <DialogFooter className="mt-5">
+          <form onSubmit={handleCreate} className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto py-2 pr-1 max-h-[60vh]">
+              {renderOpportunityForm()}
+            </div>
+            <DialogFooter className="mt-5 shrink-0">
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Crear oportunidad</Button>
             </DialogFooter>
@@ -770,18 +1029,21 @@ export const OpportunitiesKanban: React.FC = () => {
 
       {/* ── EDIT OPP ───────────────────────────────────────────────────────── */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-[520px] rounded-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[520px] rounded-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0 text-slate-800">
             <DialogTitle className="flex items-center justify-between text-lg font-bold pr-8">
               <span className="flex items-center gap-2"><Layers className="h-5 w-5 text-purple-500" /> Detalle de Oportunidad</span>
               {selectedOpportunity && (
-                <button onClick={() => handleDelete(selectedOpportunity.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => handleDelete(selectedOpportunity.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="h-4 w-4" /></button>
               )}
             </DialogTitle>
             <DialogDescription>Edita los datos o cambia la etapa manualmente.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdate}>{renderOpportunityForm()}
-            <DialogFooter className="mt-5">
+          <form onSubmit={handleUpdate} className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto py-2 pr-1 max-h-[60vh]">
+              {renderOpportunityForm()}
+            </div>
+            <DialogFooter className="mt-5 shrink-0">
               <Button type="button" variant="outline" onClick={() => setIsDetailOpen(false)}>Cerrar</Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Guardar cambios</Button>
             </DialogFooter>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BotAgent {
   id: string;
@@ -52,62 +53,102 @@ interface BotAgent {
   chatsCount: number;
   accuracy: number;
   lastActive: string;
+  owner_id: string;
+  created_at: string;
+  instructions?: string;
+  knowledge_base_id?: string;
 }
 
+interface StoredConversation {
+  contactId: string;
+  channel?: 'whatsapp' | 'email' | 'webchat';
+  isEmail?: boolean;
+  messages?: Array<{ sender?: string; text?: string; timestamp?: string; agentId?: string }>;
+}
+
+interface AgentEvent {
+  id: string;
+  owner_id: string;
+  agent_id?: string | null;
+  contact_id: string;
+  channel: string;
+  appointment: boolean;
+  created_at: string;
+}
+
+const toDateInput = (date: Date) => {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+};
+
+const getInitialDateRange = () => {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 29);
+  return { from: toDateInput(start), to: toDateInput(end) };
+};
+
 export const AiAgentsDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const initialDates = useMemo(getInitialDateRange, []);
   // Navigation states
   const [activeSubNav, setActiveSubNav] = useState('conversation-ai');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMetric, setSelectedMetric] = useState('contacts');
   
   // Date filter state
-  const [dateFrom, setDateFrom] = useState('2026-06-01');
-  const [dateTo, setDateTo] = useState('2026-06-09');
-  
-  // Demo Data toggle (for visual wows!)
-  const [showDemoData, setShowDemoData] = useState(false);
+  const [dateFrom, setDateFrom] = useState(initialDates.from);
+  const [dateTo, setDateTo] = useState(initialDates.to);
+  const [selectedChannel, setSelectedChannel] = useState('all');
+  const [selectedAgentId, setSelectedAgentId] = useState('all');
+  const [conversationRevision, setConversationRevision] = useState(0);
+  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
 
   // Create bot modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newBotName, setNewBotName] = useState('');
   const [newBotChannel, setNewBotChannel] = useState('WhatsApp Chat');
   const [newBotModel, setNewBotModel] = useState('Gemini 1.5 Flash');
+  const [newBotInstructions, setNewBotInstructions] = useState('');
+  const [newBotKnowledgeBaseId, setNewBotKnowledgeBaseId] = useState('');
 
-  // Bots List
-  const [bots, setBots] = useState<BotAgent[]>([
-    {
-      id: 'bot-1',
-      name: 'Agente Principal merco (WhatsApp)',
-      type: 'WhatsApp Chat',
-      model: 'Gemini 1.5 Flash',
-      status: 'active',
-      chatsCount: 342,
-      accuracy: 96,
-      lastActive: 'Hace 5 min'
-    },
-    {
-      id: 'bot-2',
-      name: 'Asistente de Ventas Web',
-      type: 'Widget Web Chat',
-      model: 'Gemini 1.5 Pro',
-      status: 'active',
-      chatsCount: 189,
-      accuracy: 98,
-      lastActive: 'Hace 1 hora'
-    },
-    {
-      id: 'bot-3',
-      name: 'Agente de Soporte Telefonía (Voz)',
-      type: 'Voice AI (Beta)',
-      model: 'Gemini 1.5 Flash',
-      status: 'inactive',
-      chatsCount: 0,
-      accuracy: 0,
-      lastActive: 'Nunca'
+  const [bots, setBots] = useState<BotAgent[]>([]);
+  const [botsLoading, setBotsLoading] = useState(true);
+
+  const loadBots = useCallback(async () => {
+    if (!user?.id) return;
+    setBotsLoading(true);
+    const { data, error } = await db.from('ai_agents').select();
+    if (error) {
+      toast({ title: 'No se pudieron cargar los agentes', description: error.message, variant: 'destructive' });
+    } else {
+      setBots((data || []).filter((bot: BotAgent) => bot.owner_id === user.id));
     }
-  ]);
+    setBotsLoading(false);
+  }, [user?.id]);
 
-  const handleCreateBotSubmit = () => {
+  const loadAgentEvents = useCallback(async () => {
+    if (!user?.id) return;
+    const { data, error } = await db.from('ai_agent_events').select();
+    if (!error) setAgentEvents((data || []).filter((event: AgentEvent) => event.owner_id === user.id));
+  }, [user?.id]);
+
+  useEffect(() => { loadBots(); loadAgentEvents(); }, [loadBots, loadAgentEvents]);
+
+  useEffect(() => {
+    const refresh = () => {
+      setConversationRevision(value => value + 1);
+      loadAgentEvents();
+    };
+    window.addEventListener('storage', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [loadAgentEvents]);
+
+  const handleCreateBotSubmit = async () => {
     if (!newBotName.trim()) {
       toast({
         title: "Error",
@@ -117,6 +158,7 @@ export const AiAgentsDashboard: React.FC = () => {
       return;
     }
 
+    if (!user?.id) return;
     const newBot: BotAgent = {
       id: `bot-${Date.now()}`,
       name: newBotName,
@@ -125,18 +167,159 @@ export const AiAgentsDashboard: React.FC = () => {
       status: 'active',
       chatsCount: 0,
       accuracy: 0,
-      lastActive: 'Nunca'
+      lastActive: 'Nunca',
+      owner_id: user.id,
+      created_at: new Date().toISOString(),
+      instructions: newBotInstructions.trim(),
+      knowledge_base_id: newBotKnowledgeBaseId || undefined,
     };
 
-    setBots([...bots, newBot]);
+    const { error } = await db.from('ai_agents').insert(newBot);
+    if (error) {
+      toast({ title: 'No se pudo crear el agente', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setBots(current => [...current, newBot]);
     setNewBotName('');
+    setNewBotInstructions('');
+    setNewBotKnowledgeBaseId('');
     setIsCreateOpen(false);
     setActiveTab('list'); // Switch to Agents List tab to show the new bot!
 
     toast({
-      title: "Agente Creado",
-      description: `El agente "${newBotName}" ha sido configurado y activado exitosamente.`
+      title: "Agente creado",
+      description: `“${newBotName}” quedó activo y guardado en tu cuenta.`
     });
+  };
+
+  const setBotStatus = async (bot: BotAgent) => {
+    const status = bot.status === 'active' ? 'inactive' : 'active';
+    const { error } = await db.from('ai_agents').update({ status }).eq('id', bot.id);
+    if (error) {
+      toast({ title: 'No se pudo cambiar el estado', variant: 'destructive' });
+      return;
+    }
+    setBots(current => current.map(item => item.id === bot.id ? { ...item, status } : item));
+  };
+
+  const deleteBot = async (bot: BotAgent) => {
+    if (!window.confirm(`¿Eliminar el agente “${bot.name}”?`)) return;
+    const { error } = await db.from('ai_agents').delete().eq('id', bot.id);
+    if (error) {
+      toast({ title: 'No se pudo eliminar el agente', variant: 'destructive' });
+      return;
+    }
+    setBots(current => current.filter(item => item.id !== bot.id));
+    if (selectedAgentId === bot.id) setSelectedAgentId('all');
+  };
+
+  const conversations = useMemo<StoredConversation[]>(() => {
+    if (!user?.id) return [];
+    try {
+      const raw = localStorage.getItem(`merco_messaging_conversations_v2:${user.id}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [user?.id, conversationRevision]);
+
+  const analytics = useMemo(() => {
+    const start = new Date(`${dateFrom}T00:00:00`);
+    const end = new Date(`${dateTo}T23:59:59.999`);
+    const selectedBot = bots.find(bot => bot.id === selectedAgentId);
+    const botChannel = selectedBot?.type.includes('WhatsApp') ? 'whatsapp'
+      : selectedBot?.type.includes('Correo') ? 'email'
+      : selectedBot?.type.includes('Web') ? 'webchat'
+      : null;
+    const channel = selectedChannel !== 'all' ? selectedChannel : botChannel;
+    const daily = new Map<string, { contacts: Set<string>; actions: number; appointments: number; minutes: number }>();
+    const contacts = new Set<string>();
+    let actions = 0;
+    let appointments = 0;
+
+    if (agentEvents.length > 0) {
+      agentEvents.forEach(event => {
+        const timestamp = new Date(event.created_at);
+        if (timestamp < start || timestamp > end) return;
+        if (channel && event.channel !== channel) return;
+        if (selectedAgentId !== 'all' && event.agent_id !== selectedAgentId) return;
+        const key = toDateInput(timestamp);
+        if (!daily.has(key)) daily.set(key, { contacts: new Set(), actions: 0, appointments: 0, minutes: 0 });
+        const bucket = daily.get(key)!;
+        contacts.add(event.contact_id);
+        bucket.contacts.add(event.contact_id);
+        actions += 1;
+        bucket.actions += 1;
+        bucket.minutes += 3;
+        if (event.appointment) {
+          appointments += 1;
+          bucket.appointments += 1;
+        }
+      });
+    }
+
+    if (agentEvents.length === 0) conversations.forEach(conversation => {
+      const conversationChannel = conversation.channel || (conversation.isEmail ? 'email' : 'whatsapp');
+      if (channel && conversationChannel !== channel) return;
+      let includedContact = false;
+      (conversation.messages || []).forEach(message => {
+        const timestamp = new Date(message.timestamp || '');
+        if (Number.isNaN(timestamp.getTime()) || timestamp < start || timestamp > end) return;
+        if (selectedAgentId !== 'all' && message.sender === 'agent' && message.agentId !== selectedAgentId) return;
+        includedContact = true;
+        const key = toDateInput(timestamp);
+        if (!daily.has(key)) daily.set(key, { contacts: new Set(), actions: 0, appointments: 0, minutes: 0 });
+        const bucket = daily.get(key)!;
+        bucket.contacts.add(conversation.contactId);
+        if (message.sender === 'agent') {
+          actions += 1;
+          bucket.actions += 1;
+          bucket.minutes += 3;
+        }
+        if (/\b(cita|turno|reuni[oó]n|agendad[ao]|reservad[ao])\b/i.test(message.text || '')) {
+          appointments += 1;
+          bucket.appointments += 1;
+        }
+      });
+      if (includedContact) contacts.add(conversation.contactId);
+    });
+
+    const days: Array<{ date: string; contacts: number; actions: number; appointments: number; time: number }> = [];
+    const cursor = new Date(start);
+    while (cursor <= end && days.length < 93) {
+      const key = toDateInput(cursor);
+      const bucket = daily.get(key);
+      days.push({ date: key, contacts: bucket?.contacts.size || 0, actions: bucket?.actions || 0, appointments: bucket?.appointments || 0, time: bucket?.minutes || 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return { contacts: contacts.size, actions, appointments, minutes: actions * 3, days };
+  }, [agentEvents, bots, conversations, dateFrom, dateTo, selectedAgentId, selectedChannel]);
+
+  const chartValues = analytics.days.map(day => selectedMetric === 'contacts' ? day.contacts : selectedMetric === 'actions' ? day.actions : selectedMetric === 'appointments' ? day.appointments : day.time);
+  const chartMax = Math.max(...chartValues, 1);
+  const getBotActivity = (bot: BotAgent) => {
+    const persisted = agentEvents.filter(event => event.agent_id === bot.id);
+    if (persisted.length > 0) {
+      const lastTimestamp = Math.max(...persisted.map(event => new Date(event.created_at).getTime()).filter(Number.isFinite));
+      return {
+        count: persisted.length,
+        lastActive: lastTimestamp ? new Date(lastTimestamp).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin actividad',
+      };
+    }
+    const channel = bot.type.includes('WhatsApp') ? 'whatsapp' : bot.type.includes('Correo') ? 'email' : 'webchat';
+    const messages = conversations
+      .filter(conversation => (conversation.channel || (conversation.isEmail ? 'email' : 'whatsapp')) === channel)
+      .flatMap(conversation => conversation.messages || [])
+      .filter(message => message.sender === 'agent');
+    const lastTimestamp = messages.reduce((latest, message) => {
+      const time = new Date(message.timestamp || '').getTime();
+      return Number.isNaN(time) ? latest : Math.max(latest, time);
+    }, 0);
+    return {
+      count: messages.length,
+      lastActive: lastTimestamp ? new Date(lastTimestamp).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin actividad',
+    };
   };
 
   // Knowledge Base Interfaces
@@ -158,6 +341,7 @@ export const AiAgentsDashboard: React.FC = () => {
     created_at: string;
     status: 'sincronizado' | 'cargando';
     documents: KnowledgeBaseDoc[];
+    owner_id: string;
   }
 
   // Real Knowledge Base State
@@ -205,17 +389,7 @@ export const AiAgentsDashboard: React.FC = () => {
       
       // Filter out any default mock data if it was previously seeded
       const defaultMockIds = ['kb-1', 'kb-2'];
-      const filteredData = (data || []).filter(kb => !defaultMockIds.includes(kb.id));
-
-      // Purge default mock data from database
-      const foundMocks = (data || []).filter(kb => defaultMockIds.includes(kb.id));
-      for (const mock of foundMocks) {
-        try {
-          await db.from('knowledge_bases').delete().eq('id', mock.id);
-        } catch (e) {
-          console.error(`Error deleting mock KB ${mock.id}:`, e);
-        }
-      }
+      const filteredData = (data || []).filter(kb => !defaultMockIds.includes(kb.id) && kb.owner_id === user?.id);
 
       setKnowledgeBases(filteredData);
     } catch (err) {
@@ -227,7 +401,7 @@ export const AiAgentsDashboard: React.FC = () => {
 
   useEffect(() => {
     loadKnowledgeBases();
-  }, []);
+  }, [user?.id]);
 
   // CRUD Handlers for Knowledge Bases
   const handleCreateKb = async () => {
@@ -242,7 +416,8 @@ export const AiAgentsDashboard: React.FC = () => {
       description: newKbDescription.trim(),
       created_at: new Date().toISOString().split('T')[0],
       status: 'sincronizado',
-      documents: []
+      documents: [],
+      owner_id: user?.id || '',
     };
     
     try {
@@ -562,7 +737,7 @@ export const AiAgentsDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="w-full bg-slate-50 min-h-[calc(100vh-140px)] rounded-xl border border-slate-200 overflow-hidden shadow-lg" translate="no">
+    <div className="w-full bg-slate-50 min-h-[calc(100vh-80px)] rounded-xl border border-slate-200 overflow-hidden shadow-lg" translate="no">
       
       {/* ─── Top sub-navbar ─── */}
       <div className="bg-white border-b border-slate-200 overflow-x-auto">
@@ -599,8 +774,8 @@ export const AiAgentsDashboard: React.FC = () => {
             {/* Header Title Bar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Conversation AI Agents</h1>
-                <p className="text-sm text-slate-500 mt-1">Create And Manage Multiple Agents For Your Business</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agentes de IA</h1>
+                <p className="text-sm text-slate-500 mt-1">Configura agentes, canales y resultados desde un solo lugar.</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -612,7 +787,7 @@ export const AiAgentsDashboard: React.FC = () => {
                   className="bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-semibold text-xs flex items-center gap-1.5 h-9 shadow-sm"
                 >
                   <Database className="h-3.5 w-3.5" />
-                  Manage Knowledge Base
+                  Base de conocimiento
                   <ExternalLink className="h-3 w-3 text-slate-400" />
                 </Button>
 
@@ -622,7 +797,7 @@ export const AiAgentsDashboard: React.FC = () => {
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 h-9 shadow-sm"
                     >
                       <Plus className="h-4 w-4" />
-                      Create Bot
+                      Crear agente
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
@@ -651,9 +826,9 @@ export const AiAgentsDashboard: React.FC = () => {
                             onChange={(e) => setNewBotChannel(e.target.value)}
                             className="w-full bg-white border border-slate-200 rounded-lg text-xs font-semibold px-3 py-2 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-h-[38px]"
                           >
-                            <option value="WhatsApp Chat">WhatsApp (Twilio)</option>
-                            <option value="Widget Web Chat">Web Widget Chat</option>
-                            <option value="Voice AI (Beta)">Llamadas de Voz (Voz AI)</option>
+                            <option value="WhatsApp Chat">WhatsApp</option>
+                            <option value="Correo Electrónico">Correo electrónico</option>
+                            <option value="Widget Web Chat">Chat web</option>
                           </select>
                         </div>
                         <div className="space-y-2">
@@ -667,6 +842,17 @@ export const AiAgentsDashboard: React.FC = () => {
                             <option value="Gemini 1.5 Pro">Gemini 1.5 Pro (Precisión)</option>
                           </select>
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-slate-700">Base de conocimiento</Label>
+                        <select value={newBotKnowledgeBaseId} onChange={event => setNewBotKnowledgeBaseId(event.target.value)} className="w-full bg-white border border-slate-200 rounded-lg text-xs font-semibold px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">Sin base asignada</option>
+                          {knowledgeBases.map(kb => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bot-instructions" className="text-xs font-semibold text-slate-700">Instrucciones del agente</Label>
+                        <textarea id="bot-instructions" value={newBotInstructions} onChange={event => setNewBotInstructions(event.target.value)} rows={4} placeholder="Define su función, tono, límites y cuándo debe derivar a una persona." className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
@@ -693,8 +879,8 @@ export const AiAgentsDashboard: React.FC = () => {
             <div className="border-b border-slate-200">
               <div className="flex gap-6">
                 {[
-                  { id: 'dashboard', label: 'Dashboard' },
-                  { id: 'list', label: 'Agents List' }
+                  { id: 'dashboard', label: 'Resumen' },
+                  { id: 'list', label: 'Agentes' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -719,10 +905,11 @@ export const AiAgentsDashboard: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Channels filter */}
                   <div className="relative">
-                    <select className="bg-white border border-slate-200 rounded-lg text-xs font-semibold px-3 py-2 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[120px]">
-                      <option>All Channels</option>
-                      <option>WhatsApp</option>
-                      <option>Web Widget</option>
+                    <select value={selectedChannel} onChange={event => setSelectedChannel(event.target.value)} className="bg-white border border-slate-200 rounded-lg text-xs font-semibold px-3 py-2 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[145px]">
+                      <option value="all">Todos los canales</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="email">Correo</option>
+                      <option value="webchat">Chat web</option>
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                   </div>
@@ -747,28 +934,16 @@ export const AiAgentsDashboard: React.FC = () => {
 
                   {/* Agents Filter */}
                   <div className="relative">
-                    <select className="bg-white border border-slate-200 rounded-lg text-xs font-semibold px-3 py-2 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[120px]">
-                      <option>All Agents</option>
-                      <option>Agente Principal merco</option>
-                      <option>Asistente de Ventas Web</option>
+                    <select value={selectedAgentId} onChange={event => setSelectedAgentId(event.target.value)} className="bg-white border border-slate-200 rounded-lg text-xs font-semibold px-3 py-2 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[145px]">
+                      <option value="all">Todos los agentes</option>
+                      {bots.map(bot => <option key={bot.id} value={bot.id}>{bot.name}</option>)}
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                   </div>
 
-                  {/* Interactive Demo Toggle Button */}
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowDemoData(!showDemoData)}
-                    className={cn(
-                      "ml-auto text-xs font-bold h-8 flex items-center gap-1.5 px-3 rounded-lg border",
-                      showDemoData 
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" 
-                        : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                    )}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {showDemoData ? "Ver Estadísticas en Cero" : "Ver Datos de Prueba"}
-                  </Button>
+                  <span className="ml-auto inline-flex items-center gap-2 text-xs font-medium text-slate-500">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" /> Datos de conversaciones reales
+                  </span>
                 </div>
 
                 {/* 4 Metric Cards */}
@@ -783,16 +958,16 @@ export const AiAgentsDashboard: React.FC = () => {
                   >
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                        Total Unique Contacts
-                        {showDemoData && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
+                        Contactos atendidos
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
                       <div className="text-3xl font-extrabold text-slate-900 mb-2">
-                        {showDemoData ? "142" : "—"}
+                        {analytics.contacts}
                       </div>
                       <p className="text-[10px] text-slate-500 leading-normal">
-                        {showDemoData ? "+12% incremento esta semana" : "Data for the selected timeframe isn't available."}
+                        Personas únicas con actividad en el período.
                       </p>
                     </CardContent>
                   </Card>
@@ -807,16 +982,16 @@ export const AiAgentsDashboard: React.FC = () => {
                   >
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                        Total Actions Triggered
-                        {showDemoData && <Zap className="h-3.5 w-3.5 text-blue-500" />}
+                        Respuestas automáticas
+                        <Zap className="h-3.5 w-3.5 text-blue-500" />
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
                       <div className="text-3xl font-extrabold text-slate-900 mb-2">
-                        {showDemoData ? "1,894" : "—"}
+                        {analytics.actions}
                       </div>
                       <p className="text-[10px] text-slate-500 leading-normal">
-                        {showDemoData ? "Consultas automáticas resueltas" : "Data for the selected timeframe isn't available."}
+                        Mensajes enviados por los agentes de IA.
                       </p>
                     </CardContent>
                   </Card>
@@ -831,16 +1006,16 @@ export const AiAgentsDashboard: React.FC = () => {
                   >
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                        Total Appointment Booked
-                        {showDemoData && <Calendar className="h-3.5 w-3.5 text-amber-500" />}
+                        Citas detectadas
+                        <Calendar className="h-3.5 w-3.5 text-amber-500" />
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
                       <div className="text-3xl font-extrabold text-slate-900 mb-2">
-                        {showDemoData ? "37" : "—"}
+                        {analytics.appointments}
                       </div>
                       <p className="text-[10px] text-slate-500 leading-normal">
-                        {showDemoData ? "Agendamientos / Ventas guiadas" : "Data for the selected timeframe isn't available."}
+                        Conversaciones que registran una cita o reunión.
                       </p>
                     </CardContent>
                   </Card>
@@ -856,18 +1031,18 @@ export const AiAgentsDashboard: React.FC = () => {
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          Time Saved
+                          Tiempo ahorrado
                           <Info className="h-3 w-3 text-slate-400 cursor-help" title="Tiempo ahorrado resolviendo dudas repetitivas" />
                         </span>
-                        {showDemoData && <Clock className="h-3.5 w-3.5 text-purple-500" />}
+                        <Clock className="h-3.5 w-3.5 text-purple-500" />
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
                       <div className="text-3xl font-extrabold text-slate-900 mb-2">
-                        {showDemoData ? "15.8 hrs" : "—"}
+                        {(analytics.minutes / 60).toLocaleString('es-AR', { maximumFractionDigits: 1 })} h
                       </div>
                       <p className="text-[10px] text-slate-500 leading-normal">
-                        {showDemoData ? "Equivale a 2 jornadas laborales" : "Data for the selected timeframe isn't available."}
+                        Estimación conservadora de 3 minutos por respuesta.
                       </p>
                     </CardContent>
                   </Card>
@@ -877,36 +1052,39 @@ export const AiAgentsDashboard: React.FC = () => {
                 <Card className="bg-white border border-slate-200 shadow-md rounded-xl overflow-hidden min-h-[350px] flex flex-col">
                   <CardHeader className="border-b border-slate-100 p-5">
                     <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                      {selectedMetric === 'contacts' && "Total Unique Contacts"}
-                      {selectedMetric === 'actions' && "Total Actions Triggered"}
-                      {selectedMetric === 'appointments' && "Total Appointment Booked"}
-                      {selectedMetric === 'time' && "Time Saved"}
+                      {selectedMetric === 'contacts' && "Contactos atendidos"}
+                      {selectedMetric === 'actions' && "Respuestas automáticas"}
+                      {selectedMetric === 'appointments' && "Citas detectadas"}
+                      {selectedMetric === 'time' && "Tiempo ahorrado"}
                       <Info className="h-3.5 w-3.5 text-slate-400" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    {showDemoData ? (
+                    {chartValues.some(value => value > 0) ? (
                       <div className="w-full h-[220px] flex flex-col justify-end">
-                        {/* Premium custom SVG line/area chart representation */}
                         <div className="w-full flex-1 flex items-end justify-between gap-2 px-6 pb-2">
-                          {[25, 45, 30, 60, 80, 50, 75, 95, 120].map((h, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center group relative">
-                              {/* Hover tooltip */}
+                          {analytics.days.map((day, i) => {
+                            const value = chartValues[i] || 0;
+                            const height = value === 0 ? 2 : Math.max(12, Math.round((value / chartMax) * 130));
+                            return (
+                            <div key={day.date} className="flex-1 min-w-[8px] flex flex-col items-center group relative">
                               <div className="absolute -top-10 scale-0 group-hover:scale-100 transition-all duration-200 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-20">
-                                {Math.floor(h * 1.5)} u.
+                                {value}
                               </div>
                               <div 
-                                style={{ height: `${h}px` }} 
+                                style={{ height: `${height}px` }}
                                 className="w-full bg-gradient-to-t from-blue-500 to-sky-400 rounded-t-md opacity-85 hover:opacity-100 transition-opacity cursor-pointer shadow-sm relative overflow-hidden"
                               >
                                 <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.2),transparent)]" />
                               </div>
-                              <span className="text-[10px] text-slate-400 mt-2 font-semibold">0{i+1}/06</span>
+                              {(analytics.days.length <= 14 || i % Math.ceil(analytics.days.length / 7) === 0) && (
+                                <span className="text-[9px] text-slate-400 mt-2 font-semibold whitespace-nowrap">{day.date.slice(5).replace('-', '/')}</span>
+                              )}
                             </div>
-                          ))}
+                          )})}
                         </div>
                         <div className="border-t border-slate-200 w-full pt-2 text-xs text-slate-500 font-medium">
-                          Gráfico analítico del comportamiento en vivo
+                          Actividad registrada en Mensajes para el período seleccionado
                         </div>
                       </div>
                     ) : (
@@ -914,7 +1092,7 @@ export const AiAgentsDashboard: React.FC = () => {
                         <AlertCircle className="h-10 w-10 text-slate-300 mx-auto" />
                         <h4 className="text-sm font-semibold text-slate-600">No hay información disponible</h4>
                         <p className="text-xs text-slate-400 leading-normal">
-                          Data for the selected timeframe isn't available. Los datos aparecerán aquí cuando los agentes empiecen a interactuar con clientes reales en WhatsApp.
+                          Aún no hay conversaciones para estos filtros. Las métricas aparecerán cuando se reciban o respondan mensajes reales.
                         </p>
                       </div>
                     )}
@@ -938,28 +1116,22 @@ export const AiAgentsDashboard: React.FC = () => {
                           <th className="p-4">Nombre del Agente</th>
                           <th className="p-4">Canal</th>
                           <th className="p-4">Modelo</th>
-                          <th className="p-4">Chats Procesados</th>
-                          <th className="p-4">Precisión IA</th>
+                          <th className="p-4">Respuestas enviadas</th>
                           <th className="p-4">Estado</th>
                           <th className="p-4">Último Evento</th>
+                          <th className="p-4 text-right">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                        {bots.map((bot) => (
-                          <tr key={bot.id} className="hover:bg-slate-50/50 transition-colors">
+                        {bots.map((bot) => {
+                          const activity = getBotActivity(bot);
+                          return <tr key={bot.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 font-bold text-slate-800">{bot.name}</td>
                             <td className="p-4">
                               <Badge className="bg-slate-100 text-slate-600 border border-slate-200 py-0 px-2 rounded-md font-semibold">{bot.type}</Badge>
                             </td>
                             <td className="p-4 font-mono text-slate-600">{bot.model}</td>
-                            <td className="p-4 font-bold">{bot.chatsCount}</td>
-                            <td className="p-4">
-                              {bot.accuracy > 0 ? (
-                                <span className="text-green-600 font-bold">{bot.accuracy}%</span>
-                              ) : (
-                                <span className="text-slate-400">—</span>
-                              )}
-                            </td>
+                            <td className="p-4 font-bold">{activity.count}</td>
                             <td className="p-4">
                               {bot.status === 'active' ? (
                                 <Badge className="bg-green-50 text-green-700 border border-green-200 py-0.5 px-2 rounded-full font-bold">Activo</Badge>
@@ -967,9 +1139,25 @@ export const AiAgentsDashboard: React.FC = () => {
                                 <Badge className="bg-slate-100 text-slate-500 border border-slate-200 py-0.5 px-2 rounded-full">Inactivo</Badge>
                               )}
                             </td>
-                            <td className="p-4 text-slate-400">{bot.lastActive}</td>
-                          </tr>
-                        ))}
+                            <td className="p-4 text-slate-400">{activity.lastActive}</td>
+                            <td className="p-4">
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => setBotStatus(bot)} className="px-2.5 py-1.5 rounded-md border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">
+                                  {bot.status === 'active' ? 'Pausar' : 'Activar'}
+                                </button>
+                                <button onClick={() => deleteBot(bot)} title="Eliminar agente" className="p-1.5 rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600">
+                                  <Trash className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>;
+                        })}
+                        {!botsLoading && bots.length === 0 && (
+                          <tr><td colSpan={7} className="p-10 text-center text-sm text-slate-500">No hay agentes creados. Crea el primero para comenzar.</td></tr>
+                        )}
+                        {botsLoading && (
+                          <tr><td colSpan={7} className="p-10 text-center text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Cargando agentes…</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

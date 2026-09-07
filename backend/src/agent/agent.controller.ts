@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Query, Res, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Res, Req, HttpStatus, UseGuards } from '@nestjs/common';
 import { AgentService } from './agent.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AgencyPermissionGuard } from '../auth/agency-permission.guard';
+import { RequireAgencyPermission } from '../auth/agency-permission.decorator';
 import * as express from 'express';
 import * as fs from 'fs';
 import axios from 'axios';
@@ -12,7 +14,8 @@ export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   @Get('api/agent/config')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('accessAiAssistant')
   getConfig(@Res() res: express.Response) {
     try {
       let config: any = {};
@@ -44,7 +47,8 @@ export class AgentController {
   }
 
   @Post('api/agent/config')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('accessAiAssistant')
   saveConfig(@Body() body: any, @Res() res: express.Response) {
     try {
       let configActual: any = {};
@@ -92,13 +96,19 @@ export class AgentController {
   }
 
   @Post('api/agent/chat')
-  @UseGuards(JwtAuthGuard)
-  async chat(@Body() body: any, @Res() res: express.Response) {
+  @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
+  @RequireAgencyPermission('accessAiAssistant')
+  async chat(@Body() body: any, @Req() req: express.Request, @Res() res: express.Response) {
     try {
       const mensaje = body.message || '';
       const remitente = body.sender || 'Usuario_Simulado';
 
-      const result = await this.agentService.procesarMensaje(mensaje, remitente);
+      const result = await this.agentService.procesarMensaje(
+        mensaje,
+        remitente,
+        body.agentId || null,
+        String((req as any).user?.sub || ''),
+      );
 
       return res.status(HttpStatus.OK).json({
         success: true,

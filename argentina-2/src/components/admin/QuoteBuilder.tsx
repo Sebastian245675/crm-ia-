@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Search, Plus, Minus, Trash2, FileText, Download, RefreshCw, Mail, Phone, Building2, Calendar, ShoppingBag } from 'lucide-react';
+import { X, Search, Plus, Minus, Trash2, FileText, Download, RefreshCw, Mail, Phone, Building2, Calendar, ShoppingBag, MapPin, ShieldCheck } from 'lucide-react';
 import { db, collection, getDocs } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -20,11 +20,14 @@ declare module 'jspdf' {
 interface QuoteBuilderProps {
   isOpen: boolean;
   onClose: () => void;
+  initialType?: 'quote' | 'proforma';
+  initialOrderData?: any | null;
 }
 
-export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) => {
+export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, initialType, initialOrderData }) => {
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [docType, setDocType] = useState<'quote' | 'proforma'>('quote');
 
   const [quoteData, setQuoteData] = useState({
     companyName: '',
@@ -42,21 +45,61 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
   const [showDropdown, setShowDropdown] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyProfile, setCompanyProfile] = useState({
+    friendlyName: 'MERCO Business Software',
+    legalName: '',
+    address: '',
+    location: '',
+  });
+  const [documentSequence, setDocumentSequence] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
+      const now = new Date();
+      const dateCode = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      setDocumentSequence(`${dateCode}-${String(Date.now()).slice(-4)}`);
       fetchProducts();
       fetchCompanyLogo();
-      setQuoteData({
-        companyName: '', contactName: '', contactPhone: '', contactEmail: '',
-        notes: 'Cotización válida por 15 días hábiles a partir de la fecha de emisión.',
-        discountType: 'none', discountValue: 0, validityDays: 15,
-      });
-      setSelectedProducts([]);
+      const initialDocType = initialType || 'quote';
+      setDocType(initialDocType);
+      if (initialOrderData) {
+        setQuoteData({
+          companyName: initialOrderData.userName || initialOrderData.user_name || '',
+          contactName: initialOrderData.userName || initialOrderData.user_name || '',
+          contactPhone: initialOrderData.userPhone || initialOrderData.user_phone || '',
+          contactEmail: initialOrderData.userEmail || initialOrderData.user_email || '',
+          notes: initialDocType === 'proforma'
+            ? 'Esta es una factura proforma con carácter informativo y no comercial.'
+            : 'Cotización válida por 15 días hábiles a partir de la fecha de emisión.',
+          discountType: 'none',
+          discountValue: 0,
+          validityDays: 15,
+        });
+
+        if (initialOrderData.items && Array.isArray(initialOrderData.items)) {
+          setSelectedProducts(initialOrderData.items.map((item: any) => ({
+            id: item.id || ('item-' + Math.random().toString(36).substring(2, 7)),
+            name: item.name || '',
+            price: typeof item.price === 'number' ? item.price : 0,
+            quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+          })));
+        } else {
+          setSelectedProducts([]);
+        }
+      } else {
+        setQuoteData({
+          companyName: '', contactName: '', contactPhone: '', contactEmail: '',
+          notes: initialDocType === 'proforma'
+            ? 'Esta es una factura proforma con carácter informativo y no comercial.'
+            : 'Cotización válida por 15 días hábiles a partir de la fecha de emisión.',
+          discountType: 'none', discountValue: 0, validityDays: 15,
+        });
+        setSelectedProducts([]);
+      }
       setProductSearch('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialType, initialOrderData]);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -73,13 +116,27 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
     try {
       const isSupabase = typeof (db as any)?.from === 'function';
       if (isSupabase) {
-        const { data } = await (db as any).from('company_profile').select('logo').maybeSingle();
+        const { data } = await (db as any).from('company_profile').select('*').maybeSingle();
         if (data?.logo) setCompanyLogo(data.logo);
+        if (data) {
+          setCompanyProfile({
+            friendlyName: data.friendly_name || data.legal_name || 'MERCO Business Software',
+            legalName: data.legal_name || '',
+            address: data.postal_address || '',
+            location: [data.city, data.state, data.country].filter(Boolean).join(', '),
+          });
+        }
       } else {
         const snap = await getDocs(collection(db, 'company_profile'));
         if (!snap.empty) {
           const profileData = snap.docs[0].data();
           if (profileData.logo) setCompanyLogo(profileData.logo);
+          setCompanyProfile({
+            friendlyName: profileData.friendly_name || profileData.friendlyName || profileData.legal_name || 'MERCO Business Software',
+            legalName: profileData.legal_name || profileData.legalName || '',
+            address: profileData.postal_address || profileData.postalAddress || '',
+            location: [profileData.city, profileData.state, profileData.country].filter(Boolean).join(', '),
+          });
         }
       }
     } catch (err) {
@@ -160,6 +217,13 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
   const total = subtotal - discount;
 
   const formatDate = (d: Date) => d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+  const formatMoney = (value: number) => `$ ${Number(value || 0).toLocaleString('es-CO', { maximumFractionDigits: 2 })}`;
+  const documentNumber = `${docType === 'proforma' ? 'PRO' : 'COT'}-${documentSequence}`;
+  const expiryDate = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + quoteData.validityDays);
+    return date;
+  }, [quoteData.validityDays]);
 
   const getBase64 = (url: string): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -187,7 +251,13 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
 
     setGeneratingPDF(true);
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.setProperties({
+        title: `${docType === 'proforma' ? 'Factura proforma' : 'Cotización'} ${documentNumber}`,
+        subject: `Propuesta comercial para ${quoteData.companyName}`,
+        author: companyProfile.friendlyName,
+        creator: 'MERCO Business Software',
+      });
 
       let logoImg64: string | null = null;
       if (companyLogo) {
@@ -203,121 +273,190 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
         return { ...p, img64: null };
       }));
 
-      // Encabezado
+      // Identidad visual y encabezado ejecutivo
+      const titleText = docType === 'proforma' ? 'FACTURA PROFORMA' : 'COTIZACIÓN';
+      doc.setFillColor(15, 39, 66);
+      doc.rect(0, 0, 210, 5, 'F');
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 5, 48, 1.5, 'F');
+
       if (logoImg64) {
         try {
-          doc.addImage(logoImg64, 'JPEG', 16, 12, 40, 15);
+          doc.addImage(logoImg64, 'JPEG', 16, 13, 34, 13);
         } catch {
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(18);
-          doc.setTextColor(30, 41, 59);
-          doc.text('COTIZACIÓN', 16, 25);
+          doc.setFontSize(15);
+          doc.setTextColor(15, 39, 66);
+          doc.text(companyProfile.friendlyName, 16, 21);
         }
       } else {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(18);
-        doc.setTextColor(30, 41, 59);
-        doc.text('COTIZACIÓN', 16, 25);
+        doc.setFontSize(15);
+        doc.setTextColor(15, 39, 66);
+        doc.text(companyProfile.friendlyName, 16, 20);
       }
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
+      doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(formatDate(new Date()), 16, 32);
-      doc.text(`Válida por ${quoteData.validityDays} días`, 16, 38);
+      const companyLine = companyProfile.legalName && companyProfile.legalName !== companyProfile.friendlyName
+        ? companyProfile.legalName
+        : [companyProfile.address, companyProfile.location].filter(Boolean).join(' · ');
+      if (companyLine) doc.text(doc.splitTextToSize(companyLine, 92), 16, 31);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.setTextColor(15, 39, 66);
+      doc.text(titleText, 194, 19, { align: 'right' });
+      doc.setFontSize(8);
+      doc.setTextColor(37, 99, 235);
+      doc.text(documentNumber, 194, 26, { align: 'right' });
+
+      // Metadatos del documento
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.35);
+      doc.line(16, 40, 194, 40);
+      const meta = [
+        ['FECHA DE EMISIÓN', formatDate(new Date())],
+        ['VÁLIDA HASTA', formatDate(expiryDate)],
+        ['MONEDA', 'COP · Pesos colombianos'],
+      ];
+      meta.forEach(([label, value], index) => {
+        const x = 16 + index * 59.35;
+        if (index > 0) doc.line(x - 5, 45, x - 5, 58);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(label, x, 47);
+        doc.setFontSize(8.4);
+        doc.setTextColor(51, 65, 85);
+        doc.text(value, x, 54);
+      });
 
       // Datos del cliente
-      let y = 50;
+      const clientY = 64;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(16, clientY, 178, 29, 'FD');
+      doc.setFillColor(37, 99, 235);
+      doc.rect(16, clientY, 2.5, 29, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
+      doc.setFontSize(6.8);
       doc.setTextColor(100, 116, 139);
-      doc.text('COTIZADO PARA:', 16, y);
-
-      y += 7;
-      doc.setFontSize(12);
-      doc.setTextColor(30, 41, 59);
-      doc.text(quoteData.companyName, 16, y);
-
+      doc.text(docType === 'proforma' ? 'FACTURADO A' : 'PROPUESTA PREPARADA PARA', 24, clientY + 7);
+      doc.setFontSize(13);
+      doc.setTextColor(15, 39, 66);
+      doc.text(quoteData.companyName, 24, clientY + 15);
+      const contactParts = [quoteData.contactName, quoteData.contactEmail, quoteData.contactPhone].filter(Boolean);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(71, 85, 105);
-      if (quoteData.contactName) { y += 6; doc.text(quoteData.contactName, 16, y); }
-      if (quoteData.contactEmail) { y += 5; doc.text(quoteData.contactEmail, 16, y); }
-      if (quoteData.contactPhone) { y += 5; doc.text(quoteData.contactPhone, 16, y); }
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      if (contactParts.length) doc.text(doc.splitTextToSize(contactParts.join('  ·  '), 155), 24, clientY + 22);
 
       // Tabla de productos
-      const head = [['', 'Descripción', 'Cant.', 'P. Unitario', 'Total']];
+      const head = [['', 'PRODUCTO / DESCRIPCIÓN', 'CANT.', 'PRECIO UNITARIO', 'IMPORTE']];
       const body = prods.map(p => {
         const pr = parseFloat(p.price) || 0;
-        return ['', p.name, String(p.quantity), `$${pr.toLocaleString()}`, `$${(pr * p.quantity).toLocaleString()}`];
+        return ['', p.name, String(p.quantity), formatMoney(pr), formatMoney(pr * p.quantity)];
       });
 
       doc.autoTable({
         head, body,
-        startY: y + 10,
-        theme: 'striped',
-        headStyles: { fillColor: [30, 64, 120], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        startY: 101,
+        theme: 'plain',
+        showHead: 'everyPage',
+        headStyles: { fillColor: [15, 39, 66], textColor: 255, fontStyle: 'bold', fontSize: 7.2, cellPadding: 3.4 },
+        bodyStyles: { textColor: [51, 65, 85] },
         alternateRowStyles: { fillColor: [248, 250, 252] },
-        styles: { fontSize: 9, cellPadding: 4, minCellHeight: 16, valign: 'middle', lineColor: [241, 245, 249], lineWidth: 0.5 },
-        columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 84 }, 2: { cellWidth: 20, halign: 'center' }, 3: { cellWidth: 30, halign: 'right' }, 4: { cellWidth: 30, halign: 'right' } },
+        styles: { fontSize: 8.2, cellPadding: 3.5, minCellHeight: 17, valign: 'middle', lineColor: [226, 232, 240], lineWidth: 0.2, overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 14 }, 1: { cellWidth: 75, fontStyle: 'bold' }, 2: { cellWidth: 18, halign: 'center' }, 3: { cellWidth: 32, halign: 'right' }, 4: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: [15, 39, 66] } },
         margin: { left: 16, right: 16 },
         didDrawCell: (data: any) => {
           if (data.section === 'body' && data.column.index === 0) {
             const p = prods[data.row.index];
             if (p?.img64) {
-              try { doc.addImage(p.img64, 'JPEG', data.cell.x + 1, data.cell.y + 1, 12, 12); } catch {}
+              try { doc.addImage(p.img64, 'JPEG', data.cell.x + 1.5, data.cell.y + 2, 11, 11); } catch {}
             }
           }
         }
       });
 
-      const tblY = doc.lastAutoTable.finalY || y + 30;
+      const tblY = doc.lastAutoTable.finalY || 120;
 
-      // Totales
-      let tY = tblY + 10;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(71, 85, 105);
-      doc.text('SUBTOTAL:', 130, tY);
-      doc.text(`$${subtotal.toLocaleString()}`, 194, tY, { align: 'right' });
-
-      if (discount > 0) {
-        tY += 6;
-        doc.text(`DESCUENTO${quoteData.discountType === 'percentage' ? ` ${quoteData.discountValue}%` : ''}:`, 130, tY);
-        doc.text(`-$${discount.toLocaleString()}`, 194, tY, { align: 'right' });
+      // Resumen económico
+      let tY = tblY + 9;
+      const totalsHeight = discount > 0 ? 33 : 27;
+      if (tY + totalsHeight > 244) {
+        doc.addPage();
+        tY = 22;
       }
-
-      tY += 4;
-      doc.setFillColor(30, 64, 120);
-      doc.rect(128, tY, 66, 10, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255);
-      doc.text('TOTAL:', 133, tY + 7);
-      doc.text(`$${total.toLocaleString()}`, 189, tY + 7, { align: 'right' });
-
-      // Notas
-      let nY = tY + 22;
-      if (nY > 260) { doc.addPage(); nY = 20; }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(30, 41, 59);
-      doc.text('Condiciones:', 16, nY);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(122, tY, 72, totalsHeight, 'FD');
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text(doc.splitTextToSize(quoteData.notes, 100), 16, nY + 5);
-
-      // Firma
-      const sX = 140, sY = nY + 8;
-      doc.setDrawColor(203, 213, 225);
-      doc.setLineWidth(0.5);
-      doc.line(sX, sY + 12, sX + 50, sY + 12);
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
-      doc.text('Firma Autorizada', sX + 25, sY + 17, { align: 'center' });
+      doc.text('Subtotal', 128, tY + 7);
+      doc.setTextColor(51, 65, 85);
+      doc.text(formatMoney(subtotal), 188, tY + 7, { align: 'right' });
 
-      doc.save(`cotizacion_${quoteData.companyName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
-      toast({ title: 'Cotización generada', description: 'El PDF se ha descargado exitosamente.' });
+      if (discount > 0) {
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Descuento${quoteData.discountType === 'percentage' ? ` (${quoteData.discountValue}%)` : ''}`, 128, tY + 14);
+        doc.setTextColor(220, 38, 38);
+        doc.text(`- ${formatMoney(discount)}`, 188, tY + 14, { align: 'right' });
+      }
+
+      const totalBandY = tY + (discount > 0 ? 20 : 14);
+      doc.setFillColor(15, 39, 66);
+      doc.rect(122, totalBandY, 72, 13, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(255);
+      doc.text('TOTAL', 128, totalBandY + 8.5);
+      doc.setFontSize(11);
+      doc.text(formatMoney(total), 188, totalBandY + 8.5, { align: 'right' });
+
+      // Condiciones, cierre comercial y firma
+      let nY = tY + totalsHeight + 13;
+      if (nY > 247) { doc.addPage(); nY = 24; }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(37, 99, 235);
+      doc.text('CONDICIONES COMERCIALES', 16, nY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(doc.splitTextToSize(quoteData.notes, 96), 16, nY + 6);
+
+      const sX = 135, sY = nY + 4;
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.35);
+      doc.line(sX, sY + 13, 194, sY + 13);
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('FIRMA AUTORIZADA', 164.5, sY + 18, { align: 'center' });
+
+      // Pie consistente en todas las páginas
+      const pageCount = doc.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        doc.setPage(page);
+        doc.setDrawColor(226, 232, 240);
+        doc.line(16, 280, 194, 280);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.8);
+        doc.setTextColor(148, 163, 184);
+        const footerIdentity = [companyProfile.friendlyName, companyProfile.location].filter(Boolean).join(' · ');
+        doc.text(footerIdentity || 'Documento comercial', 16, 286);
+        doc.text(`Página ${page} de ${pageCount}`, 194, 286, { align: 'right' });
+      }
+
+      const prefix = docType === 'proforma' ? 'proforma' : 'cotizacion';
+      doc.save(`${prefix}_${quoteData.companyName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast({ 
+        title: docType === 'proforma' ? 'Proforma generada' : 'Cotización generada', 
+        description: 'El PDF se ha descargado exitosamente.' 
+      });
       onClose();
     } catch (err) {
       console.error('Error generating PDF:', err);
@@ -338,7 +477,9 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
             <FileText className="h-4 w-4 text-white" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800">Nueva Cotización</h2>
+            <h2 className="text-base font-bold text-slate-800">
+              {docType === 'proforma' ? 'Nueva Factura Proforma' : 'Nueva Cotización'}
+            </h2>
             <p className="text-[11px] text-slate-400">Completa los datos y revisa la vista previa</p>
           </div>
         </div>
@@ -358,6 +499,45 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
 
         {/* ══ IZQUIERDA: Formulario ══ */}
         <div className="w-1/2 border-r border-slate-200 overflow-y-auto p-6 space-y-5 bg-slate-50/40">
+
+          {/* Tipo de Documento */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <FileText className="h-4 w-4 text-slate-400" />
+              Tipo de Documento
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Selecciona el tipo</Label>
+                <Select
+                  value={docType}
+                  onValueChange={(v: 'quote' | 'proforma') => {
+                    setDocType(v);
+                    // Adjust default notes if they haven't been customized
+                    if (v === 'proforma' && quoteData.notes.includes('Cotización válida por')) {
+                      setQuoteData(prev => ({
+                        ...prev,
+                        notes: 'Esta es una factura proforma con carácter informativo y no comercial.'
+                      }));
+                    } else if (v === 'quote' && quoteData.notes.includes('Esta es una factura proforma')) {
+                      setQuoteData(prev => ({
+                        ...prev,
+                        notes: 'Cotización válida por 15 días hábiles a partir de la fecha de emisión.'
+                      }));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-sm border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="quote">Cotización</SelectItem>
+                    <SelectItem value="proforma">Factura Proforma</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
 
           {/* Sección: Cliente */}
           <div className="space-y-3">
@@ -630,120 +810,146 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* ══ DERECHA: Vista previa en vivo ══ */}
-        <div className="w-1/2 overflow-y-auto bg-slate-100 p-8 flex justify-center">
+        <div className="w-1/2 overflow-y-auto bg-slate-200/60 p-6 xl:p-8 flex justify-center">
           <div
-            className="w-full max-w-[560px] bg-white shadow-lg rounded-sm p-10 flex flex-col select-none"
-            style={{ minHeight: '780px', boxShadow: '0 4px 24px -6px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04)' }}
+            className="w-full max-w-[590px] bg-white flex flex-col select-none relative overflow-hidden"
+            style={{ minHeight: '820px', boxShadow: '0 18px 45px -18px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.06)' }}
           >
-            {/* Encabezado del documento */}
-            <div className="flex justify-between items-start border-b-2 border-slate-200 pb-5">
-              <div>
-                {companyLogo ? (
-                  <img src={companyLogo} alt="Logo" className="h-12 object-contain" />
-                ) : (
-                  <>
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">COTIZACIÓN</h3>
-                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Documento comercial</p>
-                  </>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-slate-700">{formatDate(new Date())}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Válida por {quoteData.validityDays} días</p>
-              </div>
-            </div>
+            <div className="h-1.5 bg-[#0f2742]" />
+            <div className="h-0.5 w-[28%] bg-blue-600" />
 
-            {/* Bloque del cliente */}
-            <div className="mt-5 bg-slate-50 rounded-lg p-4 border border-slate-100">
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">Cotizado para:</p>
-              <p className="text-sm font-bold text-slate-800">
-                {quoteData.companyName || <span className="text-slate-300 italic font-normal">Empresa o cliente</span>}
-              </p>
-              {quoteData.contactName && (
-                <p className="text-xs text-slate-500 mt-0.5">{quoteData.contactName}</p>
-              )}
-              <div className="text-[11px] text-slate-400 mt-1 space-y-0.5">
-                {quoteData.contactEmail && (
-                  <p className="flex items-center gap-1.5"><Mail className="h-2.5 w-2.5" /> {quoteData.contactEmail}</p>
-                )}
-                {quoteData.contactPhone && (
-                  <p className="flex items-center gap-1.5"><Phone className="h-2.5 w-2.5" /> {quoteData.contactPhone}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Tabla de productos */}
-            <div className="mt-6 flex-1">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[hsl(214,100%,38%)] text-white text-[9px] uppercase tracking-wider font-bold">
-                    <th className="py-2 px-2 text-left w-10">Foto</th>
-                    <th className="py-2 px-2 text-left">Descripción</th>
-                    <th className="py-2 px-2 text-center w-12">Cant.</th>
-                    <th className="py-2 px-2 text-right w-16">P. Unit.</th>
-                    <th className="py-2 px-3 text-right w-16">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-10 text-center text-slate-300 text-xs italic">
-                        Agrega productos para ver la vista previa
-                      </td>
-                    </tr>
+            <div className="p-8 xl:p-10 flex flex-1 flex-col">
+              {/* Identidad y título */}
+              <div className="flex justify-between items-start gap-5">
+                <div className="min-w-0 max-w-[58%]">
+                  {companyLogo ? (
+                    <img src={companyLogo} alt="Logo" className="h-11 max-w-[180px] object-contain object-left" />
                   ) : (
-                    selectedProducts.map((p, i) => {
+                    <h3 className="text-base font-extrabold text-[#0f2742] tracking-tight">{companyProfile.friendlyName}</h3>
+                  )}
+                  {companyLogo && <p className="text-[10px] font-bold text-slate-700 mt-2">{companyProfile.friendlyName}</p>}
+                  {(companyProfile.address || companyProfile.location) && (
+                    <p className="text-[8px] text-slate-400 mt-1 leading-relaxed flex items-start gap-1">
+                      <MapPin className="h-2.5 w-2.5 shrink-0 mt-0.5" />
+                      {[companyProfile.address, companyProfile.location].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xl font-black text-[#0f2742] tracking-[-0.03em]">
+                    {docType === 'proforma' ? 'FACTURA PROFORMA' : 'COTIZACIÓN'}
+                  </p>
+                  <p className="text-[9px] text-blue-600 font-bold tracking-wider mt-1">{documentNumber}</p>
+                </div>
+              </div>
+
+              {/* Información clave */}
+              <div className="grid grid-cols-3 border-y border-slate-200 mt-6 py-3">
+                <div className="pr-3">
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.12em]">Fecha de emisión</p>
+                  <p className="text-[9px] font-semibold text-slate-700 mt-1">{formatDate(new Date())}</p>
+                </div>
+                <div className="px-3 border-l border-slate-200">
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.12em]">Válida hasta</p>
+                  <p className="text-[9px] font-semibold text-slate-700 mt-1">{formatDate(expiryDate)}</p>
+                </div>
+                <div className="pl-3 border-l border-slate-200">
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.12em]">Moneda</p>
+                  <p className="text-[9px] font-semibold text-slate-700 mt-1">COP · Pesos colombianos</p>
+                </div>
+              </div>
+
+              {/* Cliente */}
+              <div className="mt-5 border border-slate-200 bg-slate-50 relative px-5 py-4">
+                <div className="absolute inset-y-0 left-0 w-0.5 bg-blue-600" />
+                <p className="text-[7px] text-slate-400 font-bold uppercase tracking-[0.14em] mb-1.5">
+                  {docType === 'proforma' ? 'Facturado a' : 'Propuesta preparada para'}
+                </p>
+                <p className="text-sm font-extrabold text-[#0f2742]">
+                  {quoteData.companyName || <span className="text-slate-300 font-normal">Empresa o cliente</span>}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] text-slate-500 mt-1.5">
+                  {quoteData.contactName && <span className="font-semibold text-slate-600">{quoteData.contactName}</span>}
+                  {quoteData.contactEmail && <span className="flex items-center gap-1"><Mail className="h-2.5 w-2.5" />{quoteData.contactEmail}</span>}
+                  {quoteData.contactPhone && <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5" />{quoteData.contactPhone}</span>}
+                </div>
+              </div>
+
+              {/* Tabla de productos */}
+              <div className="mt-5 flex-1">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#0f2742] text-white text-[7px] uppercase tracking-[0.1em] font-bold">
+                      <th className="py-2.5 px-2 text-left w-10"></th>
+                      <th className="py-2.5 px-2 text-left">Producto / descripción</th>
+                      <th className="py-2.5 px-2 text-center w-12">Cant.</th>
+                      <th className="py-2.5 px-2 text-right w-20">P. unitario</th>
+                      <th className="py-2.5 px-3 text-right w-20">Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center border-b border-slate-100">
+                          <ShoppingBag className="h-5 w-5 text-slate-200 mx-auto mb-2" />
+                          <span className="text-slate-300 text-[10px]">Agrega productos para completar la propuesta</span>
+                        </td>
+                      </tr>
+                    ) : selectedProducts.map((p, i) => {
                       const price = parseFloat(p.price) || 0;
                       return (
-                        <tr key={p.id} className={cn('border-b border-slate-100', i % 2 === 1 && 'bg-slate-50/50')}>
-                          <td className="py-1.5 px-2">
-                            {p.image ? (
-                              <img src={p.image} className="w-7 h-7 rounded object-cover border border-slate-100" />
-                            ) : (
-                              <div className="w-7 h-7 rounded bg-slate-50 border border-slate-100" />
-                            )}
+                        <tr key={p.id} className={cn('border-b border-slate-200', i % 2 === 1 && 'bg-slate-50')}>
+                          <td className="py-2 px-2">
+                            {p.image ? <img src={p.image} alt="" className="w-8 h-8 object-cover border border-slate-200" /> : <div className="w-8 h-8 bg-slate-50 border border-slate-200" />}
                           </td>
-                          <td className="py-1.5 px-2 font-medium text-slate-700">{p.name}</td>
-                          <td className="py-1.5 px-2 text-center text-slate-600 font-semibold">{p.quantity}</td>
-                          <td className="py-1.5 px-2 text-right text-slate-500">${price.toLocaleString()}</td>
-                          <td className="py-1.5 px-3 text-right font-semibold text-slate-800">${(price * p.quantity).toLocaleString()}</td>
+                          <td className="py-2 px-2 font-bold text-slate-700 leading-snug">{p.name}</td>
+                          <td className="py-2 px-2 text-center text-slate-600 font-semibold">{p.quantity}</td>
+                          <td className="py-2 px-2 text-right text-slate-500">{formatMoney(price)}</td>
+                          <td className="py-2 px-3 text-right font-bold text-[#0f2742]">{formatMoney(price * p.quantity)}</td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Totales */}
-            {selectedProducts.length > 0 && (
-              <div className="mt-4 flex flex-col items-end gap-1">
-                <div className="w-[200px] flex justify-between text-[11px] text-slate-400 font-medium">
-                  <span>SUBTOTAL:</span>
-                  <span className="text-slate-600">${subtotal.toLocaleString()}</span>
-                </div>
-                {discount > 0 && (
-                  <div className="w-[200px] flex justify-between text-[11px] text-red-400 font-medium">
-                    <span>DESCUENTO:</span>
-                    <span>-${discount.toLocaleString()}</span>
+              {/* Resumen financiero */}
+              {selectedProducts.length > 0 && (
+                <div className="mt-4 flex justify-end">
+                  <div className="w-[230px] border border-slate-200 bg-slate-50">
+                    <div className="flex justify-between text-[9px] text-slate-500 px-4 py-2">
+                      <span>Subtotal</span><span className="font-semibold text-slate-700">{formatMoney(subtotal)}</span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between text-[9px] text-slate-500 px-4 pb-2">
+                        <span>Descuento {quoteData.discountType === 'percentage' ? `(${quoteData.discountValue}%)` : ''}</span>
+                        <span className="font-semibold text-red-600">- {formatMoney(discount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center bg-[#0f2742] text-white px-4 py-3">
+                      <span className="text-[9px] font-bold tracking-wider">TOTAL</span>
+                      <span className="text-sm font-black">{formatMoney(total)}</span>
+                    </div>
                   </div>
-                )}
-                <div className="w-[210px] flex justify-between bg-[hsl(214,100%,38%)] text-white text-xs font-bold px-3 py-2 rounded mt-1">
-                  <span>TOTAL:</span>
-                  <span>${total.toLocaleString()}</span>
+                </div>
+              )}
+
+              {/* Condiciones y firma */}
+              <div className="mt-auto pt-7 flex justify-between items-end gap-8">
+                <div className="max-w-[58%]">
+                  <p className="text-[7px] text-blue-600 font-bold uppercase tracking-[0.14em] mb-1.5">Condiciones comerciales</p>
+                  <p className="text-[8px] text-slate-500 leading-relaxed">{quoteData.notes}</p>
+                </div>
+                <div className="w-36 text-center">
+                  <div className="border-b border-slate-300 mb-1.5 h-7" />
+                  <span className="text-[7px] text-slate-400 font-bold uppercase tracking-wider">Firma autorizada</span>
                 </div>
               </div>
-            )}
 
-            {/* Pie del documento */}
-            <div className="mt-auto pt-6 flex justify-between items-end border-t border-slate-100" style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
-              <div className="max-w-[250px]">
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Condiciones:</p>
-                <p className="text-[8px] text-slate-400 leading-relaxed">{quoteData.notes}</p>
-              </div>
-              <div className="text-center">
-                <div className="w-32 border-b border-slate-200 mb-1" />
-                <span className="text-[8px] text-slate-400 font-medium uppercase tracking-wider">Firma Autorizada</span>
+              {/* Pie */}
+              <div className="mt-8 pt-3 border-t border-slate-200 flex items-center justify-between text-[7px] text-slate-400">
+                <span>{companyProfile.friendlyName}{companyProfile.location ? ` · ${companyProfile.location}` : ''}</span>
+                <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-blue-600" /> Documento comercial</span>
               </div>
             </div>
           </div>

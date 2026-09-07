@@ -10,6 +10,167 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private sqliteDb: sqlite3.Database | null = null;
   private useSqlite = false;
   private dbPath = process.env.DB_PATH || path.resolve(process.cwd(), 'tienda.db');
+  private posQueue: Promise<void> = Promise.resolve();
+
+  /**
+   * Ejecuta el cobro POS como una sola unidad: valida y descuenta inventario,
+   * persiste el pedido, registra sus renglones de venta y el movimiento contable.
+   * La cola evita que dos cajas compartiendo este proceso vendan el mismo stock.
+   */
+  async registerPosSale(input: any): Promise<any> {
+    let release!: () => void;
+    const previous = this.posQueue;
+    this.posQueue = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+
+    try {
+      return await this.registerPosSaleTransaction(input);
+    } finally {
+      release();
+    }
+  }
+
+  private async registerPosSaleTransaction(input: any): Promise<any> {
+    const requestedItems = Array.isArray(input?.items) ? input.items : [];
+    if (!requestedItems.length) throw new Error('La venta debe incluir al menos un producto.');
+
+    const orderId = String(input?.id || `sale-${Date.now()}`);
+    const paymentMethod = String(input?.paymentMethod || 'efectivo');
+    if (!['efectivo', 'tarjeta', 'transferencia'].includes(paymentMethod)) {
+      throw new Error('El método de pago no es válido.');
+    }
+
+    const begin = this.useSqlite ? 'BEGIN IMMEDIATE' : 'BEGIN';
+    await this.query(begin);
+    try {
+      const normalizedItems: any[] = [];
+      const updatedStocks: any[] = [];
+
+      for (const rawItem of requestedItems) {
+        const quantity = Number(rawItem?.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+          throw new Error(`Cantidad inválida para "${rawItem?.name || 'producto'}".`);
+        }
+
+        const rawId = String(rawItem?.id || '');
+        if (rawId.startsWith('generic-')) {
+          const price = Number(rawItem?.price);
+          if (!Number.isFinite(price) || price <= 0) throw new Error('El precio del artículo libre no es válido.');
+          normalizedItems.push({ id: rawId, name: String(rawItem?.name || 'Artículo libre'), price, quantity, image: rawItem?.image || '' });
+          continue;
+        }
+
+        const productId = Number(rawId);
+        if (!Number.isInteger(productId) || productId <= 0) throw new Error(`Producto inválido: ${rawItem?.name || rawId}`);
+        const lockClause = this.useSqlite ? '' : ' FOR UPDATE';
+        const rows = await this.query(
+          `SELECT id, nombre, precio, stock, activo FROM productos WHERE id = %s${lockClause}`,
+          [productId]
+        );
+        if (!rows.length) throw new Error(`El producto "${rawItem?.name || rawId}" ya no existe.`);
+
+        const product = rows[0];
+        const active = product.activo === true || product.activo === 1 || product.activo === 'true';
+        const currentStock = Number(product.stock || 0);
+        if (!active) throw new Error(`El producto "${product.nombre}" está inactivo.`);
+        if (!Number.isFinite(currentStock) || currentStock < quantity) {
+          throw new Error(`${product.nombre}: stock disponible ${Math.max(0, currentStock)}, solicitado ${quantity}.`);
+        }
+
+        const update = await this.query(
+          'UPDATE productos SET stock = stock - %s WHERE id = %s AND stock >= %s',
+          [quantity, productId, quantity]
+        );
+        if (Number(update[0]?.changes ?? 1) !== 1) throw new Error(`${product.nombre}: el stock cambió durante el cobro.`);
+
+        const newStock = currentStock - quantity;
+        const price = Number(product.precio || 0);
+        normalizedItems.push({ id: String(productId), name: product.nombre, price, quantity, image: rawItem?.image || '' });
+        updatedStocks.push({ id: String(productId), name: product.nombre, newStock });
+      }
+
+      const subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const discountType = ['percentage', 'fixed'].includes(input?.discountType) ? input.discountType : 'none';
+      const discountValue = Math.max(0, Number(input?.discountValue || 0));
+      const discountAmount = discountType === 'percentage'
+        ? subtotal * Math.min(discountValue, 100) / 100
+        : discountType === 'fixed' ? Math.min(discountValue, subtotal) : 0;
+      const total = Math.max(0, subtotal - discountAmount);
+      const received = Number(input?.amountReceived || 0);
+      if (paymentMethod === 'efectivo' && (!Number.isFinite(received) || received < total)) {
+        throw new Error(`El efectivo recibido es menor al total de la venta.`);
+      }
+
+      const now = new Date().toISOString();
+      const order = {
+        id: orderId,
+        user_id: input?.userId || null,
+        userName: String(input?.customerName || 'Cliente General').trim() || 'Cliente General',
+        user_name: String(input?.customerName || 'Cliente General').trim() || 'Cliente General',
+        userEmail: input?.customerEmail || null,
+        user_email: input?.customerEmail || null,
+        userPhone: input?.customerPhone || null,
+        user_phone: input?.customerPhone || null,
+        items: normalizedItems,
+        subtotal,
+        discountType,
+        discount_type: discountType,
+        discountValue,
+        discount_value: discountValue,
+        discountAmount,
+        discount_amount: discountAmount,
+        total,
+        amountReceived: paymentMethod === 'efectivo' ? received : total,
+        changeAmount: paymentMethod === 'efectivo' ? received - total : 0,
+        paymentMethod,
+        payment_method: paymentMethod,
+        status: 'confirmed',
+        createdAt: now,
+        created_at: now,
+        confirmedAt: now,
+        orderType: 'physical',
+        order_type: 'physical',
+        physicalSale: true,
+        physical_sale: true,
+        orderNotes: input?.notes || null,
+        order_notes: input?.notes || null,
+        employee_id: input?.employeeId || null,
+        employee_name: input?.employeeName || 'Vendedor',
+        employeeId: input?.employeeId || null,
+        employeeName: input?.employeeName || 'Vendedor',
+        billingLineId: input?.billingLineId || 'none',
+        billing_line_id: input?.billingLineId || 'none'
+      };
+
+      await this.query(
+        'INSERT INTO documentos (tabla_nombre, id, datos) VALUES (%s, %s, %s)',
+        ['orders', orderId, JSON.stringify(order)]
+      );
+
+      for (const item of normalizedItems.filter((item) => !String(item.id).startsWith('generic-'))) {
+        const proportionalTotal = subtotal > 0 ? (item.price * item.quantity * total) / subtotal : 0;
+        await this.query(
+          'INSERT INTO ventas (producto_id, cantidad, total, fecha) VALUES (%s, %s, %s, NOW())',
+          [Number(item.id), item.quantity, proportionalTotal]
+        );
+        await this.query(
+          'INSERT INTO historial_modificaciones (producto_id, usuario_correo) VALUES (%s, %s)',
+          [Number(item.id), input?.employeeEmail || 'venta_pos@merco.com']
+        );
+      }
+
+      await this.query(
+        'INSERT INTO contabilidad (tipo, concepto, monto, metodo_pago, referencia_id) VALUES (%s, %s, %s, %s, %s)',
+        ['ingreso', `Venta POS - Cliente: ${order.userName}`, total, paymentMethod, orderId]
+      );
+
+      await this.query('COMMIT');
+      return { order, updatedStocks, accountingRegistered: true };
+    } catch (error) {
+      try { await this.query('ROLLBACK'); } catch (_) {}
+      throw error;
+    }
+  }
 
   async onModuleInit() {
     await this.initializeDatabase();
@@ -73,6 +234,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     await this.crearTablas();
     await this.seedDefaultAdmin();
+    await this.migrateAgencyOwnership();
   }
 
   private async crearTablas() {
@@ -95,7 +257,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           contraseña TEXT NOT NULL,
           sub_cuenta TEXT,
           liberta TEXT DEFAULT 'no',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          account_role TEXT DEFAULT 'agency_owner',
+          agency_id TEXT,
+          parent_user_id TEXT,
+          permissions TEXT DEFAULT '{}',
+          active INTEGER DEFAULT 1,
+          phone TEXT,
+          totp_secret TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
       await this.runSqlite(`
@@ -163,6 +333,50 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      await this.runSqlite(`
+        CREATE TABLE IF NOT EXISTS facturas_electronicas (
+          id TEXT PRIMARY KEY,
+          order_id TEXT NOT NULL,
+          uuid TEXT NOT NULL,
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          total REAL NOT NULL,
+          estatus TEXT NOT NULL,
+          billing_line_id TEXT
+        );
+      `);
+      await this.runSqlite(`
+        CREATE TABLE IF NOT EXISTS contabilidad (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tipo TEXT NOT NULL,
+          concepto TEXT NOT NULL,
+          monto REAL NOT NULL,
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          metodo_pago TEXT,
+          referencia_id TEXT
+        );
+      `);
+      try {
+        await this.runSqlite("ALTER TABLE usuarios ADD COLUMN totp_secret TEXT;");
+      } catch (_) {}
+      for (const statement of [
+        "ALTER TABLE usuarios ADD COLUMN account_role TEXT DEFAULT 'agency_owner';",
+        'ALTER TABLE usuarios ADD COLUMN agency_id TEXT;',
+        'ALTER TABLE usuarios ADD COLUMN parent_user_id TEXT;',
+        "ALTER TABLE usuarios ADD COLUMN permissions TEXT DEFAULT '{}';",
+        'ALTER TABLE usuarios ADD COLUMN active INTEGER DEFAULT 1;',
+        'ALTER TABLE usuarios ADD COLUMN phone TEXT;',
+        'ALTER TABLE usuarios ADD COLUMN email_2fa_enabled INTEGER DEFAULT 0;',
+        'ALTER TABLE usuarios ADD COLUMN backup_codes TEXT;',
+        'ALTER TABLE usuarios ADD COLUMN updated_at TIMESTAMP;'
+      ]) {
+        try { await this.runSqlite(statement); } catch (_) {}
+      }
+      try {
+        await this.runSqlite('UPDATE usuarios SET updated_at = created_at WHERE updated_at IS NULL;');
+      } catch (_) {}
+      try {
+        await this.runSqlite("ALTER TABLE facturas_electronicas ADD COLUMN billing_line_id TEXT;");
+      } catch (_) {}
     } else {
       await this.runPg(`
         CREATE TABLE IF NOT EXISTS productos (
@@ -179,12 +393,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           id SERIAL PRIMARY KEY,
           nombre VARCHAR(100) NOT NULL,
           correo VARCHAR(100) UNIQUE NOT NULL,
-          contraseña VARCHAR(100) NOT NULL,
+          contraseña VARCHAR(255) NOT NULL,
           sub_cuenta VARCHAR(100),
           liberta VARCHAR(10) DEFAULT 'no',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          account_role VARCHAR(30) DEFAULT 'agency_owner',
+          agency_id VARCHAR(100),
+          parent_user_id VARCHAR(100),
+          permissions TEXT DEFAULT '{}',
+          active BOOLEAN DEFAULT TRUE,
+          phone VARCHAR(100),
+          totp_secret VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      try {
+        await this.runPg('ALTER TABLE usuarios ALTER COLUMN contraseña TYPE VARCHAR(255);');
+      } catch (_) {}
       await this.runPg(`
         CREATE TABLE IF NOT EXISTS contacts (
           id SERIAL PRIMARY KEY,
@@ -250,6 +475,47 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      await this.runPg(`
+        CREATE TABLE IF NOT EXISTS facturas_electronicas (
+          id VARCHAR(255) PRIMARY KEY,
+          order_id VARCHAR(255) NOT NULL,
+          uuid VARCHAR(255) NOT NULL,
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          total NUMERIC(10, 2) NOT NULL,
+          estatus VARCHAR(50) NOT NULL,
+          billing_line_id VARCHAR(255)
+        );
+      `);
+      await this.runPg(`
+        CREATE TABLE IF NOT EXISTS contabilidad (
+          id SERIAL PRIMARY KEY,
+          tipo VARCHAR(50) NOT NULL,
+          concepto VARCHAR(255) NOT NULL,
+          monto NUMERIC(10, 2) NOT NULL,
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          metodo_pago VARCHAR(50),
+          referencia_id VARCHAR(100)
+        );
+      `);
+      try {
+        await this.runPg("ALTER TABLE usuarios ADD COLUMN totp_secret VARCHAR(255);");
+      } catch (_) {}
+      for (const statement of [
+        "ALTER TABLE usuarios ADD COLUMN account_role VARCHAR(30) DEFAULT 'agency_owner';",
+        'ALTER TABLE usuarios ADD COLUMN agency_id VARCHAR(100);',
+        'ALTER TABLE usuarios ADD COLUMN parent_user_id VARCHAR(100);',
+        "ALTER TABLE usuarios ADD COLUMN permissions TEXT DEFAULT '{}';",
+        'ALTER TABLE usuarios ADD COLUMN active BOOLEAN DEFAULT TRUE;',
+        'ALTER TABLE usuarios ADD COLUMN phone VARCHAR(100);',
+        'ALTER TABLE usuarios ADD COLUMN email_2fa_enabled BOOLEAN DEFAULT FALSE;',
+        'ALTER TABLE usuarios ADD COLUMN backup_codes TEXT;',
+        'ALTER TABLE usuarios ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;'
+      ]) {
+        try { await this.runPg(statement); } catch (_) {}
+      }
+      try {
+        await this.runPg("ALTER TABLE facturas_electronicas ADD COLUMN billing_line_id VARCHAR(255);");
+      } catch (_) {}
     }
   }
 
@@ -294,6 +560,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (e: any) {
       console.error('[DB] Error seeding default admin/superadmin users:', e.message);
+    }
+  }
+
+  private async migrateAgencyOwnership() {
+    const users = await this.query(
+      'SELECT id, sub_cuenta, account_role, agency_id FROM usuarios ORDER BY id ASC'
+    );
+    const defaultOwner = users.find((user) => !user.sub_cuenta) || null;
+
+    for (const user of users) {
+      const id = String(user.id);
+      if (user.sub_cuenta === 'saas-admin') {
+        await this.query(
+          'UPDATE usuarios SET account_role = %s, agency_id = NULL, parent_user_id = NULL WHERE id = %s',
+          ['saas_admin', id]
+        );
+        continue;
+      }
+
+      if (user.sub_cuenta === 'si') {
+        const agencyId = user.agency_id || (defaultOwner ? String(defaultOwner.id) : null);
+        await this.query(
+          'UPDATE usuarios SET account_role = %s, agency_id = %s, parent_user_id = COALESCE(parent_user_id, %s) WHERE id = %s',
+          ['agency_user', agencyId, agencyId, id]
+        );
+        continue;
+      }
+
+      await this.query(
+        'UPDATE usuarios SET account_role = %s, agency_id = %s, parent_user_id = NULL WHERE id = %s',
+        ['agency_owner', id, id]
+      );
     }
   }
 
