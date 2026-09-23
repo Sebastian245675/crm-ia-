@@ -224,12 +224,15 @@ const legacyVerticalIds = new Set([
   'agricola', 'vinicola', 'avicola', 'pesquera', 'cereales', 'integraciones',
   'facturacion-electronica', 'tesoreria', 'impuestos', 'presupuestos', 'activos',
 ]);
-const availableModules = modules.filter((module) => !legacyVerticalIds.has(module.id));
+const hiddenModuleIds = new Set([
+  ...legacyVerticalIds,
+  'produccion', 'calidad', 'comercio-exterior', 'consignaciones', 'industria',
+]);
+const availableModules = modules.filter((module) => !hiddenModuleIds.has(module.id));
 
 const moduleGroups = [
-  { label: 'Operaciones', ids: ['compras', 'proveedores', 'almacenes', 'logistica', 'produccion', 'calidad', 'mantenimiento'] },
-  { label: 'Gestión avanzada', ids: ['comercio-exterior', 'consignaciones', 'rrhh', 'multiempresa'] },
-  { label: 'Industria', ids: ['industria'] },
+  { label: 'Operaciones', ids: ['compras', 'proveedores', 'almacenes', 'logistica', 'mantenimiento'] },
+  { label: 'Gestión avanzada', ids: ['rrhh', 'multiempresa'] },
   { label: 'Automatización', ids: ['alertas'] },
 ];
 
