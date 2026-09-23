@@ -17,6 +17,9 @@ import {
 } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isProductForAgency, isOrderForAgency, isItemForAgency } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
+import { isRealSaleOrder, sumRealSales } from '@/lib/sales';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -67,6 +70,7 @@ interface ContabilidadManagerProps {
 
 export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedded = false }) => {
   const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
   const isSupabase = typeof (db as any)?.from === 'function';
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
@@ -190,7 +194,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
   useEffect(() => {
     fetchData();
     fetchInvoicesAndLines();
-  }, []);
+  }, [activeAgencyId]);
 
   useEffect(() => {
     if (!loading) {
@@ -204,22 +208,29 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
       if (isSupabase) {
         // Fetch Orders
         const { data: ordersData } = await db.from("orders").select("*").order("created_at", { ascending: true });
-        if (ordersData) setOrders(ordersData);
+        if (ordersData) {
+          setOrders(ordersData.filter((o: any) => isOrderForAgency(o, activeAgencyId)));
+        }
 
         // Fetch Products
         const { data: productsData } = await db.from("products").select("*");
-        if (productsData) setProducts(productsData);
+        if (productsData) {
+          setProducts(productsData.filter((p: any) => isProductForAgency(p, activeAgencyId)));
+        }
 
         // Fetch Expenses (gastos)
         const { data: expensesData } = await db.from("gastos").select("*").order("fecha", { ascending: false });
         if (expensesData && Array.isArray(expensesData)) {
-          setExpenses(expensesData);
+          setExpenses(expensesData.filter((g: any) => isItemForAgency(g, activeAgencyId)));
         }
 
         // Fetch Company Profile
-        const { data: compData } = await db.from("company_profile").select("*");
+        const agencyOwnerId = activeAgencyId || '2';
+        const { data: compData } = await db.from("company_profile").select("*").or(`owner_id.eq.${agencyOwnerId},agency_id.eq.${agencyOwnerId}`);
         if (compData && compData.length > 0) {
           setCompanyProfile(compData[0]);
+        } else {
+          setCompanyProfile(null);
         }
 
         // Fetch Employees
@@ -235,17 +246,19 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
       } else {
         // Firestore fallback
         const ordersQuerySnapshot = await getDocs(collection(db, "orders"));
-        setOrders(ordersQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setOrders(ordersQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((o: any) => isOrderForAgency(o, activeAgencyId)));
 
         const productsQuerySnapshot = await getDocs(collection(db, "products"));
-        setProducts(productsQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setProducts(productsQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((p: any) => isProductForAgency(p, activeAgencyId)));
 
         const expensesSnapshot = await getDocs(collection(db, "gastos"));
-        setExpenses(expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setExpenses(expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((g: any) => isItemForAgency(g, activeAgencyId)));
 
         const companySnapshot = await getDocs(collection(db, "company_profile"));
-        if (companySnapshot.docs.length > 0) {
-          setCompanyProfile({ id: companySnapshot.docs[0].id, ...companySnapshot.docs[0].data() });
+        const comps = companySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const matchComp = comps.find((c: any) => c.owner_id === activeAgencyId || c.agency_id === activeAgencyId);
+        if (matchComp) {
+          setCompanyProfile(matchComp);
         }
 
         const empsSnapshot = await getDocs(collection(db, "users"));
@@ -274,10 +287,10 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
       let linesData: any[] = [];
       if (isSupabase) {
         const { data } = await db.from('lineas_facturacion').select('*');
-        linesData = data || [];
+        linesData = (data || []).filter((l: any) => isItemForAgency(l, activeAgencyId));
       } else {
         const snap = await getDocs(collection(db, "lineas_facturacion"));
-        linesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        linesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((l: any) => isItemForAgency(l, activeAgencyId));
       }
       setBillingLines(linesData);
 
@@ -285,7 +298,13 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
       const res = await fetch('/api/facturacion/historial');
       if (res.ok) {
         const json = await res.json();
-        setInvoices(json.facturas || []);
+        const rawInvoices = json.facturas || (Array.isArray(json) ? json : []);
+        const lineIds = new Set(linesData.map(l => String(l.id)));
+        const filteredInvoices = rawInvoices.filter((inv: any) => {
+          if (inv.billing_line_id) return lineIds.has(String(inv.billing_line_id));
+          return activeAgencyId === '2' || activeAgencyId === 'default';
+        });
+        setInvoices(filteredInvoices);
       }
     } catch (e) {
       console.error("Error fetching invoices or billing lines:", e);
@@ -318,6 +337,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
 
     // Filter sales/orders
     const filteredOrders = orders.filter(o => {
+      if (!isRealSaleOrder(o)) return false;
       const date = new Date(o.created_at || o.createdAt);
       const matchesTime = date >= startCutoff && date <= endCutoff;
       if (!matchesTime) return false;
@@ -356,11 +376,8 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
     });
 
     const filteredExpenses = filteredManual.filter(e => e.tipo !== 'ingreso');
-    const filteredManualIncomes = filteredManual.filter(e => e.tipo === 'ingreso');
-
     // Calculations
-    const totalSales = filteredOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0) +
-                       filteredManualIncomes.reduce((sum, i) => sum + (Number(i.monto) || 0), 0);
+    const totalSales = sumRealSales(filteredOrders);
     setKpiTotalSales(totalSales);
 
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.monto) || 0), 0);
@@ -392,16 +409,6 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
         const date = new Date(dateStr);
         const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         salesByDayMap.set(day, (salesByDayMap.get(day) || 0) + (Number(order.total) || 0));
-        combinedDays.add(day);
-      }
-    });
-
-    filteredManualIncomes.forEach(income => {
-      const dateStr = income.fecha || income.created_at;
-      if (dateStr) {
-        const date = new Date(dateStr);
-        const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        salesByDayMap.set(day, (salesByDayMap.get(day) || 0) + (Number(income.monto) || 0));
         combinedDays.add(day);
       }
     });
@@ -511,7 +518,9 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
         id: expenseId,
         tipo: editingExpense?.tipo || formMode,
         created_at: editingExpense?.created_at || new Date().toISOString(),
-        registrado_por: editingExpense?.registrado_por || user?.nombre || user?.email || 'Administrador Principal'
+        registrado_por: editingExpense?.registrado_por || user?.nombre || user?.email || 'Administrador Principal',
+        agency_id: activeAgencyId || '2',
+        owner_id: activeAgencyId || '2'
       };
 
       if (isSupabase) {
@@ -678,7 +687,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
           
           <div class="row" style="margin-top: 8px;">
             <span style="max-width: 250px; word-wrap: break-word;">${exp.concepto}</span>
-            <span>$${Number(exp.monto).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+            <span>${formatCurrency(Number(exp.monto))}</span>
           </div>
           
           ${exp.notas ? `
@@ -696,7 +705,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
           
           <div class="row total">
             <span>TOTAL EGRESO:</span>
-            <span>$${Number(exp.monto).toLocaleString('es-ES', { minimumFractionDigits: 2 })} ARS</span>
+            <span>${formatCurrency(Number(exp.monto))}</span>
           </div>
           
           <div class="sign">
@@ -905,7 +914,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
               <CardContent className="p-6 flex justify-between items-start">
                 <div>
                   <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Caja total de Ventas</p>
-                  <h3 className="text-2xl font-black text-slate-800">${kpiTotalSales.toLocaleString('es-ES')}</h3>
+                  <h3 className="text-2xl font-black text-slate-800">{formatCurrency(kpiTotalSales)}</h3>
                   <p className="text-[10px] text-blue-600 mt-1 font-medium flex items-center">
                     <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> Flujo neto de ingresos
                   </p>
@@ -920,7 +929,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
               <CardContent className="p-6 flex justify-between items-start">
                 <div>
                   <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Gastos Operacionales</p>
-                  <h3 className="text-2xl font-black text-rose-600">${kpiTotalExpenses.toLocaleString('es-ES')}</h3>
+                  <h3 className="text-2xl font-black text-rose-600">{formatCurrency(kpiTotalExpenses)}</h3>
                   <p className="text-[10px] text-rose-500 mt-1 font-medium flex items-center">
                     <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" /> Egresos del periodo
                   </p>
@@ -942,7 +951,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                     "text-2xl font-black",
                     kpiNetProfit >= 0 ? "text-emerald-700" : "text-red-700"
                   )}>
-                    {kpiNetProfit < 0 ? '-' : ''}${Math.abs(kpiNetProfit).toLocaleString('es-ES')}
+                    {formatCurrency(kpiNetProfit)}
                   </h3>
                   <p className={cn(
                     "text-[10px] mt-1 font-bold flex items-center",
@@ -1390,7 +1399,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                               <div className="text-[10px] text-slate-400 font-semibold mt-2">Categoría: {previewExpense.categoria || 'Otros'}</div>
                             </div>
                             <div className="font-bold text-slate-800 text-right shrink-0">
-                              ${Number(previewExpense.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                              {formatCurrency(Number(previewExpense.monto || 0))}
                             </div>
                           </div>
                         </div>
@@ -1399,7 +1408,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center text-slate-900 mb-6">
                           <span className="font-bold text-slate-500 uppercase text-[10px]">Total Egreso</span>
                           <span className="text-base font-black text-blue-600">
-                            ${Number(previewExpense.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} ARS
+                            {formatCurrency(Number(previewExpense.monto || 0))}
                           </span>
                         </div>
 
@@ -1461,7 +1470,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                         <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748b" />
                         <YAxis tickFormatter={(val) => `$${val}`} tick={{ fontSize: 11 }} stroke="#64748b" />
                         <RechartsTooltip
-                          formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`]}
+                          formatter={(value: number) => [formatCurrency(value)]}
                           contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                         />
                         <Legend />
@@ -1504,7 +1513,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                           ))}
                         </Pie>
                         <RechartsTooltip
-                          formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`, 'Gastado']}
+                          formatter={(value: number) => [formatCurrency(value), 'Gastado']}
                           contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                         />
                       </PieChart>
@@ -1592,7 +1601,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                                 "relative z-10 font-bold pr-2",
                                 exp.isVirtual ? "text-blue-700" : isIncome ? "text-emerald-700" : "text-rose-700"
                               )}>
-                                {isIncome ? '+' : '-'}${Number(exp.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                                {isIncome ? '+' : '-'}{formatCurrency(Number(exp.monto || 0))}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -1707,7 +1716,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Facturado ({selectedBillingLineId === 'all' ? 'Consolidado' : 'Esta Línea'})</span>
                   <div className="flex justify-between items-baseline mt-1">
                     <span className="text-xl font-black text-emerald-700">
-                      ${billingStats.totalFacturado.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                      {formatCurrency(billingStats.totalFacturado)}
                     </span>
                     <span className="text-[10px] font-bold text-slate-400">MXN</span>
                   </div>
@@ -1780,7 +1789,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right font-bold text-slate-800">
-                              ${Number(inv.total || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                              {formatCurrency(Number(inv.total || 0))}
                             </td>
                             <td className="px-6 py-4 text-center">
                               <div className="flex justify-center items-center gap-1.5">
@@ -1864,7 +1873,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                 <div>
                   <span className="font-bold text-slate-500 uppercase block mb-1">Total Facturado</span>
                   <span className="text-emerald-700 block font-bold text-sm p-1">
-                    ${(parseFloat(selectedInvoice.total) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} MXN
+                    {formatCurrency(parseFloat(selectedInvoice.total) || 0)}
                   </span>
                 </div>
                 <div>
@@ -1972,9 +1981,9 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                   <p><strong>Moneda:</strong> MXN - Peso Mexicano</p>
                 </div>
                 <div className="space-y-1 text-right">
-                  <p>Subtotal: <strong>${((parseFloat(selectedInvoice.total) || 0) / 1.16).toLocaleString('es-ES', { minimumFractionDigits: 2 })} MXN</strong></p>
-                  <p>IVA (16%): <strong>${((parseFloat(selectedInvoice.total) || 0) - ((parseFloat(selectedInvoice.total) || 0) / 1.16)).toLocaleString('es-ES', { minimumFractionDigits: 2 })} MXN</strong></p>
-                  <p className="text-sm font-bold text-slate-900">Total: ${ (parseFloat(selectedInvoice.total) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 }) } MXN</p>
+                  <p>Subtotal: <strong>{formatCurrency(((parseFloat(selectedInvoice.total) || 0) / 1.16))}</strong></p>
+                  <p>IVA (16%): <strong>{formatCurrency((parseFloat(selectedInvoice.total) || 0) - ((parseFloat(selectedInvoice.total) || 0) / 1.16))}</strong></p>
+                  <p className="text-sm font-bold text-slate-900">Total: {formatCurrency(parseFloat(selectedInvoice.total) || 0)}</p>
                 </div>
               </div>
 

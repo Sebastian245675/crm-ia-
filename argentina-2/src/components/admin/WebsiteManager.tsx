@@ -10,6 +10,7 @@ import { CommentsManager } from './CommentsManager';
 import { ProductAnalyticsView } from './ProductAnalytics';
 import { FormBuilder } from './FormBuilder';
 import { ReportsManager } from './ReportsManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Componente placeholder para pestañas adicionales
 const PlaceholderView: React.FC<{ title: string; description: string }> = ({ title, description }) => (
@@ -34,6 +35,8 @@ interface WebsiteManagerProps {
 }
 
 export const WebsiteManager: React.FC<WebsiteManagerProps> = ({ initialTab = 'funnels', isAdmin, onNavigate }) => {
+  const { user } = useAuth();
+  const agencyKey = user?.agencyId || 'default';
   const [activeSubTab, setActiveSubTab] = useState<string>(initialTab);
 
   // Definir pestañas para la navegación horizontal
@@ -51,17 +54,17 @@ export const WebsiteManager: React.FC<WebsiteManagerProps> = ({ initialTab = 'fu
   const renderContent = () => {
     switch (activeSubTab) {
       case 'funnels':
-        return <FunnelsManager />;
+        return <FunnelsManager key={agencyKey} />;
       case 'sitios':
-        return <SitiosManager />;
+        return <SitiosManager key={agencyKey} />;
       case 'seo':
-        return <SeoManager />;
+        return <SeoManager key={agencyKey} />;
       case 'analytics':
-        return <ProductAnalyticsView />;
+        return <ProductAnalyticsView key={agencyKey} />;
       case 'reportes':
-        return <ReportsManager />;
+        return <ReportsManager key={agencyKey} />;
       case 'comments':
-        return <CommentsManager />;
+        return <CommentsManager key={agencyKey} />;
       case 'blogs':
         return (
           <PlaceholderView
@@ -70,9 +73,9 @@ export const WebsiteManager: React.FC<WebsiteManagerProps> = ({ initialTab = 'fu
           />
         );
       case 'formularios':
-        return <FormBuilder />;
+        return <FormBuilder key={agencyKey} />;
       default:
-        return <FunnelsManager />;
+        return <FunnelsManager key={agencyKey} />;
     }
   };
 

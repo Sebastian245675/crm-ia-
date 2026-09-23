@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { db, collection, addDoc, deleteDoc, doc, updateDoc, getDocs, query, orderBy } from '@/firebase';
 import { Plus, Trash2, Edit2, Save, X, Filter, ChevronDown, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isItemForAgency } from '@/lib/agency-isolation';
 
 interface FilterOption {
   id: string;
@@ -22,6 +24,8 @@ interface Filter {
 }
 
 export const FilterManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [loading, setLoading] = useState(true);
   const [newFilterName, setNewFilterName] = useState('');
@@ -38,7 +42,7 @@ export const FilterManager: React.FC = () => {
 
   useEffect(() => {
     fetchFilters();
-  }, []);
+  }, [activeAgencyId]);
 
   const fetchFilters = async () => {
     try {
@@ -59,11 +63,14 @@ export const FilterManager: React.FC = () => {
 
         if (optionsError) throw optionsError;
 
-        const filtersWithOptions = (filtersData || []).map((filter: any) => ({
+        const filteredFilters = (filtersData || []).filter((f: any) => isItemForAgency(f, activeAgencyId));
+        const filteredOptions = (optionsData || []).filter((o: any) => isItemForAgency(o, activeAgencyId));
+
+        const filtersWithOptions = filteredFilters.map((filter: any) => ({
           id: filter.id,
           name: filter.name,
           order: filter.order || 0,
-          options: (optionsData || [])
+          options: filteredOptions
             .filter((opt: any) => opt.parent_id === filter.id)
             .map((opt: any) => ({
               id: opt.id,
@@ -132,7 +139,9 @@ export const FilterManager: React.FC = () => {
       if (isSupabase) {
         const { error } = await db.from('filters').insert({
           name: newFilterName.trim(),
-          order: filters.length
+          order: filters.length,
+          agency_id: activeAgencyId || '2',
+          owner_id: activeAgencyId || '2'
         });
 
         if (error) throw error;
@@ -140,7 +149,9 @@ export const FilterManager: React.FC = () => {
         await addDoc(collection(db, 'filters'), {
           name: newFilterName.trim(),
           order: filters.length,
-          createdAt: new Date()
+          createdAt: new Date(),
+          agency_id: activeAgencyId || '2',
+          owner_id: activeAgencyId || '2'
         });
       }
 
@@ -255,7 +266,9 @@ export const FilterManager: React.FC = () => {
         const { error } = await db.from('filter_options').insert({
           name: optionName,
           parent_id: filterId,
-          order: optionOrder
+          order: optionOrder,
+          agency_id: activeAgencyId || '2',
+          owner_id: activeAgencyId || '2'
         });
 
         if (error) throw error;
@@ -264,7 +277,9 @@ export const FilterManager: React.FC = () => {
           name: optionName,
           parentId: filterId,
           order: optionOrder,
-          createdAt: new Date()
+          createdAt: new Date(),
+          agency_id: activeAgencyId || '2',
+          owner_id: activeAgencyId || '2'
         });
       }
 

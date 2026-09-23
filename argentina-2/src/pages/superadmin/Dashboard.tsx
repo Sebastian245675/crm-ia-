@@ -866,7 +866,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     <div className="mt-6">
                       <div className="flex items-baseline">
                         <span className="text-5xl font-black text-slate-900">${monthlyPrice}</span>
-                        <span className="text-slate-400 text-xs font-semibold ml-1.5">USD/mes</span>
+                        <span className="text-slate-400 text-xs font-semibold ml-1.5">MXN/mes</span>
                       </div>
                       <p className="text-xs text-slate-400 mt-2 font-medium">Plan de inicio para tiendas individuales</p>
                     </div>
@@ -900,7 +900,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     <div className="mt-6">
                       <div className="flex items-baseline">
                         <span className="text-5xl font-black text-slate-900">${annualPrice}</span>
-                        <span className="text-slate-400 text-xs font-semibold ml-1.5">USD/año</span>
+                        <span className="text-slate-400 text-xs font-semibold ml-1.5">MXN/año</span>
                       </div>
                       <p className="text-xs text-slate-400 mt-2 font-medium">Máximo ahorro con facturación anual</p>
                     </div>
@@ -926,7 +926,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     
                     <div className="space-y-3 text-xs">
                       <div>
-                        <Label className="text-[11px] text-slate-500 font-semibold">Precio Mensual ($ USD)</Label>
+                        <Label className="text-[11px] text-slate-500 font-semibold">Precio Mensual ($ MXN)</Label>
                         <Input 
                           type="number" 
                           value={monthlyPrice} 
@@ -936,7 +936,7 @@ export const SuperAdminDashboard: React.FC = () => {
                       </div>
 
                       <div>
-                        <Label className="text-[11px] text-slate-500 font-semibold">Precio Anual ($ USD)</Label>
+                        <Label className="text-[11px] text-slate-500 font-semibold">Precio Anual ($ MXN)</Label>
                         <Input 
                           type="number" 
                           value={annualPrice} 
@@ -1245,8 +1245,8 @@ export const SuperAdminDashboard: React.FC = () => {
                       <SelectValue placeholder="Seleccione plan" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-950 text-xs">
-                      <SelectItem value="mensual">Mensual ($97 USD)</SelectItem>
-                      <SelectItem value="anual">Anual ($970 USD)</SelectItem>
+                      <SelectItem value="mensual">Mensual ($97 MXN)</SelectItem>
+                      <SelectItem value="anual">Anual ($970 MXN)</SelectItem>
                       <SelectItem value="trial">Periodo de Prueba</SelectItem>
                       <SelectItem value="free">Plan Gratuito</SelectItem>
                     </SelectContent>
@@ -1279,7 +1279,7 @@ export const SuperAdminDashboard: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="st-credits" className="text-xs text-slate-600 font-semibold">Créditos IA Iniciales ($ USD)</Label>
+                  <Label htmlFor="st-credits" className="text-xs text-slate-600 font-semibold">Créditos IA Iniciales ($ MXN)</Label>
                   <Input
                     id="st-credits"
                     type="number"

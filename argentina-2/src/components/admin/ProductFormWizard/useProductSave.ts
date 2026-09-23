@@ -1,6 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
 import { ProductFormData } from './types';
+import { getActiveAgencyId } from '@/lib/agency-isolation';
 
 interface SaveProductParams {
   formData: ProductFormData;
@@ -149,6 +150,7 @@ export const useProductSave = () => {
           },
         } : null,
         last_modified_by: user?.email || "unknown",
+        agency_id: getActiveAgencyId(user) || '2',
       };
 
       // Agregar opciones de filtros a specifications si existen

@@ -379,7 +379,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </div>
                   <div className="mt-4 flex items-baseline">
                     <span className="text-4xl font-extrabold text-slate-900">$50</span>
-                    <span className="ml-1 text-xs text-slate-500">USD/mes</span>
+                    <span className="ml-1 text-xs text-slate-500">MXN/mes</span>
                   </div>
                   <p className="mt-2 text-xs text-slate-500 leading-relaxed">
                     Ideal para tiendas en crecimiento que quieren empezar a automatizar su atención.
@@ -410,7 +410,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <div className="mt-6">
                   <Button
                     onClick={() => {
-                      toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Base de $50 USD." });
+                      toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Base de $50 MXN." });
                       setShowResolvePlansDialog(false);
                     }}
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2"
@@ -433,7 +433,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </div>
                   <div className="mt-4 flex items-baseline">
                     <span className="text-4xl font-extrabold text-slate-900">$120</span>
-                    <span className="ml-1 text-xs text-slate-500">USD/mes</span>
+                    <span className="ml-1 text-xs text-slate-500">MXN/mes</span>
                   </div>
                   <p className="mt-2 text-xs text-slate-500 leading-relaxed">
                     Para negocios establecidos que requieren mayor capacidad y entrenamiento personalizado.
@@ -452,7 +452,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
-                      Carga de manuales en Knowledge Base
+                      Carga de manuales en la base de conocimiento
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
@@ -464,7 +464,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <div className="mt-6">
                   <Button
                     onClick={() => {
-                      toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Intermedio de $120 USD." });
+                      toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Intermedio de $120 MXN." });
                       setShowResolvePlansDialog(false);
                     }}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 shadow-sm"
@@ -482,7 +482,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </div>
                   <div className="mt-4 flex items-baseline">
                     <span className="text-4xl font-extrabold text-slate-900">$500</span>
-                    <span className="ml-1 text-xs text-slate-500">USD/mes</span>
+                    <span className="ml-1 text-xs text-slate-500">MXN/mes</span>
                   </div>
                   <p className="mt-2 text-xs text-slate-500 leading-relaxed">
                     Solución de alta escala para operaciones complejas con volumen de productos ilimitados.
@@ -513,7 +513,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <div className="mt-6">
                   <Button
                     onClick={() => {
-                      toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Avanzado de $500 USD." });
+                      toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Avanzado de $500 MXN." });
                       setShowResolvePlansDialog(false);
                     }}
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2"

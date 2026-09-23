@@ -635,7 +635,7 @@ export const RegisterPage: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <span className="text-sm font-extrabold text-slate-900">$50</span>
-                              <span className="text-[9px] text-slate-400 block -mt-0.5">USD/mes</span>
+                              <span className="text-[9px] text-slate-400 block -mt-0.5">MXN/mes</span>
                             </div>
                           </div>
 
@@ -665,7 +665,7 @@ export const RegisterPage: React.FC = () => {
                             </div>
                             <div className="text-right pt-2.5">
                               <span className="text-sm font-extrabold text-slate-900">$120</span>
-                              <span className="text-[9px] text-slate-400 block -mt-0.5">USD/mes</span>
+                              <span className="text-[9px] text-slate-400 block -mt-0.5">MXN/mes</span>
                             </div>
                           </div>
 
@@ -691,7 +691,7 @@ export const RegisterPage: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <span className="text-sm font-extrabold text-slate-900">$500</span>
-                              <span className="text-[9px] text-slate-400 block -mt-0.5">USD/mes</span>
+                              <span className="text-[9px] text-slate-400 block -mt-0.5">MXN/mes</span>
                             </div>
                           </div>
                         </div>

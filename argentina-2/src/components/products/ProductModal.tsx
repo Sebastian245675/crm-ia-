@@ -9,6 +9,7 @@ import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { ShoppingCart, Plus, Minus, Star, Shield, Truck } from 'lucide-react';
 import { recordProductView } from '@/lib/product-analytics';
+import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProductModalProps {
@@ -156,7 +157,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
                 <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Precio</div>
                   <span className="text-3xl font-bold text-slate-900 dark:text-white">
-                    ${currentPrice.toLocaleString()}
+                    {formatCurrency(currentPrice)}
                   </span>
                 </div>
                 <Badge variant="outline" className="text-blue-600 border-blue-600 dark:text-blue-400 dark:border-blue-400 py-1.5 px-3">
@@ -333,7 +334,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
                     <div className="flex justify-between items-center">
                       <span className="text-slate-600 dark:text-slate-400 font-medium">Total:</span>
                       <span className="text-xl font-bold text-slate-800 dark:text-white">
-                        ${(product.price * quantity).toLocaleString()}
+                        {formatCurrency(product.price * quantity)}
                       </span>
                     </div>
                   </div>

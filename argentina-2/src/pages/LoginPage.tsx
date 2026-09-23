@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, RefreshCw, ChevronDown, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, RefreshCw, ChevronDown, AlertCircle, Loader2, ShieldCheck, Building2, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/firebase';
 import { getAuthErrorMessage, isEmailConfirmationPendingError } from '@/lib/auth-email';
@@ -15,7 +15,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, login, login2fa } = useAuth();
+  const { user, login, login2fa, selectAgency } = useAuth();
   const configuredLandingUrl = String(import.meta.env.VITE_LANDING_URL || '').trim().replace(/\/+$/, '');
   const isLocalEnvironment = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
   const landingBaseUrl = configuredLandingUrl || (isLocalEnvironment
@@ -29,6 +29,12 @@ export const LoginPage: React.FC = () => {
   const [show2faInput, setShow2faInput] = useState(false);
   const [temp2faToken, setTemp2faToken] = useState('');
   const [totpCode, setTotpCode] = useState('');
+
+  // Multi-agency state variables
+  const [showAgencySelection, setShowAgencySelection] = useState(false);
+  const [tempAgencyToken, setTempAgencyToken] = useState('');
+  const [availableAgencies, setAvailableAgencies] = useState<Array<{ id: string; name: string; role: string; logo?: string; plan?: string }>>([]);
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string>('');
 
   // Redirigir si ya está logueado
   React.useEffect(() => {
@@ -61,6 +67,13 @@ export const LoginPage: React.FC = () => {
     onSuccess: async (tokenResponse) => {
       setIsLoading(true);
       const { data, error } = await backendAuth.signInWithGoogle(tokenResponse.access_token);
+      if (data?.requireAgencySelection) {
+        setTempAgencyToken(data.tempToken || '');
+        setAvailableAgencies(data.agencies || []);
+        setShowAgencySelection(true);
+        setIsLoading(false);
+        return;
+      }
       if (error || !data?.session) {
         toast({
           title: "Error",
@@ -138,6 +151,14 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
+      if (result.requireAgencySelection) {
+        setTempAgencyToken(result.tempToken || '');
+        setAvailableAgencies(result.agencies || []);
+        setShowAgencySelection(true);
+        setIsLoading(false);
+        return;
+      }
+
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', loginData.email);
       } else {
@@ -200,6 +221,15 @@ export const LoginPage: React.FC = () => {
         throw result.error;
       }
 
+      if (result.requireAgencySelection) {
+        setTempAgencyToken(result.tempToken || '');
+        setAvailableAgencies(result.agencies || []);
+        setShow2faInput(false);
+        setShowAgencySelection(true);
+        setIsLoading(false);
+        return;
+      }
+
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', loginData.email);
       } else {
@@ -229,6 +259,49 @@ export const LoginPage: React.FC = () => {
       toast({
         title: 'Código incorrecto',
         description: error.message || 'No se pudo iniciar sesión. Verifique el código.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectAgency = async (agencyId: string) => {
+    setSelectedAgencyId(agencyId);
+    setIsLoading(true);
+    try {
+      const res = await selectAgency(tempAgencyToken, agencyId);
+      if (!res.success) {
+        throw res.error;
+      }
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', loginData.email);
+      }
+
+      toast({
+        title: 'Bienvenido',
+        description: 'Sesión iniciada en tu agencia.',
+      });
+
+      const sessionRaw = localStorage.getItem('auth_user_session');
+      let isSaasAdmin = false;
+      if (sessionRaw) {
+        try {
+          const u = JSON.parse(sessionRaw);
+          isSaasAdmin = u.sub_cuenta === 'saas-admin' || u.subCuenta === 'saas-admin';
+        } catch (e) {}
+      }
+
+      if (isSaasAdmin) {
+        navigate('/superadmin');
+      } else {
+        navigate('/admin');
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'No se pudo ingresar a la agencia seleccionada',
         variant: 'destructive',
       });
     } finally {
@@ -397,7 +470,90 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-[550px]">
           {/* Card Principal */}
           <div className="shadow-lg border border-slate-100 rounded-2xl overflow-hidden bg-white p-6 md:p-8">
-            {show2faInput ? (
+            {showAgencySelection ? (
+              // Selección de Agencia / Espacio de Trabajo
+              <div className="space-y-6">
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAgencySelection(false);
+                      setTempAgencyToken('');
+                    }}
+                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors mb-4 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Volver al login
+                  </button>
+                  <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 shadow-xs border border-emerald-100">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-semibold text-center text-slate-800 tracking-tight">
+                    Selecciona tu Agencia
+                  </h2>
+                  <p className="text-slate-500 text-sm text-center mt-2 max-w-sm mx-auto">
+                    Tu cuenta está asociada a múltiples agencias. Elige a cuál deseas ingresar para iniciar tu jornada.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-2 max-h-[380px] overflow-y-auto pr-1">
+                  {availableAgencies.map((agency) => (
+                    <button
+                      key={agency.id}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleSelectAgency(agency.id)}
+                      className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition-all flex items-center justify-between group cursor-pointer shadow-xs hover:shadow-md disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        {agency.logo ? (
+                          <img
+                            src={agency.logo}
+                            alt={agency.name}
+                            className="w-11 h-11 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/20 text-emerald-700 flex items-center justify-center font-bold text-lg border border-emerald-200/50 shrink-0">
+                            {agency.name ? agency.name.charAt(0).toUpperCase() : 'A'}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-slate-800 truncate group-hover:text-emerald-700 transition-colors">
+                            {agency.name || 'Agencia sin nombre'}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                              agency.role === 'owner'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}>
+                              {agency.role === 'owner' ? '👑 Propietario' : '👤 Colaborador'}
+                            </span>
+                            {agency.plan && (
+                              <span className="inline-flex items-center text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {agency.plan}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="ml-3 shrink-0">
+                        {isLoading && selectedAgencyId === agency.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-xs text-center text-slate-400 pt-2 border-t border-slate-100">
+                  Podrás cambiar de agencia en cualquier momento desde tu panel de administración.
+                </p>
+              </div>
+            ) : show2faInput ? (
               // Formulario de Autenticación 2FA
               <div className="space-y-6">
                 <div className="mb-4">

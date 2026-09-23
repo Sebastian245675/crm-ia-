@@ -7,6 +7,9 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { isOpportunityForAgency, getActiveAgencyId } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
 import {
   Plus, Search, Trash2, Edit, SlidersHorizontal, ArrowUpDown, Download, Upload,
   LayoutGrid, List, Settings, Briefcase, Sparkles, Layers, ChevronDown, X,
@@ -37,6 +40,7 @@ interface Opportunity {
   priority?: 'low' | 'medium' | 'high';
   expected_close?: string;
   created_at?: string;
+  agency_id?: string;
 }
 
 interface FieldConfig {
@@ -104,16 +108,49 @@ const toSlug = (str: string) =>
   str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
      .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 40);
 
+export const isNewsletterOpportunity = (o: { title?: string; notes?: string; client_name?: string; email?: string }) => {
+  const title = (o.title || '').toLowerCase();
+  const notes = (o.notes || '').toLowerCase();
+  const client = (o.client_name || '').toLowerCase();
+  const email = (o.email || '').toLowerCase();
+  return (
+    notes.includes('origen: newsletter') ||
+    notes.includes('newsletter') ||
+    notes.includes('boletin') ||
+    notes.includes('boletín') ||
+    notes.includes('novedades') ||
+    notes.includes('noticias') ||
+    title.includes('suscripción boletín') ||
+    title.includes('suscripcion boletin') ||
+    title.includes('suscripción a noticias') ||
+    title.includes('suscripcion a noticias') ||
+    title.includes('boletín') ||
+    title.includes('boletin') ||
+    title.includes('newsletter') ||
+    client.includes('suscriptor boletin') ||
+    client.includes('suscriptor boletín') ||
+    email.includes('boletin') ||
+    email.includes('newsletter') ||
+    email.includes('subscriber_check')
+  );
+};
+
 // ════════════════════════════════════════════════════════════════════════════
 // Component
 // ════════════════════════════════════════════════════════════════════════════
 
 export const OpportunitiesKanban: React.FC = () => {
   const isSupabase = typeof (db as any)?.from === 'function';
+  const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [stages, setStages]               = useState<StageConfig[]>(() => {
-    try { const s = localStorage.getItem('kanban_stages'); return s ? JSON.parse(s) : DEFAULT_STAGES; } catch { return DEFAULT_STAGES; }
+    try {
+      const key = `kanban_stages_${activeAgencyId || 'default'}`;
+      const s = localStorage.getItem(key) || localStorage.getItem('kanban_stages');
+      return s ? JSON.parse(s) : DEFAULT_STAGES;
+    } catch { return DEFAULT_STAGES; }
   });
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -167,23 +204,79 @@ export const OpportunitiesKanban: React.FC = () => {
 
   // ── Persist stages ────────────────────────────────────────────────────────
   useEffect(() => {
-    localStorage.setItem('kanban_stages', JSON.stringify(stages));
-  }, [stages]);
+    const key = `kanban_stages_${activeAgencyId || 'default'}`;
+    localStorage.setItem(key, JSON.stringify(stages));
+  }, [stages, activeAgencyId]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   const fetchOpportunities = async () => {
     setLoading(true);
     try {
+      let rawList: Opportunity[] = [];
       if (isSupabase) {
         const { data, error } = await (db as any).from('sales_opportunities').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        setOpportunities(data || []);
+        rawList = data || [];
       } else {
         const { collection, getDocs, query, orderBy } = await import('@/firebase');
         const q = query(collection(db, 'sales_opportunities'), orderBy('created_at', 'desc'));
         const snap = await getDocs(q);
-        setOpportunities(snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Opportunity)));
+        rawList = snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Opportunity));
       }
+
+      // Separar oportunidades comerciales legítimas de suscripciones a noticias/boletín
+      const newsletterSubs = rawList.filter(isNewsletterOpportunity);
+      const cleanOpportunities = rawList
+        .filter(o => !isNewsletterOpportunity(o))
+        .filter(o => isOpportunityForAgency(o, activeAgencyId));
+
+      // Si se detectan suscripciones a boletín/noticias en sales_opportunities:
+      if (newsletterSubs.length > 0) {
+        try {
+          let existingEmails = new Set<string>();
+          if (isSupabase) {
+            const { data: contactsRes } = await (db as any).from('contacts').select('email');
+            existingEmails = new Set((contactsRes || []).map((c: any) => (c.email || '').toLowerCase().trim()).filter(Boolean));
+          }
+
+          for (const sub of newsletterSubs) {
+            const subEmail = (sub.email || '').toLowerCase().trim();
+            // Asegurar que exista en la sección de Contactos
+            if (subEmail && !existingEmails.has(subEmail)) {
+              const newContact = {
+                id: `contact-sub-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                name: sub.client_name && sub.client_name !== 'Sin nombre' ? sub.client_name : (subEmail.split('@')[0] || 'Suscriptor Boletín'),
+                email: sub.email || '',
+                phone: sub.phone || '',
+                company: sub.company_name || '',
+                tags: ['Boletín', 'Newsletter'],
+                created_at: sub.created_at || new Date().toISOString(),
+                agency_id: (sub as any).agency_id || activeAgencyId || '2',
+                custom_fields: {
+                  origen: 'newsletter',
+                  notas: sub.notes || 'Suscripción a boletín informativo / noticias'
+                }
+              };
+              if (isSupabase) {
+                await (db as any).from('contacts').insert([newContact]);
+              }
+              existingEmails.add(subEmail);
+            }
+
+            // Eliminar de sales_opportunities para no contaminar el embudo de ventas
+            if (isSupabase) {
+              await (db as any).from('sales_opportunities').delete().eq('id', sub.id);
+            } else {
+              const { doc, deleteDoc } = await import('@/firebase');
+              await deleteDoc(doc(db, 'sales_opportunities', sub.id));
+            }
+          }
+        } catch (syncErr) {
+          console.warn('Sincronización de suscripciones a contactos:', syncErr);
+        }
+      }
+
+      setOpportunities(cleanOpportunities);
     } catch {
       loadMock();
     } finally {
@@ -192,20 +285,35 @@ export const OpportunitiesKanban: React.FC = () => {
   };
 
   const loadMock = () => {
-    const saved = localStorage.getItem('mock_opportunities');
-    if (saved) { setOpportunities(JSON.parse(saved)); return; }
+    const mockKey = `mock_opportunities_${activeAgencyId || 'default'}`;
+    const saved = localStorage.getItem(mockKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setOpportunities(parsed.filter((o: any) => !isNewsletterOpportunity(o) && isOpportunityForAgency(o, activeAgencyId)));
+        return;
+      } catch (e) {}
+    }
+    // Si la agencia activa es Voltium u otra distinta de Websy, no cargar mocks de Merco
+    if (activeAgencyId === 'voltium-sanrey' || (activeAgencyId && activeAgencyId !== '2')) {
+      setOpportunities([]);
+      return;
+    }
     const initial: Opportunity[] = [
-      { id: 'opp-1', title: 'Licencia Corporativa Merco', client_name: 'Santiago Méndez', company_name: 'Méndez Asociados', value: 2500, email: 'santiago@mendez.com', phone: '+54 11 5000 1111', stage: 'contacto_recibido', priority: 'high',   notes: 'Interesado en 5 agentes IA.', created_at: new Date().toISOString() },
-      { id: 'opp-2', title: 'Implementación E-commerce',  client_name: 'Verónica Castro',  company_name: 'Boutique Glam',    value: 4800, email: 'veronica@glam.com',    phone: '+54 11 5000 2222', stage: 'contacto_gestion', priority: 'medium', notes: 'Pendiente cotizar pasarelas.', created_at: new Date().toISOString() },
-      { id: 'opp-3', title: 'Plan Premium Marketing',     client_name: 'Roberto Díaz',     company_name: 'AgencyPro',        value: 1200, email: 'rdiaz@agency.com',      phone: '+54 11 5000 3333', stage: 'reunion_negociacion', priority: 'low', created_at: new Date().toISOString() },
+      { id: 'opp-1', title: 'Licencia Corporativa Merco', client_name: 'Santiago Méndez', company_name: 'Méndez Asociados', value: 2500, email: 'santiago@mendez.com', phone: '+54 11 5000 1111', stage: 'contacto_recibido', priority: 'high',   notes: 'Interesado en 5 agentes IA.', created_at: new Date().toISOString(), agency_id: '2' },
+      { id: 'opp-2', title: 'Implementación E-commerce',  client_name: 'Verónica Castro',  company_name: 'Boutique Glam',    value: 4800, email: 'veronica@glam.com',    phone: '+54 11 5000 2222', stage: 'contacto_gestion', priority: 'medium', notes: 'Pendiente cotizar pasarelas.', created_at: new Date().toISOString(), agency_id: '2' },
+      { id: 'opp-3', title: 'Plan Premium Marketing',     client_name: 'Roberto Díaz',     company_name: 'AgencyPro',        value: 1200, email: 'rdiaz@agency.com',      phone: '+54 11 5000 3333', stage: 'reunion_negociacion', priority: 'low', created_at: new Date().toISOString(), agency_id: '2' },
     ];
     setOpportunities(initial);
-    localStorage.setItem('mock_opportunities', JSON.stringify(initial));
+    localStorage.setItem(mockKey, JSON.stringify(initial));
   };
 
-  const persist = (list: Opportunity[]) => localStorage.setItem('mock_opportunities', JSON.stringify(list));
+  const persist = (list: Opportunity[]) => {
+    const mockKey = `mock_opportunities_${activeAgencyId || 'default'}`;
+    localStorage.setItem(mockKey, JSON.stringify(list));
+  };
 
-  useEffect(() => { fetchOpportunities(); }, []);
+  useEffect(() => { fetchOpportunities(); }, [activeAgencyId]);
 
   // Default stage from sorted stages
   const defaultStageId = useMemo(() => [...stages].sort((a, b) => a.order - b.order)[0]?.id ?? '', [stages]);
@@ -219,6 +327,7 @@ export const OpportunitiesKanban: React.FC = () => {
       company_name: formCompanyName.trim(), value: parseFloat(formValue) || 0, email: formEmail.trim(),
       phone: formPhone.trim(), stage: formStage || defaultStageId, notes: formNotes.trim(),
       priority: formPriority, expected_close: formClose, created_at: new Date().toISOString(),
+      agency_id: activeAgencyId || '2',
     };
     try {
       if (isSupabase) {
@@ -354,8 +463,14 @@ export const OpportunitiesKanban: React.FC = () => {
     }
   }, [sortedStages, activeMobileStageId]);
 
+  const validOpportunities = useMemo(() => {
+    return opportunities
+      .filter(o => !isNewsletterOpportunity(o))
+      .filter(o => isOpportunityForAgency(o, activeAgencyId));
+  }, [opportunities, activeAgencyId]);
+
   const processedOpportunities = useMemo(() => {
-    let list = [...opportunities];
+    let list = [...validOpportunities];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(o => o.title.toLowerCase().includes(q) || o.client_name.toLowerCase().includes(q) || o.company_name.toLowerCase().includes(q) || o.email.toLowerCase().includes(q));
@@ -378,7 +493,7 @@ export const OpportunitiesKanban: React.FC = () => {
       });
     }
     return list;
-  }, [opportunities, searchQuery, filters, sortConfig]);
+  }, [validOpportunities, searchQuery, filters, sortConfig]);
 
   const columnsData = useMemo(() => {
     const data = {} as Record<string, { list: Opportunity[]; totalValue: number }>;
@@ -389,13 +504,13 @@ export const OpportunitiesKanban: React.FC = () => {
     return data;
   }, [processedOpportunities, sortedStages]);
 
-  const totalPipeline = useMemo(() => opportunities.reduce((s, o) => s + o.value, 0), [opportunities]);
+  const totalPipeline = useMemo(() => validOpportunities.reduce((s, o) => s + o.value, 0), [validOpportunities]);
 
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = () => {
-    if (!opportunities.length) { toast({ title: 'Sin datos para exportar' }); return; }
+    if (!validOpportunities.length) { toast({ title: 'Sin datos para exportar' }); return; }
     const hdr = 'ID,Titulo,Cliente,Empresa,Valor,Etapa,Email,Telefono,Prioridad,CierreEsperado,Notas\n';
-    const rows = opportunities.map(o =>
+    const rows = validOpportunities.map(o =>
       `"${o.id}","${o.title}","${o.client_name}","${o.company_name}",${o.value},"${o.stage}","${o.email}","${o.phone}","${o.priority||''}","${o.expected_close||''}","${o.notes||''}"`
     ).join('\n');
     const blob = new Blob([hdr + rows], { type: 'text/csv;charset=utf-8;' });
@@ -429,7 +544,7 @@ export const OpportunitiesKanban: React.FC = () => {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-slate-700">Valor (USD)</Label>
+          <Label className="text-xs font-semibold text-slate-700">Valor (MXN)</Label>
           <Input type="number" min="0" step="any" value={formValue} onChange={e => setFormValue(e.target.value)} className="border-slate-200 font-semibold text-sm" />
         </div>
         <div className="space-y-1.5">
@@ -496,7 +611,7 @@ export const OpportunitiesKanban: React.FC = () => {
             {processedOpportunities.length === 1 ? 'cliente potencial' : 'clientes potenciales'}
           </span>
           <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full font-semibold">
-            Pipeline: ${totalPipeline.toLocaleString()} USD
+            Pipeline: {formatCurrency(totalPipeline)}
           </span>
         </div>
         {/* Right */}
@@ -582,7 +697,7 @@ export const OpportunitiesKanban: React.FC = () => {
             {processedOpportunities.length === 1 ? 'prospecto' : 'prospectos'}
           </span>
           <span className="font-bold text-slate-600">
-            Pipeline: ${totalPipeline.toLocaleString()} USD
+            Pipeline: {formatCurrency(totalPipeline)}
           </span>
         </div>
 
@@ -827,7 +942,7 @@ export const OpportunitiesKanban: React.FC = () => {
                                 {col.title}
                               </span>
                               <span className="text-[11px] md:text-[10px] text-slate-400 font-medium mt-0.5">
-                                ${totalValue.toLocaleString('es-AR', { minimumFractionDigits: 0 })} USD
+                                {formatCurrency(totalValue)}
                               </span>
                             </div>
                             {isMobile && (
@@ -895,7 +1010,7 @@ export const OpportunitiesKanban: React.FC = () => {
                                   {isFieldVisible('value') && opp.value > 0 && (
                                     <div className="flex justify-end mt-2">
                                       <span className={`font-bold text-slate-600 ${isMobile ? 'text-xs bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100' : 'text-[10px]'}`}>
-                                        ${opp.value.toLocaleString()} USD
+                                        {formatCurrency(opp.value)}
                                       </span>
                                     </div>
                                   )}
@@ -943,7 +1058,7 @@ export const OpportunitiesKanban: React.FC = () => {
                       </div>
                       <div className="mt-1">
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Valor</span>
-                        <span className="font-bold text-slate-800">${opp.value.toLocaleString()} USD</span>
+                        <span className="font-bold text-slate-800">{formatCurrency(opp.value)}</span>
                       </div>
                       <div className="mt-1">
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Etapa</span>
@@ -986,7 +1101,7 @@ export const OpportunitiesKanban: React.FC = () => {
                       <td className="px-5 py-3.5 font-semibold text-slate-800 max-w-xs truncate">{opp.title}</td>
                       <td className="px-5 py-3.5 text-slate-600">{opp.client_name}</td>
                       <td className="px-5 py-3.5 text-slate-500">{opp.company_name || '—'}</td>
-                      <td className="px-5 py-3.5 font-bold text-slate-700">${opp.value.toLocaleString()}</td>
+                      <td className="px-5 py-3.5 font-bold text-slate-700">{formatCurrency(opp.value)}</td>
                       <td className="px-5 py-3.5"><span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pr.color}`}>{pr.label}</span></td>
                       <td className="px-5 py-3.5">
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${clr.badge}`}>{col?.title ?? opp.stage}</span>
@@ -1100,7 +1215,7 @@ export const OpportunitiesKanban: React.FC = () => {
                     <p className="text-sm font-semibold text-slate-800 truncate">{stage.title}</p>
                     <p className="text-xs text-slate-400">
                       {oppCount} {oppCount===1?'oportunidad':'oportunidades'}
-                      {totalVal > 0 && <span className="ml-2 font-medium text-slate-500">${totalVal.toLocaleString()} USD</span>}
+                      {totalVal > 0 && <span className="ml-2 font-medium text-slate-500">{formatCurrency(totalVal)}</span>}
                     </p>
                   </div>
 

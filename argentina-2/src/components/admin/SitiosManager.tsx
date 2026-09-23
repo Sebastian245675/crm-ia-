@@ -75,6 +75,10 @@ interface WebsitePage {
   elements?: PageElement[];
 }
 
+import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isWebsiteForAgency } from '@/lib/agency-isolation';
+
 interface WebsiteRow {
   id: string;
   name: string;
@@ -91,14 +95,55 @@ interface WebsiteRow {
     sales?: boolean;
     payments?: boolean;
   };
+  agency_id?: string;
 }
 
 export const SitiosManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+  const storageKey = `admin_websites_${activeAgencyId || '2'}`;
+
   // State for website list
   const [websites, setWebsites] = useState<WebsiteRow[]>(() => {
-    const saved = localStorage.getItem('admin_websites');
-    return saved ? JSON.parse(saved) : [];
+    const saved = localStorage.getItem(storageKey) || (activeAgencyId === '2' ? localStorage.getItem('admin_websites') : null);
+    return saved ? JSON.parse(saved).filter((w: any) => isWebsiteForAgency(w, activeAgencyId)) : [];
   });
+
+  // Sync with DB websites table
+  React.useEffect(() => {
+    let cancelled = false;
+    const fetchDb = async () => {
+      try {
+        const { data } = await db.from('websites').select();
+        if (data && !cancelled) {
+          const matching = data.filter((w: any) => isWebsiteForAgency(w, activeAgencyId));
+          if (matching.length > 0) {
+            setWebsites(prev => {
+              const currentFiltered = prev.filter(w => isWebsiteForAgency(w, activeAgencyId));
+              const merged = [...currentFiltered];
+              matching.forEach((site: any) => {
+                if (!merged.some(m => m.id === site.id)) {
+                  merged.push({
+                    id: site.id,
+                    name: site.name,
+                    lastUpdated: site.updatedAt || site.createdAt || new Date().toLocaleDateString('es-ES'),
+                    path: site.path || `/${site.id}`,
+                    pages: site.pages || [],
+                    customDomain: site.domain || '',
+                    agency_id: site.agency_id || activeAgencyId
+                  });
+                }
+              });
+              localStorage.setItem(storageKey, JSON.stringify(merged));
+              return merged;
+            });
+          }
+        }
+      } catch (_) {}
+    };
+    fetchDb();
+    return () => { cancelled = true; };
+  }, [activeAgencyId, storageKey]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -139,7 +184,7 @@ export const SitiosManager: React.FC = () => {
 
   const saveWebsites = (newWebsites: WebsiteRow[]) => {
     setWebsites(newWebsites);
-    localStorage.setItem('admin_websites', JSON.stringify(newWebsites));
+    localStorage.setItem(storageKey, JSON.stringify(newWebsites));
   };
 
   const generatePath = (name: string) => {

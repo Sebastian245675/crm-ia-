@@ -39,6 +39,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import ShareableLinkGenerator from './ShareableLinkGenerator';
+import { getActiveAgencyId, isItemForAgency } from '@/lib/agency-isolation';
 
 interface Employee {
   id: string;
@@ -51,6 +52,8 @@ interface Employee {
   libro: string;
   fechaInscripcion: string | { toDate?: () => Date };
   empleo: string;
+  agency_id?: string;
+  owner_id?: string;
 }
 
 interface SharedLinkData {
@@ -94,7 +97,8 @@ interface NotificationTemplates {
 }
 
 const EmployeeManager: React.FC<EmployeeManagerProps> = ({ isSharedAccess = false, shareToken = null }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -146,10 +150,13 @@ const EmployeeManager: React.FC<EmployeeManagerProps> = ({ isSharedAccess = fals
         ...doc.data()
       })) as Employee[];
 
-      // Ordenar por nombre
-      employeesData.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      // Filtrar empleados por agencia activa
+      const filteredEmployees = employeesData.filter(emp => isItemForAgency(emp, activeAgencyId));
 
-      setEmployees(employeesData);
+      // Ordenar por nombre
+      filteredEmployees.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+
+      setEmployees(filteredEmployees);
     } catch (error) {
       console.error("Error al obtener los empleados:", error);
       toast({
@@ -176,15 +183,21 @@ const EmployeeManager: React.FC<EmployeeManagerProps> = ({ isSharedAccess = fals
       loadEmailSettings();
       loadNotificationTemplates();
     }
-  }, [isSharedAccess, shareToken, currentUser]);
+  }, [isSharedAccess, shareToken, currentUser, activeAgencyId]);
 
   // Cargar configuración de correo guardada
   const loadEmailSettings = async () => {
     if (!currentUser) return;
 
     try {
-      const docRef = doc(db, "settings", currentUser.uid);
-      const docSnap = await getDoc(docRef);
+      const agencySuffix = activeAgencyId || '2';
+      const docRef = doc(db, "settings", `${currentUser.uid}_${agencySuffix}`);
+      let docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        const fallbackRef = doc(db, "settings", currentUser.uid);
+        docSnap = await getDoc(fallbackRef);
+      }
 
       if (docSnap.exists() && docSnap.data().emailSettings) {
         setEmailSettings(docSnap.data().emailSettings);
@@ -199,8 +212,14 @@ const EmployeeManager: React.FC<EmployeeManagerProps> = ({ isSharedAccess = fals
     if (!currentUser) return;
 
     try {
-      const docRef = doc(db, "settings", currentUser.uid);
-      const docSnap = await getDoc(docRef);
+      const agencySuffix = activeAgencyId || '2';
+      const docRef = doc(db, "settings", `${currentUser.uid}_${agencySuffix}`);
+      let docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        const fallbackRef = doc(db, "settings", currentUser.uid);
+        docSnap = await getDoc(fallbackRef);
+      }
 
       if (docSnap.exists() && docSnap.data().notificationTemplates) {
         setNotificationTemplates(docSnap.data().notificationTemplates);
@@ -215,20 +234,25 @@ const EmployeeManager: React.FC<EmployeeManagerProps> = ({ isSharedAccess = fals
     if (!currentUser) return;
 
     try {
-      const docRef = doc(db, "settings", currentUser.uid);
+      const agencySuffix = activeAgencyId || '2';
+      const docRef = doc(db, "settings", `${currentUser.uid}_${agencySuffix}`);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
         // Actualizar documento existente
         await updateDoc(docRef, {
           emailSettings,
-          notificationTemplates
+          notificationTemplates,
+          agency_id: agencySuffix,
+          owner_id: agencySuffix
         });
       } else {
         // Crear nuevo documento
         await setDoc(docRef, {
           emailSettings,
-          notificationTemplates
+          notificationTemplates,
+          agency_id: agencySuffix,
+          owner_id: agencySuffix
         });
       }
 
@@ -587,12 +611,16 @@ const EmployeeManager: React.FC<EmployeeManagerProps> = ({ isSharedAccess = fals
 
       const docRef = await addDoc(collection(db, "empleados"), {
         ...formData,
+        agency_id: activeAgencyId || '2',
+        owner_id: activeAgencyId || '2',
         fechaInscripcion: formData.fechaInscripcion || format(new Date(), 'yyyy-MM-dd')
       });
 
       const newEmployee = {
         id: docRef.id,
-        ...formData
+        ...formData,
+        agency_id: activeAgencyId || '2',
+        owner_id: activeAgencyId || '2',
       };
 
       setEmployees(prev => [...prev, newEmployee].sort((a, b) => a.nombre.localeCompare(b.nombre)));

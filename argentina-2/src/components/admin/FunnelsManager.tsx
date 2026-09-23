@@ -14,6 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId } from '@/lib/agency-isolation';
+
 interface FunnelRow {
   id: string;
   name: string;
@@ -22,8 +25,12 @@ interface FunnelRow {
 }
 
 export const FunnelsManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+  const storageKey = `admin_funnels_${activeAgencyId || '2'}`;
+
   const [funnels, setFunnels] = useState<FunnelRow[]>(() => {
-    const saved = localStorage.getItem('admin_funnels');
+    const saved = localStorage.getItem(storageKey) || (activeAgencyId === '2' ? localStorage.getItem('admin_funnels') : null);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -34,7 +41,7 @@ export const FunnelsManager: React.FC = () => {
 
   const saveFunnels = (newFunnels: FunnelRow[]) => {
     setFunnels(newFunnels);
-    localStorage.setItem('admin_funnels', JSON.stringify(newFunnels));
+    localStorage.setItem(storageKey, JSON.stringify(newFunnels));
   };
 
   const handleCreate = (e: React.FormEvent) => {

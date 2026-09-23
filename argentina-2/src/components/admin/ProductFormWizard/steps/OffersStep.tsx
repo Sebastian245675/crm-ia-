@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StepComponentProps } from '../types';
+import { formatCurrency } from '@/lib/currency';
 
 export const OffersStep: React.FC<StepComponentProps> = ({ 
   formData, 
@@ -134,7 +135,7 @@ export const OffersStep: React.FC<StepComponentProps> = ({
                 <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-[11px] uppercase tracking-wider text-gray-500 font-medium mb-1">Precio Original</p>
                   <p className="text-lg font-bold text-gray-900">
-                    ${originalPrice.toLocaleString('es-AR')}
+                    {formatCurrency(originalPrice)}
                   </p>
                 </div>
 
@@ -142,7 +143,7 @@ export const OffersStep: React.FC<StepComponentProps> = ({
                 <div className="bg-red-50 rounded-lg p-3 text-center border border-red-100">
                   <p className="text-[11px] uppercase tracking-wider text-red-600 font-medium mb-1">Descuento</p>
                   <p className="text-lg font-bold text-red-600">
-                    -{discountPercent}% = -${discountAmount.toLocaleString('es-AR')}
+                    -{discountPercent}% = -{formatCurrency(discountAmount)}
                   </p>
                 </div>
 
@@ -150,7 +151,7 @@ export const OffersStep: React.FC<StepComponentProps> = ({
                 <div className="bg-green-50 rounded-lg p-3 text-center border border-green-100">
                   <p className="text-[11px] uppercase tracking-wider text-green-700 font-medium mb-1">Precio Final</p>
                   <p className="text-lg font-bold text-green-700">
-                    ${finalPrice.toLocaleString('es-AR')}
+                    {formatCurrency(finalPrice)}
                   </p>
                 </div>
               </div>
@@ -160,16 +161,16 @@ export const OffersStep: React.FC<StepComponentProps> = ({
                 <p className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wider">Vista previa en la tienda:</p>
                 <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-dashed border-gray-300">
                   <span className="text-sm text-gray-400 line-through">
-                    ${originalPrice.toLocaleString('es-AR')}
+                    {formatCurrency(originalPrice)}
                   </span>
                   <span className="text-xl font-bold text-gray-900">
-                    ${finalPrice.toLocaleString('es-AR')}
+                    {formatCurrency(finalPrice)}
                   </span>
                   <Badge className="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-sm">
                     -{discountPercent}% OFF
                   </Badge>
                   <span className="text-xs text-green-600 font-medium ml-auto">
-                    Ahorrás ${discountAmount.toLocaleString('es-AR')}
+                    Ahorras {formatCurrency(discountAmount)}
                   </span>
                 </div>
               </div>

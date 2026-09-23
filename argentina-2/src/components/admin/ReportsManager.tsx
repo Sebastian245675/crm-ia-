@@ -6,6 +6,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isProductForAgency, isOrderForAgency, isItemForAgency, isContactForAgency } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
+import { isRealSaleOrder, sumRealSales } from '@/lib/sales';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -18,6 +21,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ec4899'
 
 export const ReportsManager: React.FC = () => {
   const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
   const isSupabase = typeof (db as any)?.from === 'function';
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
@@ -112,7 +116,7 @@ export const ReportsManager: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeAgencyId]);
 
   useEffect(() => {
     processData();
@@ -130,11 +134,15 @@ export const ReportsManager: React.FC = () => {
       if (isSupabase) {
         // Fetch Orders
         const { data: ordersData } = await db.from("orders").select("*").order("created_at", { ascending: true });
-        if (ordersData) setOrders(ordersData);
+        if (ordersData) {
+          setOrders(ordersData.filter((o: any) => isOrderForAgency(o, activeAgencyId)));
+        }
 
         // Fetch Products
         const { data: productsData } = await db.from("products").select("*");
-        if (productsData) setProducts(productsData);
+        if (productsData) {
+          setProducts(productsData.filter((p: any) => isProductForAgency(p, activeAgencyId)));
+        }
 
         // Fetch Price History
         const { data: phData } = await db.from("price_history").select("*").order("fecha", { ascending: true });
@@ -143,7 +151,7 @@ export const ReportsManager: React.FC = () => {
         // Fetch Expenses
         const { data: expensesData } = await db.from("gastos").select("*");
         if (expensesData && Array.isArray(expensesData)) {
-          setExpenses(expensesData);
+          setExpenses(expensesData.filter((g: any) => isItemForAgency(g, activeAgencyId)));
         }
 
         // Fetch Website Visits
@@ -155,18 +163,23 @@ export const ReportsManager: React.FC = () => {
         // Fetch Contacts
         const { data: contactsData } = await db.from("contacts").select("*");
         if (contactsData && Array.isArray(contactsData)) {
-          setContacts(contactsData);
+          setContacts(contactsData.filter((c: any) => isContactForAgency(c, activeAgencyId)));
         }
 
         // Fetch Company Profile
-        const { data: compData } = await db.from("company_profile").select("*");
+        const agencyOwnerId = activeAgencyId || '2';
+        const { data: compData } = await db.from("company_profile").select("*").or(`owner_id.eq.${agencyOwnerId},agency_id.eq.${agencyOwnerId}`);
         if (compData && compData.length > 0) {
           setCompanyProfile(compData[0]);
+        } else {
+          setCompanyProfile(null);
         }
 
         // Fetch Billing Lines
         const { data: linesData } = await db.from("lineas_facturacion").select("*");
-        if (linesData) setBillingLines(linesData);
+        if (linesData) {
+          setBillingLines(linesData.filter((l: any) => isItemForAgency(l, activeAgencyId)));
+        }
 
         // Fetch Employees (Sub-accounts)
         const { data: employeesData } = await db.from("users").select("*").eq("sub_cuenta", "si");
@@ -181,7 +194,7 @@ export const ReportsManager: React.FC = () => {
       } else {
         // Firestore fallback
         const ordersQuerySnapshot = await getDocs(collection(db, "orders"));
-        setOrders(ordersQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setOrders(ordersQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((o: any) => isOrderForAgency(o, activeAgencyId)));
 
         const productsQuerySnapshot = await getDocs(collection(db, "products"));
         setProducts(productsQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -231,7 +244,7 @@ export const ReportsManager: React.FC = () => {
     // Filter Sales
     const filteredOrders = orders.filter(o => {
       const date = new Date(o.created_at || o.createdAt);
-      const matchesTime = date >= startCutoff && date <= endCutoff;
+      const matchesTime = isRealSaleOrder(o) && date >= startCutoff && date <= endCutoff;
       if (!matchesTime) return false;
 
       if (selectedEmployeeFilter === 'all') return true;
@@ -260,7 +273,7 @@ export const ReportsManager: React.FC = () => {
     });
 
     // --- SALES KPI & CHARTS ---
-    const totalSales = filteredOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const totalSales = sumRealSales(filteredOrders);
     setKpiTotalSales(totalSales);
     setKpiTotalOrders(filteredOrders.length);
     setKpiAvgTicket(filteredOrders.length > 0 ? totalSales / filteredOrders.length : 0);
@@ -540,7 +553,9 @@ export const ReportsManager: React.FC = () => {
         notas: expenseForm.notas,
         id: editingExpense?.id || `gasto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         created_at: editingExpense?.created_at || new Date().toISOString(),
-        registrado_por: editingExpense?.registrado_por || user?.nombre || user?.email || 'Administrador Principal'
+        registrado_por: editingExpense?.registrado_por || user?.nombre || user?.email || 'Administrador Principal',
+        agency_id: activeAgencyId || '2',
+        owner_id: activeAgencyId || '2'
       };
 
       if (editingExpense) {
@@ -694,7 +709,7 @@ export const ReportsManager: React.FC = () => {
             
             <div class="flex-row total-row">
               <span>IMPORTE TOTAL:</span>
-              <span>$${Number(exp.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} ARS</span>
+              <span>{formatCurrency(Number(exp.monto || 0))}</span>
             </div>
           </div>
           
@@ -751,9 +766,9 @@ export const ReportsManager: React.FC = () => {
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center">
             <BarChart3 className="mr-3 h-7 w-7 text-blue-600" />
-            Analytics & Business Intelligence
+            Analítica e inteligencia de negocio
           </h2>
-          <p className="text-slate-500 text-sm mt-1 font-semibold">Reporte ejecutivo en tiempo real estilo Looker Studio</p>
+          <p className="text-slate-500 text-sm mt-1 font-semibold">Reporte ejecutivo con métricas y gráficos en tiempo real</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
@@ -856,7 +871,7 @@ export const ReportsManager: React.FC = () => {
                   <CardContent className="p-6 flex justify-between items-start">
                     <div>
                       <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Ingresos Totales</p>
-                      <h3 className="text-3xl font-black text-slate-800">${kpiTotalSales.toLocaleString('es-ES')}</h3>
+                      <h3 className="text-3xl font-black text-slate-800">{formatCurrency(kpiTotalSales)}</h3>
                       <p className="text-[11px] text-emerald-600 mt-1 flex items-center font-bold">
                         <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> Total facturado bruto
                       </p>
@@ -871,7 +886,7 @@ export const ReportsManager: React.FC = () => {
                   <CardContent className="p-6 flex justify-between items-start">
                     <div>
                       <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Ticket Promedio</p>
-                      <h3 className="text-3xl font-black text-slate-800">${Math.round(kpiAvgTicket).toLocaleString('es-ES')}</h3>
+                      <h3 className="text-3xl font-black text-slate-800">{formatCurrency(Math.round(kpiAvgTicket))}</h3>
                       <p className="text-[11px] text-blue-600 mt-1 flex items-center font-bold">
                         <TrendingUp className="h-3.5 w-3.5 mr-0.5" /> Promedio por transacción
                       </p>
@@ -919,7 +934,7 @@ export const ReportsManager: React.FC = () => {
                             <YAxis yAxisId="left" tickFormatter={(val) => `$${val}`} tick={{ fontSize: 11 }} stroke="#3b82f6" />
                             <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `$${val}`} tick={{ fontSize: 11 }} stroke="#8b5cf6" />
                             <RechartsTooltip
-                              formatter={(value: number, name: string) => [`$${value.toLocaleString('es-ES')}`, name]}
+                              formatter={(value: number, name: string) => [formatCurrency(value), name]}
                               contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                             />
                             <Legend />
@@ -952,7 +967,7 @@ export const ReportsManager: React.FC = () => {
                             <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#64748b" />
                             <YAxis tickFormatter={(val) => `$${val}`} tick={{ fontSize: 11 }} stroke="#64748b" />
                             <RechartsTooltip
-                              formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`, 'Total Ventas']}
+                              formatter={(value: number) => [formatCurrency(value), 'Total Ventas']}
                               contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                             />
                             <Bar dataKey="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -1033,7 +1048,7 @@ export const ReportsManager: React.FC = () => {
                               ))}
                             </Pie>
                             <RechartsTooltip
-                              formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`, 'Ingresos']}
+                              formatter={(value: number) => [formatCurrency(value), 'Ingresos']}
                               contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                             />
                           </PieChart>
@@ -1107,7 +1122,7 @@ export const ReportsManager: React.FC = () => {
                                     <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{paymentMethod}</span>
                                   </td>
                                   <td className="px-6 py-4 text-right font-black text-slate-800">
-                                    ${Number(order.total || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                                    {formatCurrency(Number(order.total || 0))}
                                   </td>
                                 </tr>
                               );
@@ -1167,7 +1182,7 @@ export const ReportsManager: React.FC = () => {
                             <XAxis dataKey="fecha" tick={{ fontSize: 12 }} stroke="#64748b" />
                             <YAxis domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} tick={{ fontSize: 12 }} stroke="#64748b" />
                             <RechartsTooltip
-                              formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`, 'Precio Histórico']}
+                              formatter={(value: number) => [formatCurrency(value), 'Precio Histórico']}
                               contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                             />
                             <Line
@@ -1201,7 +1216,7 @@ export const ReportsManager: React.FC = () => {
               <CardContent className="p-6 flex justify-between items-start">
                 <div>
                   <p className="text-slate-505 text-[11px] font-bold uppercase tracking-wider mb-1">Caja total de Ventas</p>
-                  <h3 className="text-2xl font-black text-slate-800">${kpiTotalSales.toLocaleString('es-ES')}</h3>
+                  <h3 className="text-2xl font-black text-slate-800">{formatCurrency(kpiTotalSales)}</h3>
                   <p className="text-[10px] text-blue-600 mt-1 font-medium flex items-center">
                     <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> Flujo neto de ingresos
                   </p>
@@ -1216,7 +1231,7 @@ export const ReportsManager: React.FC = () => {
               <CardContent className="p-6 flex justify-between items-start">
                 <div>
                   <p className="text-slate-505 text-[11px] font-bold uppercase tracking-wider mb-1">Gastos Operacionales</p>
-                  <h3 className="text-2xl font-black text-rose-600">${kpiTotalExpenses.toLocaleString('es-ES')}</h3>
+                  <h3 className="text-2xl font-black text-rose-600">{formatCurrency(kpiTotalExpenses)}</h3>
                   <p className="text-[10px] text-rose-500 mt-1 font-medium flex items-center">
                     <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" /> Egresos del periodo
                   </p>
@@ -1238,7 +1253,7 @@ export const ReportsManager: React.FC = () => {
                     "text-2xl font-black",
                     kpiNetProfit >= 0 ? "text-emerald-700" : "text-red-700"
                   )}>
-                    {kpiNetProfit < 0 ? '-' : ''}${Math.abs(kpiNetProfit).toLocaleString('es-ES')}
+                    {formatCurrency(kpiNetProfit)}
                   </h3>
                   <p className={cn(
                     "text-[10px] mt-1 font-bold flex items-center",
@@ -1511,7 +1526,7 @@ export const ReportsManager: React.FC = () => {
                               <div className="text-[10px] text-slate-400 font-semibold mt-2">Categoría: {previewExpense.categoria || 'Otros'}</div>
                             </div>
                             <div className="font-bold text-slate-800 text-right shrink-0">
-                              ${Number(previewExpense.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                              {formatCurrency(Number(previewExpense.monto || 0))}
                             </div>
                           </div>
                         </div>
@@ -1520,7 +1535,7 @@ export const ReportsManager: React.FC = () => {
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center text-slate-900 mb-6">
                           <span className="font-bold text-slate-500 uppercase text-[10px]">Total Egreso</span>
                           <span className="text-base font-black text-blue-600">
-                            ${Number(previewExpense.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} ARS
+                            {formatCurrency(Number(previewExpense.monto || 0))}
                           </span>
                         </div>
                         
@@ -1584,7 +1599,7 @@ export const ReportsManager: React.FC = () => {
                         <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748b" />
                         <YAxis tickFormatter={(val) => `$${val}`} tick={{ fontSize: 11 }} stroke="#64748b" />
                         <RechartsTooltip
-                          formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`]}
+                          formatter={(value: number) => [formatCurrency(value)]}
                           contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                         />
                         <Legend />
@@ -1629,7 +1644,7 @@ export const ReportsManager: React.FC = () => {
                           ))}
                         </Pie>
                         <RechartsTooltip
-                          formatter={(value: number) => [`$${value.toLocaleString('es-ES')}`, 'Gastado']}
+                          formatter={(value: number) => [formatCurrency(value), 'Gastado']}
                           contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                         />
                       </PieChart>
@@ -1683,7 +1698,7 @@ export const ReportsManager: React.FC = () => {
                             <td className="px-6 py-4 text-right relative">
                               <div className="absolute right-6 top-1.5 bottom-1.5 bg-rose-100/40 rounded-lg pointer-events-none transition-all duration-500" style={{ width: `${percent * 0.7}%` }}></div>
                               <span className="relative z-10 font-bold text-slate-800 pr-2">
-                                ${Number(exp.monto || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                                {formatCurrency(Number(exp.monto || 0))}
                               </span>
                             </td>
                             <td className="px-6 py-4">

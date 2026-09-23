@@ -109,7 +109,7 @@ export const ProductStructuredData: React.FC<ProductSchemaProps> = ({
   description,
   image,
   price,
-  currency = 'ARS',
+  currency = 'MXN',
   availability = 'https://schema.org/InStock',
   sku,
   brand = 'OmniShop',

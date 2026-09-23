@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { StepComponentProps } from '../types';
 
 // Opciones de Decant por defecto: 2.5ml desactivada, 5ml y 10ml activas
@@ -286,7 +287,7 @@ export const PricingStep: React.FC<StepComponentProps> = ({
             />
             {formData.isOffer && (
               <p className="text-xs text-green-600 font-medium">
-                ✨ Precio calculado desde Ofertas ({formData.discount}% de descuento sobre ${parseFloat(formData.originalPrice || '0').toLocaleString('es-AR')})
+                ✨ Precio calculado desde Ofertas ({formData.discount}% de descuento sobre {formatCurrency(parseFloat(formData.originalPrice || '0'))})
               </p>
             )}
           </div>

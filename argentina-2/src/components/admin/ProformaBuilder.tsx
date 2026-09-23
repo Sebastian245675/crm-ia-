@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { X, Plus, Minus, Trash2, FileText, Download, RefreshCw, Mail, Phone, Building2, Calendar, ShoppingBag } from 'lucide-react';
 import { db, collection, getDocs } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/currency';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -300,8 +301,8 @@ export const ProformaBuilder: React.FC<ProformaBuilderProps> = ({ isOpen, onClos
       const body = selectedProducts.map(p => [
         String(p.quantity),
         p.name,
-        `$${p.price.toFixed(2)}`,
-        `$${(p.price * p.quantity).toFixed(2)}`
+        formatCurrency(p.price),
+        formatCurrency(p.price * p.quantity)
       ]);
 
       const tableStartY = Math.max(sentToY, shipToY, blockY + 22) + 6;
@@ -368,11 +369,11 @@ export const ProformaBuilder: React.FC<ProformaBuilderProps> = ({ isOpen, onClos
       const totalValuesX = 194;
 
       doc.text('Subtotal', totalLabelsX, tY);
-      doc.text(`$${subtotal.toFixed(2)}`, totalValuesX, tY, { align: 'right' });
+      doc.text(formatCurrency(subtotal), totalValuesX, tY, { align: 'right' });
 
       tY += 5;
       doc.text(`IVA / Impuesto ${financialData.taxPercentage.toFixed(1)}%`, totalLabelsX, tY);
-      doc.text(`$${salesTax.toFixed(2)}`, totalValuesX, tY, { align: 'right' });
+      doc.text(formatCurrency(salesTax), totalValuesX, tY, { align: 'right' });
 
       // TOTAL (Fondo Gris y bordes como la imagen)
       tY += 3;
@@ -384,7 +385,7 @@ export const ProformaBuilder: React.FC<ProformaBuilderProps> = ({ isOpen, onClos
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
       doc.text('TOTAL', 130, tY + 6.5);
-      doc.text(`$${total.toFixed(2)}`, 190, tY + 6.5, { align: 'right' });
+      doc.text(formatCurrency(total), 190, tY + 6.5, { align: 'right' });
 
       // 6. Firma (Debajo de totales a la derecha)
       let sigY = tY + 18;
@@ -448,7 +449,7 @@ export const ProformaBuilder: React.FC<ProformaBuilderProps> = ({ isOpen, onClos
         <div className="flex items-center gap-3">
           <div className="text-right mr-2 hidden sm:block">
             <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Importe Total</span>
-            <span className="text-lg font-bold text-slate-800 leading-none">${total.toFixed(2)}</span>
+            <span className="text-lg font-bold text-slate-800 leading-none">{formatCurrency(total)}</span>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-slate-600 rounded-lg h-9 w-9">
             <X className="h-5 w-5" />
@@ -890,8 +891,8 @@ export const ProformaBuilder: React.FC<ProformaBuilderProps> = ({ isOpen, onClos
                       <tr key={p.id} className="text-slate-700">
                         <td className="text-center font-semibold border-r border-slate-200">{p.quantity}</td>
                         <td>{p.name}</td>
-                        <td className="text-right">${p.price.toFixed(2)}</td>
-                        <td className="text-right font-semibold text-slate-900">${(p.price * p.quantity).toFixed(2)}</td>
+                        <td className="text-right">{formatCurrency(p.price)}</td>
+                        <td className="text-right font-semibold text-slate-900">{formatCurrency(p.price * p.quantity)}</td>
                       </tr>
                     ))
                   )}
@@ -904,18 +905,18 @@ export const ProformaBuilder: React.FC<ProformaBuilderProps> = ({ isOpen, onClos
                   <div className="w-[220px] space-y-1.5 text-xs text-slate-500 font-medium pr-1">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span className="font-semibold text-slate-700">${subtotal.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-700">{formatCurrency(subtotal)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>IVA / Impuesto {financialData.taxPercentage.toFixed(1)}%</span>
-                      <span className="font-semibold text-slate-700">${salesTax.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-700">{formatCurrency(salesTax)}</span>
                     </div>
                   </div>
                   
                   {/* TOTAL destacado */}
                   <div className="w-[230px] flex justify-between items-center border border-slate-200 bg-slate-50/75 px-4 py-2.5 rounded-md mt-2 shadow-sm">
                     <span className="text-xs font-bold text-slate-800">TOTAL</span>
-                    <span className="text-sm font-black text-slate-900">${total.toFixed(2)}</span>
+                    <span className="text-sm font-black text-slate-900">{formatCurrency(total)}</span>
                   </div>
                 </div>
               )}

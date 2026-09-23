@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
+import { formatCurrency } from '@/lib/currency';
 import {
   Plus, Package, Edit, Trash2, Search, Save, X, Image, AlertTriangle, Check, CreditCard,
   ShieldCheck, Award, Wand2, ChevronDown, Calendar, Filter, RefreshCw, Tags, History,
@@ -2286,7 +2287,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ selectedProductId, onP
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-green-100">
                     <div className="text-sm text-green-600 mb-1">Costo Total de Inventario</div>
                     <div className="text-xl font-bold text-green-700">
-                      ${monthlyCostData.totalCost.toLocaleString()}
+                      {formatCurrency(monthlyCostData.totalCost)}
                     </div>
                   </div>
 
@@ -2318,7 +2319,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ selectedProductId, onP
                               </Badge>
                             </div>
                             <span className="font-semibold text-green-600">
-                              ${item.cost.toLocaleString()}
+                              {formatCurrency(item.cost)}
                             </span>
                           </div>
                         ))}
@@ -2566,11 +2567,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ selectedProductId, onP
                                 {/* Segunda fila: Precio y Costo */}
                                 <div className="flex items-center gap-4 flex-wrap">
                                   <div className="flex items-baseline gap-2">
-                                    <span className="text-2xl font-bold text-green-600">${product.price.toLocaleString()}</span>
+                                    <span className="text-2xl font-bold text-green-600">{formatCurrency(product.price)}</span>
                                     {product.cost && liberta === "si" && (
                                       <div className="flex items-center gap-2 text-xs text-gray-600">
                                         <span>Costo:</span>
-                                        <span className="font-medium text-amber-700">${Number(product.cost).toLocaleString()}</span>
+                                        <span className="font-medium text-amber-700">{formatCurrency(Number(product.cost))}</span>
                                         <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-medium">
                                           {Math.round(((Number(product.price) - Number(product.cost)) / Number(product.price)) * 100)}% margen
                                         </span>

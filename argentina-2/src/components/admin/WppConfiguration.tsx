@@ -7,9 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { getAuthHeaders } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId } from '@/lib/agency-isolation';
 import { Key, Settings, Sparkles, Eye, EyeOff, Loader2, Info, Check, Copy } from 'lucide-react';
 
 export const WppConfiguration: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const [geminiKey, setGeminiKey] = useState('');
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [metaAccessToken, setMetaAccessToken] = useState('');
@@ -25,12 +29,12 @@ export const WppConfiguration: React.FC = () => {
 
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [activeAgencyId]);
 
   const fetchConfig = async () => {
     try {
       setLoadingConfig(true);
-      const res = await fetch('/api/agent/config', {
+      const res = await fetch(`/api/agent/config?agency_id=${encodeURIComponent(activeAgencyId || '2')}`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
@@ -57,8 +61,9 @@ export const WppConfiguration: React.FC = () => {
         phone_number_id: phoneNumberId,
         meta_access_token: metaAccessToken,
         verify_token: verifyToken,
+        agency_id: activeAgencyId || '2',
       };
-      const res = await fetch('/api/agent/config', {
+      const res = await fetch(`/api/agent/config?agency_id=${encodeURIComponent(activeAgencyId || '2')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload),

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/currency';
 
 const AdvancedAnalyticsChart: React.FC = () => {
   // Aquí podrías integrarlo con una librería real de gráficos como Chart.js, Recharts, etc.
@@ -48,7 +49,7 @@ const AdvancedAnalyticsChart: React.FC = () => {
             className="absolute w-full border-t border-slate-100 text-xs text-slate-400"
             style={{ bottom: `${i * 25}%`, left: 0 }}
           >
-            <span className="absolute -left-12 -top-2">${(maxValue * i / 4).toLocaleString()}</span>
+            <span className="absolute -left-12 -top-2">{formatCurrency(maxValue * i / 4)}</span>
           </div>
         ))}
         
@@ -61,7 +62,7 @@ const AdvancedAnalyticsChart: React.FC = () => {
                 {/* Contenido del tooltip */}
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-slate-800 text-white text-xs rounded-md p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                   <p className="font-medium">{item.month}</p>
-                  <p>Ventas: ${item.sales.toLocaleString()}</p>
+                  <p>Ventas: {formatCurrency(item.sales)}</p>
                   <p>Órdenes: {item.orders}</p>
                 </div>
                 
@@ -87,9 +88,9 @@ const AdvancedAnalyticsChart: React.FC = () => {
       {/* Métricas de resumen */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Ventas', value: `$${data.reduce((sum, item) => sum + item.sales, 0).toLocaleString()}`, color: 'bg-sky-100 text-sky-700' },
+          { label: 'Total Ventas', value: formatCurrency(data.reduce((sum, item) => sum + item.sales, 0)), color: 'bg-sky-100 text-sky-700' },
           { label: 'Total Órdenes', value: data.reduce((sum, item) => sum + item.orders, 0).toString(), color: 'bg-blue-100 text-blue-700' },
-          { label: 'Promedio Ventas', value: `$${Math.round(data.reduce((sum, item) => sum + item.sales, 0) / (data.length || 1)).toLocaleString()}`, color: 'bg-indigo-100 text-indigo-700' },
+          { label: 'Promedio Ventas', value: formatCurrency(Math.round(data.reduce((sum, item) => sum + item.sales, 0) / (data.length || 1))), color: 'bg-indigo-100 text-indigo-700' },
           { label: 'Promedio Órdenes', value: Math.round(data.reduce((sum, item) => sum + item.orders, 0) / (data.length || 1)).toString(), color: 'bg-violet-100 text-violet-700' },
         ].map((metric, index) => (
           <div key={index} className={`${metric.color} rounded-xl p-3 text-center`}>

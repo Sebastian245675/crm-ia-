@@ -12,8 +12,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CategoryDiagram } from "./CategoryDiagram";
 import { ImageUploader } from "./ImageUploader";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { getActiveAgencyId, isCategoryForAgency, isProductForAgency } from "@/lib/agency-isolation";
+import { formatCurrency } from "@/lib/currency";
 
 export const CategoryManager = () => {
+  const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
   // Actualizamos el modelo para incluir parentId (categoría padre)
   const [categories, setCategoriesState] = useState<{
     id: string;
@@ -78,12 +83,14 @@ export const CategoryManager = () => {
           .order("created_at", { ascending: true });
         if (error) throw error;
 
-        const categoryList = (data || []).map((cat: any) => ({
-          id: cat.id,
-          name: cat.name,
-          image: cat.image,
-          parentId: cat.parent_id ?? cat.parentId ?? null,
-        }));
+        const categoryList = (data || [])
+          .filter((cat: any) => isCategoryForAgency(cat, activeAgencyId))
+          .map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            image: cat.image,
+            parentId: cat.parent_id ?? cat.parentId ?? null,
+          }));
         setCategoriesState(categoryList);
         // Also refresh products to ensure counts are up to date
         fetchProducts();
@@ -91,7 +98,9 @@ export const CategoryManager = () => {
       }
 
       const querySnapshot = await getDocs(collection(db, "categories"));
-      const categoryList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const categoryList = querySnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as any))
+        .filter((cat: any) => isCategoryForAgency(cat, activeAgencyId));
       setCategoriesState(categoryList);
       // Also refresh products to ensure counts are up to date
       fetchProducts();
@@ -103,7 +112,7 @@ export const CategoryManager = () => {
   useEffect(() => {
     fetchCategories();
     fetchProducts();
-  }, []);
+  }, [activeAgencyId]);
 
   // Fetch all products from Firestore
   const fetchProducts = async () => {
@@ -113,14 +122,16 @@ export const CategoryManager = () => {
       if (isSupabase) {
         const { data, error } = await db.from("products").select("*");
         if (error) throw error;
-        setProducts(data || []);
+        const filtered = (data || []).filter((p: any) => isProductForAgency(p, activeAgencyId));
+        setProducts(filtered);
       } else {
         const querySnapshot = await getDocs(collection(db, "products"));
         const productsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        setProducts(productsData);
+        const filtered = (productsData || []).filter((p: any) => isProductForAgency(p, activeAgencyId));
+        setProducts(filtered);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -267,7 +278,7 @@ export const CategoryManager = () => {
 
     if (isSupabase) {
       try {
-        const payload: any = { name: newCategory.trim() };
+        const payload: any = { name: newCategory.trim(), agency_id: activeAgencyId || '2' };
         if (newParentId && newParentId !== "tercera") {
           payload.parent_id = newParentId;
           payload.parent_name = categories.find(cat => cat.id === newParentId)?.name || '';
@@ -1021,7 +1032,7 @@ export const CategoryManager = () => {
                                   )}
                                   <div className="min-w-0">
                                     <p className="text-xs font-medium text-slate-800 truncate">{p.name}</p>
-                                    <p className="text-xs text-slate-400">${Number(p.price || 0).toLocaleString('es-CO')}</p>
+                                    <p className="text-xs text-slate-400">{formatCurrency(Number(p.price || 0))}</p>
                                   </div>
                                 </div>
                               ))}

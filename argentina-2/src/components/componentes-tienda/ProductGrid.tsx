@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Search, Filter, Check, Star } from 'lucide-react';
+import { formatCurrency } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
@@ -198,11 +199,11 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                     <div className="flex flex-col">
                       {prod.isOffer && (
                         <span className="text-[10px] text-slate-400 line-through leading-none mb-0.5">
-                          ${(prod.price * 1.25).toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                          {formatCurrency(prod.price * 1.25)}
                         </span>
                       )}
                       <span className="text-lg font-black text-slate-900 leading-none">
-                        ${Number(prod.price).toLocaleString('es-AR')}
+                        {formatCurrency(Number(prod.price))}
                       </span>
                     </div>
                     

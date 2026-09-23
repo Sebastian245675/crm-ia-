@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatCurrency } from '@/lib/currency';
 import { db } from "@/firebase";
 // Mocks para evitar errores de compilación ya que Firebase fue removido
 const doc = (...args: any[]) => ({}) as any;
@@ -975,7 +976,7 @@ export const UserProfile: React.FC = () => {
                         <div className="flex justify-between items-center mb-4">
                           <div>
                             <p className="text-sm text-gray-500">Total del pedido</p>
-                            <p className="font-semibold text-lg">${order.total.toLocaleString()}</p>
+                            <p className="font-semibold text-lg">{formatCurrency(order.total)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500 text-right">Productos</p>
@@ -1061,7 +1062,7 @@ export const UserProfile: React.FC = () => {
                       </div>
                       <CardContent className="p-3">
                         <h3 className="font-medium text-sm line-clamp-2 h-10">{product.name}</h3>
-                        <p className="font-bold text-orange-600 mt-1">${product.price?.toLocaleString()}</p>
+                        <p className="font-bold text-orange-600 mt-1">{formatCurrency(product.price)}</p>
                         <Button className="w-full mt-2 gradient-orange text-xs h-8">
                           Añadir al carrito
                         </Button>

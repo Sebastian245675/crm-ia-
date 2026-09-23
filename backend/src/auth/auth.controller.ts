@@ -27,17 +27,99 @@ export class AuthController {
     }
   }
 
-  private buildUserResponse(user: any, subscription: any) {
+  private async getUserAgencies(userId: string): Promise<Array<{ id: string; name: string; role: string; logo?: string; plan?: string }>> {
+    const rows = await this.db.query(
+      `SELECT m.agency_id, m.role, m.permissions, m.active, a.name, a.logo, a.plan
+       FROM agencia_miembros m
+       LEFT JOIN agencias a ON a.id = m.agency_id
+       WHERE m.user_id = %s AND (m.active = true OR m.active IS TRUE)
+       ORDER BY m.created_at ASC`,
+      [String(userId)]
+    );
+
+    const result: Array<{ id: string; name: string; role: string; logo?: string; plan?: string }> = [];
+
+    if (!rows.length) {
+      const userRows = await this.db.query(
+        'SELECT id, nombre, account_role, agency_id FROM usuarios WHERE id = %s',
+        [String(userId)]
+      );
+      if (userRows.length) {
+        const u = userRows[0];
+        const aId = String(u.agency_id || u.id);
+        result.push({
+          id: aId,
+          name: u.nombre ? `${u.nombre}` : 'Mi Agencia',
+          role: u.account_role || 'agency_owner',
+          logo: '',
+          plan: 'basic',
+        });
+      }
+    } else {
+      for (const r of rows) {
+        result.push({
+          id: String(r.agency_id),
+          name: r.name || 'Mi Agencia',
+          role: r.role || 'agency_user',
+          logo: r.logo || '',
+          plan: r.plan || 'basic',
+        });
+      }
+    }
+
+    for (const item of result) {
+      try {
+        const docRows = await this.db.query(
+          "SELECT datos FROM documentos WHERE tabla_nombre = 'company_profile' AND (id = %s OR id LIKE %s) LIMIT 1",
+          [item.id, `%${item.id}%`]
+        );
+        if (docRows.length) {
+          const profile = JSON.parse(docRows[0].datos);
+          if (profile.friendly_name || profile.friendlyName) {
+            item.name = profile.friendly_name || profile.friendlyName;
+          }
+          if (profile.logo) {
+            item.logo = profile.logo;
+          }
+        }
+      } catch (_) {}
+    }
+
+    return result;
+  }
+
+  private async buildUserWithAgency(user: any, subscription: any, activeAgencyId?: string, userAgencies?: any[]) {
+    const effectiveAgencyId = activeAgencyId ? String(activeAgencyId) : (user.agency_id ? String(user.agency_id) : String(user.id));
+    let role = user.account_role || (user.sub_cuenta === 'si' ? 'agency_user' : user.sub_cuenta === 'saas-admin' ? 'saas_admin' : 'agency_owner');
+    let permissions = this.parsePermissions(user.permissions);
+
+    if (activeAgencyId) {
+      try {
+        const memRows = await this.db.query(
+          'SELECT role, permissions FROM agencia_miembros WHERE user_id = %s AND agency_id = %s LIMIT 1',
+          [String(user.id), effectiveAgencyId]
+        );
+        if (memRows.length) {
+          role = memRows[0].role || role;
+          if (memRows[0].permissions) {
+            permissions = this.parsePermissions(memRows[0].permissions);
+          }
+        }
+      } catch (_) {}
+    }
+
+    const agencies = userAgencies || await this.getUserAgencies(String(user.id));
+
     const userResponse = {
       id: String(user.id),
       name: user.nombre || user.name || user.email,
       email: user.correo || user.email,
       sub_cuenta: user.sub_cuenta ?? null,
       liberta: user.liberta ?? 'no',
-      account_role: user.account_role || (user.sub_cuenta === 'si' ? 'agency_user' : user.sub_cuenta === 'saas-admin' ? 'saas_admin' : 'agency_owner'),
-      agency_id: user.agency_id ? String(user.agency_id) : String(user.id),
+      account_role: role,
+      agency_id: effectiveAgencyId,
       parent_user_id: user.parent_user_id ? String(user.parent_user_id) : null,
-      permissions: this.parsePermissions(user.permissions),
+      permissions,
       active: user.active === undefined || user.active === null || user.active === true || user.active === 1,
       subscription: subscription || {
         plan: 'basic',
@@ -46,6 +128,7 @@ export class AuthController {
         is_demo: false,
         trial_ends_at: null,
       },
+      agencies,
     };
 
     const token = this.authService.signToken({
@@ -65,6 +148,10 @@ export class AuthController {
       token_type: 'bearer',
       expires_in: 60 * 60 * 24,
     };
+  }
+
+  private buildUserResponse(user: any, subscription: any, activeAgencyId?: string, userAgencies?: any[]) {
+    return this.buildUserWithAgency(user, subscription, activeAgencyId, userAgencies);
   }
 
   private planDisplayName(plan: string) {
@@ -97,14 +184,20 @@ export class AuthController {
     );
   }
 
-  private trialHasExpired(subscription: any) {
+  private isInfiniteAgency(agencyId?: string) {
+    const normalized = String(agencyId || '').trim().toLowerCase().replace(/_/g, '-');
+    return normalized === 'voltium' || normalized === 'voltium-sanrey';
+  }
+
+  private trialHasExpired(subscription: any, agencyId?: string) {
+    if (this.isInfiniteAgency(agencyId)) return false;
     if (subscription?.status === 'expired') return true;
     if (subscription?.status !== 'trial' || !subscription?.trial_ends_at) return false;
     return new Date(subscription.trial_ends_at).getTime() <= Date.now();
   }
 
-  private async expireTrial(user: any, subscription: any) {
-    if (!this.trialHasExpired(subscription)) return subscription;
+  private async expireTrial(user: any, subscription: any, agencyId?: string) {
+    if (!this.trialHasExpired(subscription, agencyId)) return subscription;
 
     const ownerId = this.getSubscriptionOwnerId(user);
     if (subscription.status === 'trial') {
@@ -167,6 +260,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@Req() request: express.Request, @Res() res: express.Response) {
     const userId = String((request as any).user?.sub || '');
+    const activeAgencyFromToken = (request as any).user?.agency_id ? String((request as any).user.agency_id) : undefined;
     const rows = await this.db.query(
       'SELECT id, nombre, correo, sub_cuenta, liberta, account_role, agency_id, parent_user_id, permissions, active FROM usuarios WHERE id = %s',
       [userId]
@@ -175,15 +269,17 @@ export class AuthController {
     const user = rows[0];
     const isActive = user.active === undefined || user.active === null || user.active === true || user.active === 1;
     if (!isActive) return res.status(HttpStatus.FORBIDDEN).json({ success: false, message: 'La cuenta está desactivada.' });
-    const subscription = await this.resolveSubscription(user);
-    return res.status(HttpStatus.OK).json({ success: true, user: this.buildUserResponse(user, subscription) });
+    const subscription = await this.resolveSubscription(user, activeAgencyFromToken);
+    const userAgencies = await this.getUserAgencies(userId);
+    const userResponse = await this.buildUserWithAgency(user, subscription, activeAgencyFromToken, userAgencies);
+    return res.status(HttpStatus.OK).json({ success: true, user: userResponse });
   }
 
-  private async resolveSubscription(user: any) {
+  private async resolveSubscription(user: any, agencyId?: string) {
     const subscriptionOwnerId = this.getSubscriptionOwnerId(user);
     const existing = await this.getSubscriptionForUser(subscriptionOwnerId);
     if (existing) {
-      return await this.expireTrial(user, existing);
+      return await this.expireTrial(user, existing, agencyId);
     }
 
     const email = String(user.correo || user.email || '').toLowerCase();
@@ -261,9 +357,27 @@ export class AuthController {
             });
           }
 
+          const userAgencies = await this.getUserAgencies(String(user.id));
+          if (userAgencies.length > 1) {
+            const agencyTempToken = this.authService.signToken({
+              sub: String(user.id),
+              email: user.correo,
+              isTempAgencySelection: true,
+            });
+            return res.status(HttpStatus.OK).json({
+              success: true,
+              requireAgencySelection: true,
+              tempToken: agencyTempToken,
+              agencies: userAgencies,
+            });
+          }
+
+          const activeAgencyId = userAgencies[0]?.id || String(user.agency_id || user.id);
+          const userResponse = await this.buildUserWithAgency(user, subscription, activeAgencyId, userAgencies);
+
           return res.status(HttpStatus.OK).json({
             success: true,
-            user: this.buildUserResponse(user, subscription),
+            user: userResponse,
           });
         }
       }
@@ -316,6 +430,16 @@ export class AuthController {
 
       const nuevoId = insertResult[0]?.id || null;
       await this.db.query('UPDATE usuarios SET agency_id = %s, updated_at = NOW() WHERE id = %s', [String(nuevoId), String(nuevoId)]);
+
+      await this.db.query(
+        'INSERT INTO agencias (id, name, owner_id, plan, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+        [String(nuevoId), nombre, String(nuevoId), 'basic', 'active']
+      );
+      await this.db.query(
+        'INSERT INTO agencia_miembros (agency_id, user_id, role, permissions, active, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+        [String(nuevoId), nuevoId, 'agency_owner', '{}', 1]
+      );
+
       const user = {
         id: nuevoId,
         nombre,
@@ -339,10 +463,12 @@ export class AuthController {
       const status = dbPlan === 'free' ? 'active' : 'trial';
 
       const subscription = await this.createSubscription(nuevoId, dbPlan, status, false, trialDays);
+      const userAgencies = await this.getUserAgencies(String(nuevoId));
+      const userResponse = await this.buildUserWithAgency(user, subscription, String(nuevoId), userAgencies);
 
       return res.status(HttpStatus.OK).json({
         success: true,
-        user: this.buildUserResponse(user, subscription),
+        user: userResponse,
       });
     } catch (e: any) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
@@ -395,15 +521,24 @@ export class AuthController {
           'INSERT INTO usuarios (nombre, correo, contraseña, sub_cuenta, liberta, account_role, permissions, active) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id',
           [name, lowEmail, '', null, 'no', 'agency_owner', '{}', 1]
         );
-        await this.db.query('UPDATE usuarios SET agency_id = %s, updated_at = NOW() WHERE id = %s', [String(insertResult[0]?.id), String(insertResult[0]?.id)]);
+        const newUserId = insertResult[0]?.id;
+        await this.db.query('UPDATE usuarios SET agency_id = %s, updated_at = NOW() WHERE id = %s', [String(newUserId), String(newUserId)]);
+        await this.db.query(
+          'INSERT INTO agencias (id, name, owner_id, plan, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+          [String(newUserId), name, String(newUserId), 'basic', 'active']
+        );
+        await this.db.query(
+          'INSERT INTO agencia_miembros (agency_id, user_id, role, permissions, active, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+          [String(newUserId), newUserId, 'agency_owner', '{}', 1]
+        );
         user = {
-          id: insertResult[0]?.id || null,
+          id: newUserId,
           nombre: name,
           correo: lowEmail,
           sub_cuenta: null,
           liberta: 'no',
           account_role: 'agency_owner',
-          agency_id: String(insertResult[0]?.id),
+          agency_id: String(newUserId),
           permissions: '{}',
           active: true,
         };
@@ -411,9 +546,27 @@ export class AuthController {
 
       const subscription = await this.resolveSubscription(user);
       if (this.trialHasExpired(subscription)) return this.trialExpiredResponse(res);
+
+      const userAgencies = await this.getUserAgencies(String(user.id));
+      if (userAgencies.length > 1) {
+        const agencyTempToken = this.authService.signToken({
+          sub: String(user.id),
+          email: user.correo,
+          isTempAgencySelection: true,
+        });
+        return res.status(HttpStatus.OK).json({
+          success: true,
+          requireAgencySelection: true,
+          tempToken: agencyTempToken,
+          agencies: userAgencies,
+        });
+      }
+
+      const activeAgencyId = userAgencies[0]?.id || String(user.agency_id || user.id);
+      const userResp = await this.buildUserWithAgency(user, subscription, activeAgencyId, userAgencies);
       return res.status(HttpStatus.OK).json({
         success: true,
-        user: this.buildUserResponse(user, subscription),
+        user: userResp,
       });
 
     } catch (e: any) {
@@ -493,14 +646,160 @@ export class AuthController {
 
       const subscription = await this.resolveSubscription(user);
       if (this.trialHasExpired(subscription)) return this.trialExpiredResponse(res);
+
+      const userAgencies = await this.getUserAgencies(String(user.id));
+      if (userAgencies.length > 1) {
+        const agencyTempToken = this.authService.signToken({
+          sub: String(user.id),
+          email: user.correo,
+          isTempAgencySelection: true,
+        });
+        return res.status(HttpStatus.OK).json({
+          success: true,
+          requireAgencySelection: true,
+          tempToken: agencyTempToken,
+          agencies: userAgencies,
+        });
+      }
+
+      const activeAgencyId = userAgencies[0]?.id || String(user.agency_id || user.id);
+      const userResponse = await this.buildUserWithAgency(user, subscription, activeAgencyId, userAgencies);
       return res.status(HttpStatus.OK).json({
         success: true,
-        user: this.buildUserResponse(user, subscription),
+        user: userResponse,
       });
     } catch (e: any) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: `Error al validar 2FA: ${e.message}`,
+      });
+    }
+  }
+
+  @Post('select-agency')
+  async selectAgency(@Body() body: any, @Res() res: express.Response) {
+    try {
+      const { tempToken, agencyId } = body;
+      if (!tempToken || !agencyId) {
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: 'tempToken y agencyId son obligatorios',
+        });
+      }
+
+      let payload: any;
+      try {
+        payload = this.authService.verifyToken(tempToken);
+      } catch (_) {
+        return res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: 'Sesión temporal de selección expirada o inválida',
+        });
+      }
+
+      if (!payload || (!payload.isTempAgencySelection && !payload.isTemp2fa && !payload.sub)) {
+        return res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: 'Token de selección no válido',
+        });
+      }
+
+      const userId = String(payload.sub);
+      const userRows = await this.db.query(
+        'SELECT id, nombre, correo, sub_cuenta, liberta, account_role, agency_id, parent_user_id, permissions, active FROM usuarios WHERE id = %s',
+        [userId]
+      );
+      if (!userRows.length) {
+        return res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: 'Usuario no encontrado' });
+      }
+
+      const user = userRows[0];
+      const isActive = user.active === undefined || user.active === null || user.active === true || user.active === 1;
+      if (!isActive) {
+        return res.status(HttpStatus.FORBIDDEN).json({ success: false, message: 'La cuenta está desactivada.' });
+      }
+
+      const members = await this.db.query(
+        'SELECT agency_id, role, permissions, active FROM agencia_miembros WHERE user_id = %s AND agency_id = %s',
+        [userId, String(agencyId)]
+      );
+
+      if (!members.length && String(user.agency_id) !== String(agencyId) && String(user.id) !== String(agencyId)) {
+        return res.status(HttpStatus.FORBIDDEN).json({
+          success: false,
+          message: 'No tienes acceso a la agencia seleccionada',
+        });
+      }
+
+      const membership = members[0];
+      if (membership && (membership.active === 0 || membership.active === false)) {
+        return res.status(HttpStatus.FORBIDDEN).json({
+          success: false,
+          message: 'Tu acceso a esta agencia está suspendido.',
+        });
+      }
+
+      const userAgencies = await this.getUserAgencies(userId);
+      const subscription = await this.resolveSubscription(user, String(agencyId));
+      if (this.trialHasExpired(subscription, String(agencyId))) return this.trialExpiredResponse(res);
+
+      const userResponse = await this.buildUserWithAgency(user, subscription, String(agencyId), userAgencies);
+      return res.status(HttpStatus.OK).json({
+        success: true,
+        user: userResponse,
+      });
+    } catch (e: any) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: `Error al seleccionar agencia: ${e.message}`,
+      });
+    }
+  }
+
+  @Post('switch-agency')
+  @UseGuards(JwtAuthGuard)
+  async switchAgency(@Req() request: express.Request, @Body() body: any, @Res() res: express.Response) {
+    try {
+      const userId = String((request as any).user?.sub || '');
+      const { agencyId } = body;
+      if (!agencyId) {
+        return res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'agencyId es requerido' });
+      }
+
+      const userRows = await this.db.query(
+        'SELECT id, nombre, correo, sub_cuenta, liberta, account_role, agency_id, parent_user_id, permissions, active FROM usuarios WHERE id = %s',
+        [userId]
+      );
+      if (!userRows.length) return res.status(HttpStatus.UNAUTHORIZED).json({ success: false, message: 'Usuario no encontrado' });
+
+      const user = userRows[0];
+      const members = await this.db.query(
+        'SELECT agency_id, role, permissions, active FROM agencia_miembros WHERE user_id = %s AND agency_id = %s',
+        [userId, String(agencyId)]
+      );
+
+      if (!members.length && String(user.agency_id) !== String(agencyId) && String(user.id) !== String(agencyId)) {
+        return res.status(HttpStatus.FORBIDDEN).json({ success: false, message: 'No tienes acceso a la agencia seleccionada' });
+      }
+
+      const membership = members[0];
+      if (membership && (membership.active === 0 || membership.active === false)) {
+        return res.status(HttpStatus.FORBIDDEN).json({ success: false, message: 'Tu acceso a esta agencia está suspendido.' });
+      }
+
+      const userAgencies = await this.getUserAgencies(userId);
+      const subscription = await this.resolveSubscription(user, String(agencyId));
+      if (this.trialHasExpired(subscription, String(agencyId))) return this.trialExpiredResponse(res);
+
+      const userResponse = await this.buildUserWithAgency(user, subscription, String(agencyId), userAgencies);
+      return res.status(HttpStatus.OK).json({
+        success: true,
+        user: userResponse,
+      });
+    } catch (e: any) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: `Error al cambiar agencia: ${e.message}`,
       });
     }
   }

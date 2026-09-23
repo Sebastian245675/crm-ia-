@@ -14,6 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isItemForAgency } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
 
 type Field = { key: string; label: string; type?: 'text' | 'number' | 'date'; placeholder?: string };
 type ERPRecord = Record<string, string> & { id: string; status: string; createdAt: string };
@@ -38,6 +41,13 @@ const modules: ModuleDefinition[] = [
     fields: [{ key: 'order', label: 'Orden', placeholder: 'OC-2026-001' }, { key: 'supplier', label: 'Proveedor' }, { key: 'material', label: 'Material' }, { key: 'quantity', label: 'Cantidad', type: 'number' }, { key: 'amount', label: 'Importe', type: 'number' }, { key: 'date', label: 'Entrega', type: 'date' }],
     statuses: ['Borrador', 'Solicitada', 'Aprobada', 'Recibida'],
     seed: [{ order: 'OC-2026-104', supplier: 'Distribuidora Central', material: 'Materia prima A', quantity: '240', amount: '18500', date: '2026-09-12', status: 'Aprobada' }],
+  },
+  {
+    id: 'proveedores', title: 'Directorio de proveedores', shortTitle: 'Proveedores', icon: Building2,
+    description: 'Datos fiscales, contactos, condiciones de pago, cupos de crédito y estado comercial.',
+    fields: [{ key: 'supplierCode', label: 'Código', placeholder: 'PRV-001' }, { key: 'name', label: 'Razón social' }, { key: 'taxId', label: 'NIT / RFC / CUIT' }, { key: 'contact', label: 'Contacto' }, { key: 'phone', label: 'Teléfono' }, { key: 'email', label: 'Correo' }, { key: 'paymentTerms', label: 'Condición de pago', placeholder: '30 días' }, { key: 'creditLimit', label: 'Cupo de crédito', type: 'number' }],
+    statuses: ['Activo', 'Bloqueado', 'Inactivo'],
+    seed: [{ supplierCode: 'PRV-001', name: 'Distribuidora Central', taxId: '900123456-7', contact: 'María Gómez', phone: '+57 300 555 0101', email: 'compras@distribuidoracentral.co', paymentTerms: '30 días', creditLimit: '50000000', status: 'Activo' }],
   },
   {
     id: 'almacenes', title: 'Gestión de almacenes', shortTitle: 'Almacenes', icon: Boxes,
@@ -121,7 +131,7 @@ const modules: ModuleDefinition[] = [
     description: 'Compañías, sucursales, monedas y consolidación de la operación.',
     fields: [{ key: 'company', label: 'Empresa', placeholder: 'EMPRESA-01' }, { key: 'taxId', label: 'Identificación fiscal' }, { key: 'location', label: 'Sede' }, { key: 'currency', label: 'Moneda' }, { key: 'users', label: 'Usuarios', type: 'number' }, { key: 'date', label: 'Alta', type: 'date' }],
     statuses: ['Activa', 'Implementación', 'Suspendida', 'Archivada'],
-    seed: [{ company: 'Empresa principal', taxId: '900.123.456-7', location: 'Bogotá', currency: 'COP', users: '12', date: '2026-01-10', status: 'Activa' }],
+    seed: [{ company: 'Empresa principal', taxId: 'RFC genérico', location: 'México', currency: 'MXN', users: '12', date: '2026-01-10', status: 'Activa' }],
   },
   {
     id: 'industria', title: 'Solución por industria', shortTitle: 'Solución por industria', icon: Sprout,
@@ -217,7 +227,7 @@ const legacyVerticalIds = new Set([
 const availableModules = modules.filter((module) => !legacyVerticalIds.has(module.id));
 
 const moduleGroups = [
-  { label: 'Operaciones', ids: ['compras', 'almacenes', 'logistica', 'produccion', 'calidad', 'mantenimiento'] },
+  { label: 'Operaciones', ids: ['compras', 'proveedores', 'almacenes', 'logistica', 'produccion', 'calidad', 'mantenimiento'] },
   { label: 'Gestión avanzada', ids: ['comercio-exterior', 'consignaciones', 'rrhh', 'multiempresa'] },
   { label: 'Industria', ids: ['industria'] },
   { label: 'Automatización', ids: ['alertas'] },
@@ -225,7 +235,8 @@ const moduleGroups = [
 
 const workflowByModule: Record<string, WorkflowConfig> = {
   compras: { entity: 'orden de compra', createLabel: 'Nueva orden', help: 'Registra la necesidad, solicita aprobación y confirma la recepción del proveedor.', sections: [{ id: 'all', label: 'Panel de compras' }, { id: 'requests', label: 'Solicitudes', statuses: ['Borrador', 'Solicitada'] }, { id: 'orders', label: 'Órdenes aprobadas', statuses: ['Aprobada'] }, { id: 'receipts', label: 'Recepciones', statuses: ['Recibida'] }] },
-  almacenes: { entity: 'movimiento de inventario', createLabel: 'Nuevo movimiento', help: 'Controla entradas, salidas, transferencias, lotes y confirmación física.', sections: [{ id: 'all', label: 'Existencias' }, { id: 'pending', label: 'Pendientes', statuses: ['Pendiente'] }, { id: 'transfers', label: 'Transferencias', statuses: ['En tránsito'] }, { id: 'history', label: 'Kardex', statuses: ['Confirmado', 'Completado'] }] },
+  proveedores: { entity: 'proveedor', createLabel: 'Nuevo proveedor', help: 'Mantén una ficha única por proveedor y bloquea temporalmente aquellos que no deban utilizarse en nuevas compras.', sections: [{ id: 'all', label: 'Todos' }, { id: 'active', label: 'Activos', statuses: ['Activo'] }, { id: 'blocked', label: 'Bloqueados', statuses: ['Bloqueado'] }, { id: 'inactive', label: 'Inactivos', statuses: ['Inactivo'] }] },
+  almacenes: { entity: 'movimiento de inventario', createLabel: 'Nuevo movimiento', help: 'Controla entradas, salidas, transferencias, lotes y confirmación física.', sections: [{ id: 'all', label: 'Existencias' }, { id: 'pending', label: 'Pendientes', statuses: ['Pendiente'] }, { id: 'transfers', label: 'Transferencias', statuses: ['En tránsito'] }, { id: 'history', label: 'Historial de movimientos', statuses: ['Confirmado', 'Completado'] }] },
   produccion: { entity: 'orden de producción', createLabel: 'Nueva orden de producción', help: 'Planifica cantidades, registra avance y controla el costo real del lote.', sections: [{ id: 'all', label: 'Plan maestro' }, { id: 'planned', label: 'Planificadas', statuses: ['Planificada'] }, { id: 'running', label: 'En planta', statuses: ['En proceso', 'Pausada'] }, { id: 'finished', label: 'Producción terminada', statuses: ['Finalizada'] }] },
   calidad: { entity: 'control de calidad', createLabel: 'Nueva inspección', help: 'Registra controles por lote, evidencia resultados y decide su liberación.', sections: [{ id: 'all', label: 'Tablero de calidad' }, { id: 'pending', label: 'Por inspeccionar', statuses: ['Pendiente'] }, { id: 'observed', label: 'No conformidades', statuses: ['Observado', 'Rechazado'] }, { id: 'released', label: 'Lotes liberados', statuses: ['Aprobado'] }] },
   mantenimiento: { entity: 'orden de mantenimiento', createLabel: 'Nueva orden de trabajo', help: 'Programa tareas preventivas y sigue correctivos, vencimientos y costos.', sections: [{ id: 'all', label: 'Plan de mantenimiento' }, { id: 'scheduled', label: 'Programadas', statuses: ['Programado'] }, { id: 'active', label: 'En ejecución', statuses: ['En curso', 'Vencido'] }, { id: 'history', label: 'Historial técnico', statuses: ['Finalizado'] }] },
@@ -239,7 +250,7 @@ const workflowByModule: Record<string, WorkflowConfig> = {
 };
 
 const STORAGE_KEY = 'merco-erp-records-v1';
-const moneyFields = new Set(['amount', 'cost', 'value', 'planned', 'spent', 'salary']);
+const moneyFields = new Set(['amount', 'cost', 'value', 'planned', 'spent', 'salary', 'creditLimit']);
 const tableName = (moduleId: string) => `erp_${moduleId.replace(/-/g, '_')}`;
 
 const makeInitialData = () => Object.fromEntries(availableModules.map((module) => [
@@ -254,9 +265,9 @@ const makeInitialData = () => Object.fromEntries(availableModules.map((module) =
   }),
 ]));
 
-const loadData = (): Record<string, ERPRecord[]> => {
+const loadData = (storageKey: string): Record<string, ERPRecord[]> => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     return saved ? { ...makeInitialData(), ...JSON.parse(saved) } : makeInitialData();
   } catch {
     return makeInitialData();
@@ -265,27 +276,28 @@ const loadData = (): Record<string, ERPRecord[]> => {
 
 const formatValue = (key: string, value: string) => {
   if (moneyFields.has(key) && value) {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(value));
+    return formatCurrency(Number(value));
   }
   return value || '—';
 };
 
 const statusClass = (status: string) => {
   const positive = ['Aprobada', 'Recibida', 'Confirmado', 'Completado', 'Finalizada', 'Aprobado', 'Finalizado', 'Entregado', 'Liberada', 'Disponible', 'Cobrado', 'Pagado', 'Activo', 'Activa', 'Cerrado'];
-  const negative = ['Rechazado', 'Vencido', 'Suspendida', 'Baja', 'Archivada'];
+  const negative = ['Rechazado', 'Vencido', 'Suspendida', 'Baja', 'Archivada', 'Bloqueado', 'Inactivo'];
   if (positive.includes(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
   if (negative.includes(status)) return 'bg-red-50 text-red-700 border-red-200';
   return 'bg-amber-50 text-amber-700 border-amber-200';
 };
 
 const terminalStatuses: Record<string, string[]> = {
-  compras: ['Recibida'], almacenes: ['Completado'], produccion: ['Finalizada'], calidad: ['Aprobado', 'Rechazado'],
+  compras: ['Recibida'], proveedores: ['Activo', 'Bloqueado', 'Inactivo'], almacenes: ['Completado'], produccion: ['Finalizada'], calidad: ['Aprobado', 'Rechazado'],
   mantenimiento: ['Finalizado'], logistica: ['Entregado'], 'comercio-exterior': ['Liberada'], consignaciones: ['Devuelta'],
   rrhh: ['Inactivo'], multiempresa: ['Archivada'], industria: ['Finalizada'], alertas: ['Archivada'],
 };
 
 const erpModuleThemes: Record<string, { gradient: string; category: string }> = {
   compras: { gradient: 'from-blue-600 to-indigo-700', category: 'Abastecimiento' },
+  proveedores: { gradient: 'from-teal-500 to-emerald-700', category: 'Abastecimiento' },
   almacenes: { gradient: 'from-cyan-600 to-blue-700', category: 'Inventario' },
   produccion: { gradient: 'from-slate-600 to-slate-800', category: 'Operaciones' },
   calidad: { gradient: 'from-emerald-500 to-teal-700', category: 'Operaciones' },
@@ -304,10 +316,14 @@ interface ERPManagerProps {
 }
 
 export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
+  const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
+  const storageKey = `merco-erp-records-v1-${activeAgencyId || '2'}`;
+
   const [activeModuleId, setActiveModuleId] = useState('compras');
   const [showApps, setShowApps] = useState(true);
   const [appSearch, setAppSearch] = useState('');
-  const [recordsByModule, setRecordsByModule] = useState<Record<string, ERPRecord[]>>(loadData);
+  const [recordsByModule, setRecordsByModule] = useState<Record<string, ERPRecord[]>>(() => loadData(storageKey));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -319,6 +335,7 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
 
   const activeModule = availableModules.find((module) => module.id === activeModuleId) || availableModules[0];
   const ActiveModuleIcon = activeModule.icon;
+  const activeTheme = erpModuleThemes[activeModule.id] || { gradient: 'from-slate-500 to-slate-700', category: 'ERP' };
   const workflow = workflowByModule[activeModule.id];
   const activeWorkflowSection = workflow?.sections.find((section) => section.id === workflowSection);
   const records = useMemo(() => recordsByModule[activeModule.id] || [], [recordsByModule, activeModule.id]);
@@ -344,8 +361,8 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recordsByModule));
-  }, [recordsByModule]);
+    localStorage.setItem(storageKey, JSON.stringify(recordsByModule));
+  }, [recordsByModule, storageKey]);
 
   useEffect(() => {
     let active = true;
@@ -355,17 +372,18 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
       const defaults = makeInitialData();
       for (const module of availableModules) {
         const { data, error } = await db.from(tableName(module.id)).select();
-        if (!error && Array.isArray(data) && data.length) {
+        const agencyFiltered = (!error && Array.isArray(data)) ? data.filter((r: any) => isItemForAgency(r, activeAgencyId)) : [];
+        if (agencyFiltered.length) {
           const key = module.fields[0].key;
-          const missingDefaults = defaults[module.id].filter((seed) => !data.some((record: ERPRecord) => record[key] === seed[key]));
-          for (const record of missingDefaults) await db.from(tableName(module.id)).upsert(record);
-          synchronized[module.id] = [...data, ...missingDefaults] as ERPRecord[];
+          const missingDefaults = defaults[module.id].filter((seed) => !agencyFiltered.some((record: ERPRecord) => record[key] === seed[key]));
+          for (const record of missingDefaults) await db.from(tableName(module.id)).upsert({ ...record, agency_id: activeAgencyId || '2', owner_id: activeAgencyId || '2' });
+          synchronized[module.id] = [...agencyFiltered, ...missingDefaults] as ERPRecord[];
           continue;
         }
         const localRecords = recordsByModule[module.id] || [];
         synchronized[module.id] = localRecords;
         if (!error) {
-          for (const record of localRecords) await db.from(tableName(module.id)).upsert(record);
+          for (const record of localRecords) await db.from(tableName(module.id)).upsert({ ...record, agency_id: activeAgencyId || '2', owner_id: activeAgencyId || '2' });
         }
       }
       if (active) {
@@ -377,7 +395,7 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
     return () => { active = false; };
     // La carga inicial se ejecuta una vez; luego cada mutación se sincroniza individualmente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeAgencyId]);
 
   const changeModule = (id: string) => {
     setActiveModuleId(id);
@@ -405,11 +423,44 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
       toast({ title: 'Dato requerido', description: `Completa el campo ${firstRequired.label}.`, variant: 'destructive' });
       return;
     }
+    if (activeModule.id === 'proveedores') {
+      const required = ['name', 'taxId', 'email'];
+      const missing = required.find((key) => !form[key]?.trim());
+      if (missing) {
+        const label = activeModule.fields.find((field) => field.key === missing)?.label || missing;
+        toast({ title: 'Ficha incompleta', description: `Completa el campo ${label}.`, variant: 'destructive' });
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+        toast({ title: 'Correo inválido', description: 'Escribe un correo válido para el proveedor.', variant: 'destructive' });
+        return;
+      }
+      const duplicated = (recordsByModule.proveedores || []).find((supplier) => supplier.id !== editing?.id
+        && ((supplier.supplierCode || '').toLowerCase() === form.supplierCode.trim().toLowerCase()
+          || (supplier.taxId || '').toLowerCase() === form.taxId.trim().toLowerCase()));
+      if (duplicated) {
+        toast({ title: 'Proveedor duplicado', description: 'Ya existe un proveedor con ese código o identificación fiscal.', variant: 'destructive' });
+        return;
+      }
+      if (Number(form.creditLimit || 0) < 0) {
+        toast({ title: 'Cupo inválido', description: 'El cupo de crédito no puede ser negativo.', variant: 'destructive' });
+        return;
+      }
+    }
+    if (activeModule.id === 'compras') {
+      const supplier = (recordsByModule.proveedores || []).find((item) => item.name === form.supplier);
+      if (!supplier || supplier.status !== 'Activo') {
+        toast({ title: 'Proveedor no disponible', description: 'Selecciona un proveedor activo del directorio.', variant: 'destructive' });
+        return;
+      }
+    }
     const nextRecord = {
       ...form,
       id: editing?.id || `${activeModule.id}-${Date.now()}`,
       status: form.status || activeModule.statuses[0],
       createdAt: editing?.createdAt || new Date().toISOString(),
+      agency_id: activeAgencyId || '2',
+      owner_id: activeAgencyId || '2'
     } as ERPRecord;
     setRecordsByModule((current) => {
       const currentRecords = current[activeModule.id] || [];
@@ -429,6 +480,10 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
   };
 
   const deleteRecord = async (record: ERPRecord) => {
+    if (activeModule.id === 'proveedores' && (recordsByModule.compras || []).some((purchase) => purchase.supplier === record.name)) {
+      toast({ title: 'Proveedor en uso', description: 'No se puede eliminar porque tiene órdenes de compra. Cámbialo a Inactivo.', variant: 'destructive' });
+      return;
+    }
     if (!window.confirm('¿Eliminar este registro de forma permanente?')) return;
     setRecordsByModule((current) => ({
       ...current,
@@ -553,7 +608,7 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
           </div>
           <div className="mx-3 mt-2 mb-3 border border-[#bfd0dc] bg-white text-[11px]">
             <div className="px-2 py-1.5 font-bold text-[#244d68] bg-[#e7f1f7] border-b border-[#bfd0dc]">Sesión activa</div>
-            <div className="p-2 space-y-1 text-slate-500"><p>Base de datos: Operativa</p><p>Ejercicio: 2026</p><p>Moneda: COP</p></div>
+            <div className="p-2 space-y-1 text-slate-500"><p>Base de datos: Operativa</p><p>Ejercicio: 2026</p><p>Moneda: MXN</p></div>
           </div>
         </aside>
 
@@ -619,38 +674,50 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
             <span className={cn('ml-auto h-2 w-2 shrink-0 rounded-full', syncing ? 'animate-pulse bg-amber-400' : 'bg-emerald-500')} title={syncing ? 'Sincronizando' : 'Conectado'} />
           </div>
 
-          <div className={cn("bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden", showApps && 'hidden')}>
-            <div className="px-4 py-2.5 text-[10px] sm:text-xs text-slate-500 border-b border-slate-100 bg-slate-50 truncate">
+          <div className={cn("mx-auto mb-8 w-[calc(100%-1.5rem)] max-w-7xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.07)] sm:w-[calc(100%-3.5rem)]", showApps && 'hidden')}>
+            <div className="truncate border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[10px] text-slate-500 sm:px-6 sm:text-xs">
               <span className="hidden sm:inline">Gestión empresarial <span className="mx-1">›</span> Operaciones <span className="mx-1">›</span></span> <strong className="text-[#245878]">{activeModule.title}</strong>
             </div>
-            <div className="px-4 sm:px-5 py-4 bg-white border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div>
-                <h1 className="text-base sm:text-lg font-bold text-slate-900">{activeModule.title}</h1>
-                <p className="text-xs text-slate-500 mt-1">{activeModule.description}</p>
+            <div className="relative flex flex-col justify-between gap-4 overflow-hidden border-b border-slate-200 bg-white px-4 py-5 sm:px-6 md:flex-row md:items-center">
+              <div className={cn('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', activeTheme.gradient)} />
+              <div className="flex min-w-0 items-start gap-3.5">
+                <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm', activeTheme.gradient)}>
+                  <ActiveModuleIcon className="h-5 w-5" strokeWidth={1.8} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">{activeModule.title}</h1>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">{activeTheme.category}</span>
+                  </div>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500 sm:text-sm">{activeModule.description}</p>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button onClick={openCreate} className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"><Plus className="h-3.5 w-3.5" /> {workflow?.createLabel || 'Nuevo registro'}</button>
-                <button onClick={exportCsv} className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 shadow-sm"><Download className="h-3.5 w-3.5" /> Exportar</button>
+              <div className="flex flex-wrap items-center gap-2">
+                {activeModule.id === 'compras' && <button type="button" onClick={() => changeModule('proveedores')} className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">Ver proveedores</button>}
+                <button type="button" onClick={exportCsv} className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Download className="h-3.5 w-3.5" /> Exportar</button>
+                <button type="button" onClick={openCreate} className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Plus className="h-3.5 w-3.5" /> {workflow?.createLabel || 'Nuevo registro'}</button>
               </div>
             </div>
 
-            {workflow && <div className="flex overflow-x-auto border-b border-[#a8c0d1] bg-[#e8f1f6] px-2 pt-2">
+            {workflow && <div className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50 px-4 pt-3 sm:px-6" role="tablist" aria-label="Etapas del flujo">
               {workflow.sections.map((section) => {
                 const count = section.statuses ? records.filter((record) => section.statuses!.includes(record.status)).length : records.length;
-                return <button key={section.id} onClick={() => { setWorkflowSection(section.id); setStatusFilter('all'); }} className={cn(
-                  'whitespace-nowrap px-3 py-2 text-[11px] border border-b-0 -mr-px flex items-center gap-2',
-                  workflowSection === section.id ? 'bg-white border-[#9fb9ca] text-[#174e73] font-bold relative top-px' : 'bg-[#dce9f1] border-[#b9ccd8] text-slate-600 hover:bg-[#edf5f9]',
-                )}>{section.label}<span className="min-w-5 h-4 px-1 flex items-center justify-center bg-white border border-[#bed0dc] text-[9px]">{count}</span></button>;
+                const isSelected = workflowSection === section.id;
+                return <button key={section.id} type="button" role="tab" aria-selected={isSelected} onClick={() => { setWorkflowSection(section.id); setStatusFilter('all'); }} className={cn(
+                  'relative flex items-center gap-2 whitespace-nowrap rounded-t-lg border border-b-0 px-3 py-2.5 text-[11px] transition focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                  isSelected ? 'top-px border-slate-200 bg-white font-bold text-blue-700 shadow-[0_-2px_8px_rgba(15,23,42,0.03)]' : 'border-transparent text-slate-500 hover:bg-white/70 hover:text-slate-800',
+                )}>{section.label}<span className={cn('flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[9px] font-bold', isSelected ? 'bg-blue-50 text-blue-700' : 'bg-slate-200/70 text-slate-500')}>{count}</span></button>;
               })}
             </div>}
-            {workflow && <div className="px-3 py-2 bg-white border-b border-[#d2dee5] text-[11px] text-slate-500"><strong className="text-[#315a73]">Flujo:</strong> {workflow.help}</div>}
-            <div className="p-2 border-b border-[#c5d4de] bg-[#f3f7f9] flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1 max-w-lg">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por código, descripción o responsable" className="pl-8 h-8 rounded-none border-[#aabfcd] bg-white text-xs" />
+            {workflow && <div className="border-b border-slate-100 bg-white px-4 py-2.5 text-[11px] leading-5 text-slate-500 sm:px-6"><strong className="text-slate-700">Siguiente paso recomendado:</strong> {workflow.help}</div>}
+            <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50/70 p-3 sm:flex-row sm:items-center sm:px-6">
+              <div className="relative max-w-xl flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Input aria-label={`Buscar en ${activeModule.title}`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Buscar en ${activeModule.shortTitle.toLowerCase()}...`} className="h-9 rounded-lg border-slate-300 bg-white pl-9 pr-16 text-xs shadow-sm" />
+                {search && <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-1 text-[10px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">Limpiar</button>}
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 sm:w-[190px] rounded-none border-[#aabfcd] bg-white text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
+                <SelectTrigger aria-label="Filtrar por estado" className="h-9 rounded-lg border-slate-300 bg-white text-xs shadow-sm sm:w-[200px]"><SelectValue placeholder="Estado" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   {activeModule.statuses.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
@@ -658,39 +725,61 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 xl:grid-cols-4 border-b border-[#a8c0d1] bg-[#eef5f9]">
-              {[
+            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 xl:grid-cols-4">
+              {(activeModule.id === 'proveedores' ? [
+                ['Proveedores', records.length, 'text-[#245878]'],
+                ['Activos', records.filter((record) => record.status === 'Activo').length, 'text-emerald-700'],
+                ['Bloqueados / inactivos', records.filter((record) => record.status !== 'Activo').length, 'text-amber-700'],
+                ['Cupo de crédito', formatValue('creditLimit', String(totalValue)), 'text-[#245878]'],
+              ] : [
                 ['Registros', records.length, 'text-[#245878]'],
                 ['En seguimiento', records.filter((record) => !statusClass(record.status).includes('emerald')).length, 'text-amber-700'],
                 ['Completados', records.filter((record) => statusClass(record.status).includes('emerald')).length, 'text-emerald-700'],
                 ['Valor gestionado', formatValue('amount', String(totalValue)), 'text-[#245878]'],
-              ].map(([title, value, color], index) => (
-                <div key={String(title)} className={cn('px-3 py-2.5', index > 0 && 'border-l border-[#c3d4df]')}>
-                  <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">{title}</p>
-                  <p className={cn('text-lg font-bold mt-0.5 truncate', String(color))}>{value}</p>
+              ]).map(([title, value, color]) => (
+                <div key={String(title)} className="bg-white px-4 py-3.5 sm:px-6">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400 sm:text-[10px]">{title}</p>
+                  <p className={cn('mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl', String(color))}>{value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="overflow-x-auto min-h-[360px]">
+            <div className="space-y-3 bg-slate-50/70 p-3 sm:hidden">
+              {filteredRecords.map((record) => (
+                <article key={record.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className={cn('h-1 bg-gradient-to-r', activeTheme.gradient)} />
+                  <div className="p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-blue-700">{record[activeModule.fields[0].key]}</p><h3 className="mt-0.5 truncate text-sm font-bold text-slate-900">{record[activeModule.fields[1].key] || activeModule.shortTitle}</h3></div>
+                    <span className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold', statusClass(record.status))}>{record.status}</span>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3">{activeModule.fields.slice(2).map((field) => <div key={field.key} className="min-w-0"><dt className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{field.label}</dt><dd className="mt-0.5 truncate text-xs font-medium text-slate-700">{formatValue(field.key, record[field.key])}</dd></div>)}</dl>
+                  <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3"><button type="button" onClick={() => openEdit(record)} className="flex min-h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Pencil className="h-3.5 w-3.5" /> Editar</button><button type="button" onClick={() => deleteRecord(record)} className="flex min-h-8 items-center gap-1 rounded-lg border border-red-100 px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"><Trash2 className="h-3.5 w-3.5" /> Eliminar</button></div>
+                  </div>
+                </article>
+              ))}
+              {!filteredRecords.length && <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center"><Search className="mx-auto mb-2 h-6 w-6 text-slate-300" /><p className="text-sm font-semibold text-slate-600">No hay resultados</p><p className="mt-1 text-xs text-slate-400">Prueba otro estado o cambia el texto de búsqueda.</p>{(search || statusFilter !== 'all') && <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); }} className="mt-3 text-xs font-semibold text-blue-700 hover:underline">Limpiar filtros</button>}</div>}
+            </div>
+
+            <div className="hidden min-h-[360px] overflow-x-auto sm:block">
               <table className="w-full min-w-[900px] text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gradient-to-b from-[#edf6fb] to-[#d5e8f3] border-b border-[#96b4c7]">
-                    {activeModule.fields.map((field) => <th key={field.key} className="text-left px-2.5 py-2 border-r border-[#b8cedb] text-[10px] uppercase tracking-wide text-[#315a73] font-bold">{field.label}</th>)}
-                    <th className="text-left px-2.5 py-2 border-r border-[#b8cedb] text-[10px] uppercase tracking-wide text-[#315a73] font-bold">Estado</th>
-                  <th className="w-28 px-2 py-2 text-[10px] text-[#315a73]">Acciones</th>
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-slate-200 bg-slate-100/95 backdrop-blur">
+                    {activeModule.fields.map((field) => <th key={field.key} scope="col" className="border-r border-slate-200 px-3 py-3 text-left text-[9px] font-bold uppercase tracking-[0.1em] text-slate-500">{field.label}</th>)}
+                    <th scope="col" className="border-r border-slate-200 px-3 py-3 text-left text-[9px] font-bold uppercase tracking-[0.1em] text-slate-500">Estado</th>
+                  <th scope="col" className="sticky right-0 w-28 border-l border-slate-200 bg-slate-100/95 px-2 py-3 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-500">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRecords.map((record, rowIndex) => (
-                    <tr key={record.id} className={cn('border-b border-[#d7e1e7] hover:bg-[#e4f2fa]', rowIndex % 2 ? 'bg-[#f7fafc]' : 'bg-white')}>
+                    <tr key={record.id} className={cn('group border-b border-slate-100 transition-colors hover:bg-blue-50/60', rowIndex % 2 ? 'bg-slate-50/50' : 'bg-white')}>
                       {activeModule.fields.map((field, index) => (
-                        <td key={field.key} className={cn('px-2.5 py-2 border-r border-[#e0e8ed] whitespace-nowrap', index === 0 ? 'font-bold text-[#245878]' : 'text-slate-600')}>
+                        <td key={field.key} className={cn('whitespace-nowrap border-r border-slate-100 px-3 py-3', index === 0 ? 'font-bold text-blue-700' : 'text-slate-600')}>
                           {formatValue(field.key, record[field.key])}
                         </td>
                       ))}
-                      <td className="px-2.5 py-2 border-r border-[#e0e8ed]"><span className={cn('inline-flex border px-2 py-0.5 text-[10px] font-semibold', statusClass(record.status))}>{record.status}</span></td>
-                      <td className="px-2 py-1"><div className="flex justify-center gap-0.5">
+                      <td className="border-r border-slate-100 px-3 py-3"><span className={cn('inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold', statusClass(record.status))}>{record.status}</span></td>
+                      <td className={cn('sticky right-0 border-l border-slate-100 px-2 py-1 transition-colors group-hover:bg-blue-50', rowIndex % 2 ? 'bg-slate-50' : 'bg-white')}><div className="flex justify-center gap-0.5">
                         {!terminalStatuses[activeModule.id]?.includes(record.status) && activeModule.statuses.indexOf(record.status) < activeModule.statuses.length - 1 && <button onClick={() => advanceRecord(record)} className="p-1.5 border border-transparent text-emerald-700 hover:border-emerald-200 hover:bg-white" title={`Avanzar a ${activeModule.statuses[activeModule.statuses.indexOf(record.status) + 1]}`}><ChevronRight className="h-3.5 w-3.5" /></button>}
                         <button onClick={() => openEdit(record)} className="p-1.5 border border-transparent text-[#477995] hover:border-[#aac6d7] hover:bg-white" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
                         <button onClick={() => deleteRecord(record)} className="p-1.5 border border-transparent text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-white" title="Eliminar"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -701,7 +790,7 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
                 </tbody>
               </table>
             </div>
-            <div className="h-7 px-3 flex items-center justify-between bg-[#e5eff5] border-t border-[#a8c0d1] text-[10px] text-slate-500">
+            <div className="flex h-9 items-center justify-between border-t border-slate-200 bg-slate-50 px-4 text-[10px] text-slate-500 sm:px-6">
               <span>{filteredRecords.length} de {records.length} registros</span><span>Última actualización: ahora</span>
             </div>
           </div>
@@ -709,16 +798,24 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Editar' : 'Nuevo registro'} · {activeModule.shortTitle}</DialogTitle>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-2xl">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-3 text-lg">
+              <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white', activeTheme.gradient)}><ActiveModuleIcon className="h-4 w-4" /></span>
+              <span>{editing ? 'Editar' : 'Nuevo registro'} · {activeModule.shortTitle}</span>
+            </DialogTitle>
             <DialogDescription>{workflow?.help || 'Completa la información operativa. Los cambios se reflejan inmediatamente en el tablero.'}</DialogDescription>
           </DialogHeader>
-          <div className="grid sm:grid-cols-2 gap-4 py-2">
+          <div className="grid gap-4 py-3 sm:grid-cols-2">
             {activeModule.fields.map((field) => (
-              <div key={field.key} className="space-y-2">
-                <Label htmlFor={`erp-${field.key}`}>{field.label}</Label>
-                <Input id={`erp-${field.key}`} type={field.type || 'text'} value={form[field.key] || ''} placeholder={field.placeholder} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))} />
+              <div key={field.key} className="space-y-1.5">
+                <Label htmlFor={`erp-${field.key}`} className="text-xs font-semibold text-slate-700">{field.label}</Label>
+                {activeModule.id === 'compras' && field.key === 'supplier' ? (
+                  <Select value={form.supplier || ''} onValueChange={(supplier) => setForm((current) => ({ ...current, supplier }))}>
+                    <SelectTrigger id="erp-supplier"><SelectValue placeholder="Selecciona un proveedor activo" /></SelectTrigger>
+                    <SelectContent>{(recordsByModule.proveedores || []).filter((supplier) => supplier.status === 'Activo').map((supplier) => <SelectItem key={supplier.id} value={supplier.name}>{supplier.supplierCode} · {supplier.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                ) : <Input id={`erp-${field.key}`} type={field.type || 'text'} min={field.type === 'number' ? 0 : undefined} value={form[field.key] || ''} placeholder={field.placeholder} onChange={(event) => setForm((current) => ({ ...current, [field.key]: event.target.value }))} className="h-10 rounded-lg border-slate-300" />}
               </div>
             ))}
             <div className="space-y-2">
@@ -729,9 +826,9 @@ export const ERPManager: React.FC<ERPManagerProps> = ({ onExit }) => {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={saveRecord} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="h-4 w-4 mr-2" />Guardar</Button>
+          <DialogFooter className="border-t border-slate-100 pt-4">
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg">Cancelar</Button>
+            <Button type="button" onClick={saveRecord} className="rounded-lg bg-blue-600 hover:bg-blue-700"><CheckCircle2 className="mr-2 h-4 w-4" />Guardar cambios</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

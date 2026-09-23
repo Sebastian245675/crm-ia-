@@ -20,6 +20,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 
 type PosProduct = {
   id: string;
@@ -84,7 +85,7 @@ interface PhysicalPosWorkspaceProps {
   onEmployeeChange: (id: string) => void;
 }
 
-const money = (value: number) => `$ ${Number(value || 0).toLocaleString('es-CO', { maximumFractionDigits: 2 })}`;
+const money = formatCurrency;
 
 export const PhysicalPosWorkspace: React.FC<PhysicalPosWorkspaceProps> = ({
   operatorName,

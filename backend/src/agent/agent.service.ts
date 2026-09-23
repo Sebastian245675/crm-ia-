@@ -140,12 +140,32 @@ REGLAS DE ROBUSTEZ Y NO-ALUCINACIÓN (CRÍTICAS):
 
   constructor(private readonly db: DatabaseService) {}
 
-  cargarApiKey(): string {
-    if (fs.existsSync(CONFIG_PATH)) {
-      try {
-        const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-        return config.gemini_key || '';
-      } catch (e) {}
+  cargarApiKey(agencyId?: string): string {
+    const safeAgency = (agencyId || '2').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const specificCandidates = [
+      path.join(process.cwd(), `agent_config_${safeAgency}.json`),
+      `c:/Users/USUARIO/Downloads/PROYECTO_IA/agent_config_${safeAgency}.json`
+    ];
+    for (const p of specificCandidates) {
+      if (fs.existsSync(p)) {
+        try {
+          const cfg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+          if (cfg.gemini_key) return cfg.gemini_key;
+        } catch (e) {}
+      }
+    }
+    const generalCandidates = [
+      CONFIG_PATH,
+      path.join(process.cwd(), 'agent_config.json'),
+      '/app/agent_config.json'
+    ];
+    for (const p of generalCandidates) {
+      if (fs.existsSync(p)) {
+        try {
+          const config = JSON.parse(fs.readFileSync(p, 'utf-8'));
+          if (config.gemini_key) return config.gemini_key;
+        } catch (e) {}
+      }
     }
     return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
   }

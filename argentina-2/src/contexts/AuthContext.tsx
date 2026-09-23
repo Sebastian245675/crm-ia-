@@ -3,6 +3,14 @@ import { getDocumentById, createDocumentWithId, updateDocument } from "@/lib/dat
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { AgencyPermissions } from '@/lib/agency-permissions';
 
+export interface UserAgency {
+  id: string;
+  name: string;
+  role: string;
+  logo?: string;
+  plan?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -25,13 +33,31 @@ export interface User {
     is_demo: boolean;
     trial_ends_at: string | null;
   };
+  agencies?: UserAgency[];
 }
 
 interface AuthContextType {
   user: User | null;
   currentUser: any; // Firebase user object
-  login: (email: string, password: string) => Promise<{ success: boolean; require2fa?: boolean; tempToken?: string; method?: string; email?: string; error?: any }>;
-  login2fa: (tempToken: string, code: string) => Promise<{ success: boolean; error?: any }>;
+  login: (email: string, password: string) => Promise<{
+    success: boolean;
+    require2fa?: boolean;
+    tempToken?: string;
+    method?: string;
+    email?: string;
+    requireAgencySelection?: boolean;
+    agencies?: UserAgency[];
+    error?: any;
+  }>;
+  login2fa: (tempToken: string, code: string) => Promise<{
+    success: boolean;
+    requireAgencySelection?: boolean;
+    tempToken?: string;
+    agencies?: UserAgency[];
+    error?: any;
+  }>;
+  selectAgency: (tempToken: string, agencyId: string) => Promise<{ success: boolean; error?: any }>;
+  switchAgency: (agencyId: string) => Promise<{ success: boolean; error?: any }>;
   register: (userData: Omit<User, 'id' | 'isAdmin'> & { password: string; plan?: string }) => Promise<{ success: boolean; error?: string; session?: any }>;
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -114,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions: supabaseUser.user_metadata?.permissions || {},
         active: supabaseUser.user_metadata?.active !== false,
         subscription: (supabaseUser as any).subscription || null,
+        agencies: supabaseUser.user_metadata?.agencies || [],
       };
       setUser(baseUser);
       setLoading(false);
@@ -124,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Login con Supabase / Backend API
-  const login = async (email: string, password: string): Promise<{ success: boolean; require2fa?: boolean; tempToken?: string; method?: string; email?: string; error?: any }> => {
+  const login = async (email: string, password: string) => {
     try {
       console.log("AuthContext:login:start", { email });
       
@@ -140,6 +167,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true, require2fa: true, tempToken: data.tempToken, method: data.method, email: data.email };
       }
 
+      if (data?.requireAgencySelection) {
+        return { success: true, requireAgencySelection: true, tempToken: data.tempToken, agencies: data.agencies };
+      }
+
       if (data?.user) {
         await handleAuthStateChange(data.user);
         return { success: true };
@@ -151,11 +182,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login2fa = async (tempToken: string, code: string): Promise<{ success: boolean; error?: any }> => {
+  const login2fa = async (tempToken: string, code: string) => {
     try {
       console.log("AuthContext:login2fa:start");
       const { data, error } = await (auth as any).signInWith2fa(tempToken, code);
       if (error) throw error;
+
+      if (data?.requireAgencySelection) {
+        return { success: true, requireAgencySelection: true, tempToken: data.tempToken, agencies: data.agencies };
+      }
+
       if (data?.user) {
         await handleAuthStateChange(data.user);
         return { success: true };
@@ -163,6 +199,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'No se pudo validar 2FA' };
     } catch (error) {
       console.error("Login 2FA error:", error);
+      return { success: false, error };
+    }
+  };
+
+  const selectAgency = async (tempToken: string, agencyId: string): Promise<{ success: boolean; error?: any }> => {
+    try {
+      console.log("AuthContext:selectAgency:start", { agencyId });
+      const { data, error } = await (auth as any).selectAgency(tempToken, agencyId);
+      if (error) throw error;
+
+      if (data?.user) {
+        await handleAuthStateChange(data.user);
+        return { success: true };
+      }
+      return { success: false, error: 'No se pudo seleccionar la agencia' };
+    } catch (error) {
+      console.error("selectAgency error:", error);
+      return { success: false, error };
+    }
+  };
+
+  const switchAgency = async (agencyId: string): Promise<{ success: boolean; error?: any }> => {
+    try {
+      console.log("AuthContext:switchAgency:start", { agencyId });
+      const { data, error } = await (auth as any).switchAgency(agencyId);
+      if (error) throw error;
+
+      if (data?.user) {
+        await handleAuthStateChange(data.user);
+        return { success: true };
+      }
+      return { success: false, error: 'No se pudo cambiar de agencia' };
+    } catch (error) {
+      console.error("switchAgency error:", error);
       return { success: false, error };
     }
   };
@@ -259,6 +329,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentUser,
     login,
     login2fa,
+    selectAgency,
+    switchAgency,
     register,
     resendVerificationEmail,
     logout,

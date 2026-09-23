@@ -9,6 +9,8 @@ import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
 import { Plus, Trash2, Save, X, Edit2, Sliders, Check, Settings } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isItemForAgency } from '@/lib/agency-isolation';
 
 function slugify(text: string): string {
   return text
@@ -37,6 +39,8 @@ interface Modality {
 }
 
 export const ModalitiesManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const [modalities, setModalities] = useState<Modality[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,7 +62,7 @@ export const ModalitiesManager: React.FC = () => {
 
   useEffect(() => {
     fetchModalities();
-  }, []);
+  }, [activeAgencyId]);
 
   const fetchModalities = async () => {
     setLoading(true);
@@ -67,9 +71,9 @@ export const ModalitiesManager: React.FC = () => {
         const { data, error } = await db.from('product_templates').select('*');
         if (error) throw error;
         
-        // El db.from('product_templates') devolverá un array de registros
-        // mapeados por el dbController desde el JSON 'datos'
-        setModalities(data || []);
+        // Filtrar por agencia activa
+        const filtered = (data || []).filter((m: any) => isItemForAgency(m, activeAgencyId));
+        setModalities(filtered);
       }
     } catch (e: any) {
       console.error('Error fetching templates:', e);
@@ -157,7 +161,9 @@ export const ModalitiesManager: React.FC = () => {
     const modalityData = {
       id: modalityId,
       name: name.trim(),
-      fields
+      fields,
+      agency_id: activeAgencyId || '2',
+      owner_id: activeAgencyId || '2'
     };
 
     try {

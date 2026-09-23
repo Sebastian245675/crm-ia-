@@ -33,6 +33,8 @@ export class JwtAuthGuard implements CanActivate {
         throw new ForbiddenException('La cuenta está desactivada');
       }
       const user = users[0];
+      const activeAgencyId = String(payload.agency_id || '').trim().toLowerCase().replace(/_/g, '-');
+      const isInfiniteAgency = activeAgencyId === 'voltium' || activeAgencyId === 'voltium-sanrey';
       const ownerId = String(
         user.account_role === 'agency_user' || user.sub_cuenta === 'si'
           ? (user.agency_id || user.parent_user_id || user.id)
@@ -43,11 +45,11 @@ export class JwtAuthGuard implements CanActivate {
         [ownerId],
       );
       const subscription = subscriptions[0];
-      const trialExpired = subscription?.status === 'expired' || (
+      const trialExpired = !isInfiniteAgency && (subscription?.status === 'expired' || (
         subscription?.status === 'trial' &&
         subscription?.trial_ends_at &&
         new Date(subscription.trial_ends_at).getTime() <= Date.now()
-      );
+      ));
       if (trialExpired) {
         if (subscription.status === 'trial') {
           await this.db.query(

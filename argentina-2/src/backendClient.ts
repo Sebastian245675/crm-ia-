@@ -58,6 +58,7 @@ function buildUserMetadata(user: any) {
     parent_user_id: user?.parent_user_id,
     permissions: user?.permissions || {},
     active: user?.active !== false,
+    agencies: user?.agencies || [],
   };
 }
 
@@ -628,6 +629,9 @@ export const auth = {
         if (json.require2fa) {
           return { data: { require2fa: true, tempToken: json.tempToken, method: json.method, email: json.email }, error: null };
         }
+        if (json.requireAgencySelection) {
+          return { data: { requireAgencySelection: true, tempToken: json.tempToken, agencies: json.agencies }, error: null };
+        }
         if (json.user) {
           localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
           if (json.user.access_token) {
@@ -656,18 +660,23 @@ export const auth = {
         body: JSON.stringify({ tempToken, code })
       });
       const json = await res.json();
-      if (res.ok && json.success && json.user) {
-        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
-        if (json.user.access_token) {
-          localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+      if (res.ok && json.success) {
+        if (json.requireAgencySelection) {
+          return { data: { requireAgencySelection: true, tempToken: json.tempToken, agencies: json.agencies }, error: null };
         }
-        const mappedUser = {
-          id: json.user.id,
-          email: json.user.email,
-          user_metadata: buildUserMetadata(json.user),
-          subscription: json.user.subscription || null
-        };
-        return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
+        if (json.user) {
+          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
+          if (json.user.access_token) {
+            localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+          }
+          const mappedUser = {
+            id: json.user.id,
+            email: json.user.email,
+            user_metadata: buildUserMetadata(json.user),
+            subscription: json.user.subscription || null
+          };
+          return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
+        }
       }
       return { data: { user: null, session: null }, error: new Error(json.message || "Código 2FA incorrecto.") };
     } catch (err: any) {
@@ -683,6 +692,38 @@ export const auth = {
         body: JSON.stringify({ token })
       });
       const json = await res.json();
+      if (res.ok && json.success) {
+        if (json.requireAgencySelection) {
+          return { data: { requireAgencySelection: true, tempToken: json.tempToken, agencies: json.agencies }, error: null };
+        }
+        if (json.user) {
+          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
+          if (json.user.access_token) {
+            localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+          }
+          const mappedUser = {
+            id: json.user.id,
+            email: json.user.email,
+            user_metadata: buildUserMetadata(json.user),
+            subscription: json.user.subscription || null
+          };
+          return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
+        }
+      }
+      return { data: { user: null, session: null }, error: new Error(json.message || "Fallo en autenticación con Google.") };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: err };
+    }
+  },
+
+  async selectAgency(tempToken: string, agencyId: string) {
+    try {
+      const res = await fetch('/api/auth/select-agency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken, agencyId })
+      });
+      const json = await res.json();
       if (res.ok && json.success && json.user) {
         localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
         if (json.user.access_token) {
@@ -696,7 +737,37 @@ export const auth = {
         };
         return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
       }
-      return { data: { user: null, session: null }, error: new Error(json.message || "Fallo en autenticación con Google.") };
+      return { data: { user: null, session: null }, error: new Error(json.message || "Error al seleccionar agencia.") };
+    } catch (err: any) {
+      return { data: { user: null, session: null }, error: err };
+    }
+  },
+
+  async switchAgency(agencyId: string) {
+    try {
+      const res = await fetch('/api/auth/switch-agency', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...buildAuthHeaders(),
+        },
+        body: JSON.stringify({ agencyId })
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.user) {
+        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(json.user));
+        if (json.user.access_token) {
+          localStorage.setItem(AUTH_TOKEN_KEY, json.user.access_token);
+        }
+        const mappedUser = {
+          id: json.user.id,
+          email: json.user.email,
+          user_metadata: buildUserMetadata(json.user),
+          subscription: json.user.subscription || null
+        };
+        return { data: { user: mappedUser, session: { user: mappedUser, access_token: json.user.access_token } }, error: null };
+      }
+      return { data: { user: null, session: null }, error: new Error(json.message || "Error al cambiar de agencia.") };
     } catch (err: any) {
       return { data: { user: null, session: null }, error: err };
     }

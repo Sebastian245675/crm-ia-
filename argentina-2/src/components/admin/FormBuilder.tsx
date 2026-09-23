@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isWebsiteForAgency, isFormForAgency } from '@/lib/agency-isolation';
 import { 
   Plus, Trash2, ArrowUp, ArrowDown, Clipboard, Play, Save, CheckCircle, 
   Settings, ChevronRight, Check, Eye, HelpCircle, Layers, Mail, 
@@ -104,9 +105,8 @@ const createWebsyQuestionnaire = (ownerId: string): CustomForm => {
 
 export const FormBuilder: React.FC = () => {
   const { user } = useAuth();
-  const agencyOwnerId = user?.accountRole === 'agency_user'
-    ? String(user.agencyId || user.parentUserId || user.id)
-    : String(user?.id || '');
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+  const agencyOwnerId = activeAgencyId || String(user?.agencyId || user?.id || '2');
   // Websites from local storage
   const [websites, setWebsites] = useState<any[]>([]);
   const [selectedWebId, setSelectedWebId] = useState<string>('');
@@ -137,13 +137,32 @@ export const FormBuilder: React.FC = () => {
     if (!agencyOwnerId) return;
     let cancelled = false;
     const loadWebsites = async () => {
-      const savedWebsites = localStorage.getItem('admin_websites');
+      const storageKey = `admin_websites_${agencyOwnerId}`;
+      const savedWebsites = localStorage.getItem(storageKey) || (agencyOwnerId === '2' ? localStorage.getItem('admin_websites') : null);
       const parsed = user?.accountRole === 'agency_user'
         ? []
-        : (savedWebsites ? JSON.parse(savedWebsites) : []);
+        : (savedWebsites ? JSON.parse(savedWebsites).filter((w: any) => isWebsiteForAgency(w, agencyOwnerId)) : []);
+
+      // Cargar sitios desde la tabla websites de la base de datos
+      try {
+        const { data: dbWebsites } = await db.from('websites').select();
+        (dbWebsites || [])
+          .filter((w: any) => isWebsiteForAgency(w, agencyOwnerId))
+          .forEach((w: any) => {
+            if (!parsed.some((website: any) => website.id === w.id)) {
+              parsed.push({
+                id: w.id,
+                name: w.name,
+                agency_id: w.agency_id || agencyOwnerId
+              });
+            }
+          });
+      } catch (_) {}
+
+      // Cargar formularios pertenecientes a la agencia
       const { data: agencyForms } = await db.from('website_forms').select();
       (agencyForms || [])
-        .filter((form: CustomForm) => String(form.owner_id) === agencyOwnerId && form.website_id)
+        .filter((form: CustomForm) => isFormForAgency(form, agencyOwnerId) && form.website_id)
         .forEach((form: CustomForm) => {
           if (!parsed.some((website: any) => website.id === form.website_id)) {
             parsed.push({
@@ -152,6 +171,7 @@ export const FormBuilder: React.FC = () => {
             });
           }
         });
+
       if (!cancelled) {
         setWebsites(parsed);
         setSelectedWebId(current => current && parsed.some((website: any) => website.id === current) ? current : parsed[0]?.id || '');
@@ -246,16 +266,21 @@ export const FormBuilder: React.FC = () => {
         db.from('website_form_submissions').select(),
       ]);
       if (cancelled) return;
-      let loadedForms = (formRows || []).filter((form: CustomForm) => String(form.owner_id) === agencyOwnerId && form.website_id === selectedWebId);
-      if (user?.email?.toLowerCase() === WEBSY_OWNER_EMAIL && selectedWebId === WEBSY_WEBSITE_ID && !loadedForms.some((form: CustomForm) => form.id === WEBSY_FORM_ID)) {
-        const questionnaire = createWebsyQuestionnaire(user.id);
+      let loadedForms = (formRows || []).filter((form: CustomForm) =>
+        isFormForAgency(form, agencyOwnerId) && form.website_id === selectedWebId
+      );
+      // El cuestionario de Websy SOLO se siembra si la agencia activa es Websy ("2")
+      if (agencyOwnerId === '2' && user?.email?.toLowerCase() === WEBSY_OWNER_EMAIL && selectedWebId === WEBSY_WEBSITE_ID && !loadedForms.some((form: CustomForm) => form.id === WEBSY_FORM_ID)) {
+        const questionnaire = createWebsyQuestionnaire(agencyOwnerId);
         const { error } = await db.from('website_forms').upsert(questionnaire);
         if (!error) loadedForms = [questionnaire, ...loadedForms];
       }
       setForms(loadedForms);
       setActiveFormId(loadedForms[0]?.id || null);
       setActiveForm(loadedForms[0] || null);
-      setSubmissions((submissionRows || []).filter((submission: FormSubmission) => String(submission.owner_id) === agencyOwnerId && submission.website_id === selectedWebId));
+      setSubmissions((submissionRows || []).filter((submission: FormSubmission) =>
+        isFormForAgency(submission, agencyOwnerId) && submission.website_id === selectedWebId
+      ));
     };
     load();
     return () => { cancelled = true; };
@@ -263,14 +288,14 @@ export const FormBuilder: React.FC = () => {
 
   const persistForm = async (form: CustomForm) => {
     if (!agencyOwnerId || !selectedWebId) return;
-    const record = { ...form, owner_id: agencyOwnerId, website_id: selectedWebId };
+    const record = { ...form, owner_id: agencyOwnerId, agency_id: agencyOwnerId, website_id: selectedWebId };
     const { error } = await db.from('website_forms').upsert(record);
     if (error) toast({ title: 'No se pudo guardar el formulario', description: error.message, variant: 'destructive' });
   };
 
   const persistSubmission = async (submission: FormSubmission) => {
     if (!agencyOwnerId || !selectedWebId) return;
-    const { error } = await db.from('website_form_submissions').insert({ ...submission, owner_id: agencyOwnerId, website_id: selectedWebId });
+    const { error } = await db.from('website_form_submissions').insert({ ...submission, owner_id: agencyOwnerId, agency_id: agencyOwnerId, website_id: selectedWebId });
     if (error) throw error;
   };
 

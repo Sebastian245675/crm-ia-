@@ -8,6 +8,8 @@ import { toast } from '@/hooks/use-toast';
 import { getAuthHeaders } from '@/firebase';
 import { db } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { isContactForAgency, getActiveAgencyId } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
 import {
   Dialog,
   DialogContent,
@@ -478,16 +480,20 @@ export const MessagingManager: React.FC<MessagingManagerProps> = ({ onNavigateTo
   // ─── Load contacts from DB ────────────────────────────────────────────────
   const loadContacts = async (forceEmails = false) => {
     try {
-      const mailConfigPromise = db.from('mail_config').select().eq('id', 'default_mail').maybeSingle();
+      const activeAgencyId = getActiveAgencyId(user);
+      const mailConfigId = `mail_config_${activeAgencyId || '2'}`;
+      const mailConfigPromise = db.from('mail_config').select().eq('id', mailConfigId).maybeSingle();
       const contactsPromise = db.from('contacts').select('*').order('created_at', { ascending: false });
       const { data, error } = await contactsPromise;
       if (error) throw error;
 
-      const contacts: Contact[] = (data || []).map((contact: any) => ({
-        id: String(contact.id), name: contact.name || 'Sin nombre', phone: contact.phone || '', email: contact.email || '',
-        company: contact.company || '', avatar: contact.avatar || '', tags: safeParseTags(contact.tags),
-        created_at: contact.created_at || '', last_activity: contact.last_activity || '',
-      }));
+      const contacts: Contact[] = (data || [])
+        .filter((c: any) => isContactForAgency(c, activeAgencyId))
+        .map((contact: any) => ({
+          id: String(contact.id), name: contact.name || 'Sin nombre', phone: contact.phone || '', email: contact.email || '',
+          company: contact.company || '', avatar: contact.avatar || '', tags: safeParseTags(contact.tags),
+          created_at: contact.created_at || '', last_activity: contact.last_activity || '',
+        }));
       const storedConversations = restoreConversations(currentUserId);
       const memoryConversations = cacheConversationsUserId === currentUserId ? (cacheConversations || []) : [];
       const knownConversations = [...storedConversations, ...memoryConversations, ...conversations].map(normalizeConversation);
@@ -593,7 +599,12 @@ export const MessagingManager: React.FC<MessagingManagerProps> = ({ onNavigateTo
       let imapErrorMsg = '';
 
       try {
-        const { data: mConfig } = await db.from('mail_config').select().eq('id', 'default_mail').maybeSingle();
+        const mailConfigId = `mail_config_${activeAgencyId || '2'}`;
+        let { data: mConfig } = await db.from('mail_config').select().eq('id', mailConfigId).maybeSingle();
+        if (!mConfig && (!activeAgencyId || activeAgencyId === '2')) {
+          const fb = await db.from('mail_config').select().eq('id', 'default_mail').maybeSingle();
+          if (fb.data) mConfig = fb.data;
+        }
         if (mConfig) {
           if (mConfig.email) {
             hasEmailConfig = true;
@@ -634,17 +645,20 @@ export const MessagingManager: React.FC<MessagingManagerProps> = ({ onNavigateTo
       const { data, error } = await db.from('contacts').select('*').order('created_at', { ascending: false });
       if (error) { console.error('Error loading contacts:', error); return; }
 
-      const contacts: Contact[] = (data || []).map((c: any) => ({
-        id: String(c.id),
-        name: c.name || 'Sin nombre',
-        phone: c.phone || '',
-        email: c.email || '',
-        company: c.company || '',
-        avatar: c.avatar || '',
-        tags: safeParseTags(c.tags),
-        created_at: c.created_at || '',
-        last_activity: c.last_activity || '',
-      }));
+      const activeAgencyId = getActiveAgencyId(user);
+      const contacts: Contact[] = (data || [])
+        .filter((c: any) => isContactForAgency(c, activeAgencyId))
+        .map((c: any) => ({
+          id: String(c.id),
+          name: c.name || 'Sin nombre',
+          phone: c.phone || '',
+          email: c.email || '',
+          company: c.company || '',
+          avatar: c.avatar || '',
+          tags: safeParseTags(c.tags),
+          created_at: c.created_at || '',
+          last_activity: c.last_activity || '',
+        }));
 
       // Build conversations from contacts
       const convs: Conversation[] = contacts.map((c) => ({
@@ -946,7 +960,9 @@ export const MessagingManager: React.FC<MessagingManagerProps> = ({ onNavigateTo
         const agentChannel = String(agent.type || '').includes('WhatsApp') ? 'whatsapp'
           : String(agent.type || '').includes('Correo') ? 'email'
           : 'webchat';
-        return agent.owner_id === currentUserId && agent.status === 'active' && agentChannel === conversationChannel;
+        const agentAgency = normalizeAgencyId(agent.agency_id || agent.owner_id);
+        const matchesAgency = agentAgency ? agentAgency === normalizeAgencyId(activeAgencyId) : true;
+        return matchesAgency && agent.status === 'active' && agentChannel === conversationChannel;
       });
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
@@ -1193,7 +1209,7 @@ export const MessagingManager: React.FC<MessagingManagerProps> = ({ onNavigateTo
       const oppLogMsg: ChatMessage = {
         id: `opp-log-${Date.now()}`,
         sender: 'user',
-        text: `💼 *Oportunidad registrada*: "${oppTitle}" por $${valueNum.toLocaleString('es-AR')} [${oppStage}]`,
+        text: `💼 *Oportunidad registrada*: "${oppTitle}" por ${formatCurrency(valueNum)} [${oppStage}]`,
         timestamp: new Date(),
         status: 'read'
       };

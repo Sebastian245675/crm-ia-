@@ -7,6 +7,7 @@ import { Info, Copy, Upload, Trash2, Image as ImageIcon, Loader2 } from 'lucide-
 import { toast } from '@/hooks/use-toast';
 import { db, getAuthHeaders } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId } from '@/lib/agency-isolation';
 
 interface CompanyProfile {
   id: string;
@@ -22,9 +23,7 @@ interface CompanyProfile {
 
 export const CompanyConfiguration: React.FC = () => {
   const { user } = useAuth();
-  const agencyOwnerId = user?.accountRole === 'agency_user'
-    ? String(user.agencyId || user.parentUserId || user.id)
-    : String(user?.id || '');
+  const agencyOwnerId = getActiveAgencyId(user) || (user?.id ? String(user.id) : '');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<CompanyProfile>({
@@ -48,11 +47,11 @@ export const CompanyConfiguration: React.FC = () => {
   const loadCompanyProfile = async () => {
     try {
       setLoading(true);
-      const { data, error } = await db
-        .from('company_profile')
-        .select()
-        .eq('owner_id', agencyOwnerId)
-        .maybeSingle();
+      let query = db.from('company_profile').select();
+      if (agencyOwnerId) {
+        query = query.or(`owner_id.eq.${agencyOwnerId},agency_id.eq.${agencyOwnerId}`);
+      }
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
         if (error.code !== 'PGRST116') {
@@ -132,6 +131,7 @@ export const CompanyConfiguration: React.FC = () => {
         updated_at: new Date().toISOString(),
         updated_by: user?.email || 'unknown',
         owner_id: agencyOwnerId,
+        agency_id: agencyOwnerId,
       };
 
       if (!payload.id) {

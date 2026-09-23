@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
+import { formatCurrency } from '@/lib/currency';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
@@ -141,7 +142,7 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
               {/* Price and buy button */}
               <div className="w-full flex items-center justify-between mt-5 pt-3 border-t border-slate-50">
                 <span className="text-sm font-black text-slate-900">
-                  ${Number(prod.price).toLocaleString('es-AR')}
+                  {formatCurrency(Number(prod.price))}
                 </span>
                 
                 <button 

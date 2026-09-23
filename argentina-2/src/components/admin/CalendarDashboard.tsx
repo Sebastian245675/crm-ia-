@@ -47,7 +47,11 @@ interface CalendarEvent {
   calendarId: string;
   notes?: string;
   created_at?: string;
+  agency_id?: string;
 }
+
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isEventForAgency, isItemForAgency } from '@/lib/agency-isolation';
 
 interface CustomCalendar {
   id: string;
@@ -62,6 +66,9 @@ const DEFAULT_CALENDARS: CustomCalendar[] = [
 ];
 
 export const CalendarDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+
   const [activeView, setActiveView] = useState<'calendar' | 'list' | 'settings'>('calendar');
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -116,7 +123,7 @@ export const CalendarDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeAgencyId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -124,8 +131,9 @@ export const CalendarDashboard: React.FC = () => {
       let currentEmployees: string[] = [];
       try {
         const querySnapshot = await getDocs(collection(db, "empleados"));
-        currentEmployees = querySnapshot.docs.map(doc => {
-          const d = doc.data();
+        const allEmployees = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const agencyEmployees = allEmployees.filter((emp: any) => isItemForAgency(emp, activeAgencyId));
+        currentEmployees = agencyEmployees.map((d: any) => {
           return d?.nombre || d?.name || '';
         }).filter(Boolean);
       } catch (err) {
@@ -136,14 +144,24 @@ export const CalendarDashboard: React.FC = () => {
       setUsersList(activeEmployees);
 
       if (isSupabase) {
-        // Load custom calendars
-        const { data: calendarsData } = await db.from('calendar_settings').select('*').eq('id', 'calendars').maybeSingle();
+        const agencyKey = activeAgencyId || '2';
+
+        // Load custom calendars for this agency (fallback to default 'calendars')
+        let calendarsData = (await db.from('calendar_settings').select('*').eq('id', `calendars_${agencyKey}`).maybeSingle()).data;
+        if (!calendarsData || !calendarsData.list) {
+          calendarsData = (await db.from('calendar_settings').select('*').eq('id', 'calendars').maybeSingle()).data;
+        }
         if (calendarsData && calendarsData.list) {
           setCustomCalendars(calendarsData.list);
+        } else {
+          setCustomCalendars(DEFAULT_CALENDARS);
         }
 
-        // Load hours settings
-        const { data: hoursData } = await db.from('calendar_settings').select('*').eq('id', 'work_hours').maybeSingle();
+        // Load hours settings for this agency (fallback to default 'work_hours')
+        let hoursData = (await db.from('calendar_settings').select('*').eq('id', `work_hours_${agencyKey}`).maybeSingle()).data;
+        if (!hoursData) {
+          hoursData = (await db.from('calendar_settings').select('*').eq('id', 'work_hours').maybeSingle()).data;
+        }
         if (hoursData) {
           setSettingsStartHour(hoursData.start || '08:00');
           setSettingsEndHour(hoursData.end || '20:00');
@@ -152,21 +170,12 @@ export const CalendarDashboard: React.FC = () => {
 
         // Load events
         const { data: eventsData } = await db.from('calendar_events').select('*');
-        if (eventsData && eventsData.length > 0) {
-          setEvents(eventsData);
-        } else {
-          // Seed mock events if empty
-          const mockEvents = getMockEvents(activeEmployees[0]);
-          setEvents(mockEvents);
-          // Save mock events to DB
-          for (const ev of mockEvents) {
-            await db.from('calendar_events').insert([ev]);
-          }
-        }
+        const filteredEvents = (eventsData || []).filter((e: any) => isEventForAgency(e, activeAgencyId));
+        setEvents(filteredEvents);
       }
     } catch (e) {
       console.error('Error loading calendar data:', e);
-      setEvents(getMockEvents('Administrador'));
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -230,8 +239,11 @@ export const CalendarDashboard: React.FC = () => {
   const handleSaveSettings = async () => {
     try {
       if (isSupabase) {
+        const agencyKey = activeAgencyId || '2';
         await db.from('calendar_settings').upsert({
-          id: 'work_hours',
+          id: `work_hours_${agencyKey}`,
+          agency_id: agencyKey,
+          owner_id: agencyKey,
           start: settingsStartHour,
           end: settingsEndHour,
           workDays: settingsWorkDays
@@ -254,8 +266,11 @@ export const CalendarDashboard: React.FC = () => {
     setCustomCalendars(newList);
     try {
       if (isSupabase) {
+        const agencyKey = activeAgencyId || '2';
         await db.from('calendar_settings').upsert({
-          id: 'calendars',
+          id: `calendars_${agencyKey}`,
+          agency_id: agencyKey,
+          owner_id: agencyKey,
           list: newList
         });
         toast({ title: 'Calendario agregado', description: `Se creó el calendario "${name}".` });
@@ -275,8 +290,11 @@ export const CalendarDashboard: React.FC = () => {
     setCustomCalendars(newList);
     try {
       if (isSupabase) {
+        const agencyKey = activeAgencyId || '2';
         await db.from('calendar_settings').upsert({
-          id: 'calendars',
+          id: `calendars_${agencyKey}`,
+          agency_id: agencyKey,
+          owner_id: agencyKey,
           list: newList
         });
         toast({ title: 'Calendario eliminado', description: 'El calendario fue eliminado.' });
@@ -312,7 +330,8 @@ export const CalendarDashboard: React.FC = () => {
       status: eventStatus,
       assignedUser: eventAssignedUser || usersList[0] || 'Administrador',
       calendarId: eventCalendarId,
-      notes: eventNotes
+      notes: eventNotes,
+      agency_id: selectedEvent?.agency_id || activeAgencyId || '2'
     };
 
     try {

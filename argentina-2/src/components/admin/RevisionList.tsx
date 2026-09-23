@@ -11,6 +11,7 @@ import {
   ArrowRightLeft, ArrowLeft, ArrowRight, AlertCircle
 } from "lucide-react";
 import { CustomClock } from '@/components/ui/CustomClock';
+import { formatCurrency } from '@/lib/currency';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 export const RevisionList: React.FC = () => {
@@ -256,7 +257,7 @@ export const RevisionList: React.FC = () => {
                           {currentData.price !== undefined && (
                             <div>
                               <span className="text-sm font-medium text-gray-500">Precio:</span>
-                              <div className="p-2 rounded bg-white border mt-1">${currentData.price}</div>
+                              <div className="p-2 rounded bg-white border mt-1">{formatCurrency(currentData.price)}</div>
                             </div>
                           )}
                           {currentData.description && (
@@ -487,7 +488,7 @@ export const RevisionList: React.FC = () => {
                       {currentRevision.data.price !== undefined && (
                         <div>
                           <span className="text-sm font-medium text-gray-500">Precio:</span>
-                          <div className="p-2 rounded bg-white border border-green-200 mt-1">${currentRevision.data.price}</div>
+                          <div className="p-2 rounded bg-white border border-green-200 mt-1">{formatCurrency(currentRevision.data.price)}</div>
                         </div>
                       )}
                       {currentRevision.data.category && (
@@ -581,7 +582,7 @@ export const RevisionList: React.FC = () => {
                           {rev.data?.price !== undefined && (
                             <div>
                               <span className="font-medium text-gray-600">Precio:</span>{" "}
-                              <span className="text-gray-800">${rev.data.price}</span>
+                              <span className="text-gray-800">{formatCurrency(rev.data.price)}</span>
                             </div>
                           )}
                           {rev.data?.stock !== undefined && (

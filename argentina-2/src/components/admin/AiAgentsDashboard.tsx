@@ -43,6 +43,7 @@ import {
 import { cn } from '@/lib/utils';
 import { db } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isItemForAgency } from '@/lib/agency-isolation';
 
 interface BotAgent {
   id: string;
@@ -54,6 +55,7 @@ interface BotAgent {
   accuracy: number;
   lastActive: string;
   owner_id: string;
+  agency_id?: string;
   created_at: string;
   instructions?: string;
   knowledge_base_id?: string;
@@ -69,6 +71,7 @@ interface StoredConversation {
 interface AgentEvent {
   id: string;
   owner_id: string;
+  agency_id?: string;
   agent_id?: string | null;
   contact_id: string;
   channel: string;
@@ -90,6 +93,7 @@ const getInitialDateRange = () => {
 
 export const AiAgentsDashboard: React.FC = () => {
   const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const initialDates = useMemo(getInitialDateRange, []);
   // Navigation states
   const [activeSubNav, setActiveSubNav] = useState('conversation-ai');
@@ -122,16 +126,27 @@ export const AiAgentsDashboard: React.FC = () => {
     if (error) {
       toast({ title: 'No se pudieron cargar los agentes', description: error.message, variant: 'destructive' });
     } else {
-      setBots((data || []).filter((bot: BotAgent) => bot.owner_id === user.id));
+      const filtered = (data || []).filter((bot: any) => {
+        if (bot.agency_id) return bot.agency_id === activeAgencyId;
+        if (bot.owner_id === activeAgencyId) return true;
+        return bot.owner_id === user.id;
+      });
+      setBots(filtered);
     }
     setBotsLoading(false);
-  }, [user?.id]);
+  }, [user?.id, activeAgencyId]);
 
   const loadAgentEvents = useCallback(async () => {
     if (!user?.id) return;
     const { data, error } = await db.from('ai_agent_events').select();
-    if (!error) setAgentEvents((data || []).filter((event: AgentEvent) => event.owner_id === user.id));
-  }, [user?.id]);
+    if (!error) {
+      setAgentEvents((data || []).filter((event: any) => {
+        if (event.agency_id) return event.agency_id === activeAgencyId;
+        if (event.owner_id === activeAgencyId) return true;
+        return event.owner_id === user.id;
+      }));
+    }
+  }, [user?.id, activeAgencyId]);
 
   useEffect(() => { loadBots(); loadAgentEvents(); }, [loadBots, loadAgentEvents]);
 
@@ -168,7 +183,8 @@ export const AiAgentsDashboard: React.FC = () => {
       chatsCount: 0,
       accuracy: 0,
       lastActive: 'Nunca',
-      owner_id: user.id,
+      owner_id: activeAgencyId || user.id,
+      agency_id: activeAgencyId || '2',
       created_at: new Date().toISOString(),
       instructions: newBotInstructions.trim(),
       knowledge_base_id: newBotKnowledgeBaseId || undefined,
@@ -216,13 +232,17 @@ export const AiAgentsDashboard: React.FC = () => {
   const conversations = useMemo<StoredConversation[]>(() => {
     if (!user?.id) return [];
     try {
-      const raw = localStorage.getItem(`merco_messaging_conversations_v2:${user.id}`);
+      const scopedKey = `merco_messaging_conversations_v2:${user.id}:${activeAgencyId || '2'}`;
+      let raw = localStorage.getItem(scopedKey);
+      if (!raw) {
+        raw = localStorage.getItem(`merco_messaging_conversations_v2:${user.id}`);
+      }
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
-  }, [user?.id, conversationRevision]);
+  }, [user?.id, activeAgencyId, conversationRevision]);
 
   const analytics = useMemo(() => {
     const start = new Date(`${dateFrom}T00:00:00`);
@@ -342,6 +362,7 @@ export const AiAgentsDashboard: React.FC = () => {
     status: 'sincronizado' | 'cargando';
     documents: KnowledgeBaseDoc[];
     owner_id: string;
+    agency_id?: string;
   }
 
   // Real Knowledge Base State
@@ -378,8 +399,6 @@ export const AiAgentsDashboard: React.FC = () => {
   // Sub-tab active for KB details view
   const [activeDetailTab, setActiveDetailTab] = useState<'todos' | 'url' | 'faq' | 'table' | 'text' | 'file'>('todos');
   
-
-
   // Load KBs from database
   const loadKnowledgeBases = async () => {
     setIsLoadingKbs(true);
@@ -389,7 +408,12 @@ export const AiAgentsDashboard: React.FC = () => {
       
       // Filter out any default mock data if it was previously seeded
       const defaultMockIds = ['kb-1', 'kb-2'];
-      const filteredData = (data || []).filter(kb => !defaultMockIds.includes(kb.id) && kb.owner_id === user?.id);
+      const filteredData = (data || []).filter((kb: any) => {
+        if (defaultMockIds.includes(kb.id)) return false;
+        if (kb.agency_id) return kb.agency_id === activeAgencyId;
+        if (kb.owner_id === activeAgencyId) return true;
+        return kb.owner_id === user?.id;
+      });
 
       setKnowledgeBases(filteredData);
     } catch (err) {
@@ -401,7 +425,7 @@ export const AiAgentsDashboard: React.FC = () => {
 
   useEffect(() => {
     loadKnowledgeBases();
-  }, [user?.id]);
+  }, [user?.id, activeAgencyId]);
 
   // CRUD Handlers for Knowledge Bases
   const handleCreateKb = async () => {
@@ -417,7 +441,8 @@ export const AiAgentsDashboard: React.FC = () => {
       created_at: new Date().toISOString().split('T')[0],
       status: 'sincronizado',
       documents: [],
-      owner_id: user?.id || '',
+      owner_id: activeAgencyId || user?.id || '',
+      agency_id: activeAgencyId || '2',
     };
     
     try {
@@ -732,8 +757,8 @@ export const AiAgentsDashboard: React.FC = () => {
 
   // Sub-nav definition
   const subNavItems = [
-    { id: 'conversation-ai', label: 'Conversation AI', icon: <MessageSquare className="h-4 w-4" /> },
-    { id: 'knowledge-base', label: 'Knowledge Base', icon: <Database className="h-4 w-4" /> },
+    { id: 'conversation-ai', label: 'IA conversacional', icon: <MessageSquare className="h-4 w-4" /> },
+    { id: 'knowledge-base', label: 'Base de conocimiento', icon: <Database className="h-4 w-4" /> },
   ];
 
   return (

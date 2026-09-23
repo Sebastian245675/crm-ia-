@@ -35,6 +35,9 @@ const Timestamp = { fromDate: (d: Date) => d, now: () => new Date() } as any;
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { getActiveAgencyId, isOrderForAgency, isProductForAgency, isContactForAgency } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
+import { isRealSaleOrder, sumRealSales } from '@/lib/sales';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -76,6 +79,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
   const location = useLocation();
   const showLegacyPos = import.meta.env.VITE_SHOW_LEGACY_POS === 'true';
   const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const isSupabase = typeof (db as any)?.from === 'function';
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<any[]>(initialOrders || []);
@@ -182,37 +186,39 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
     validityDays: 7,
   });
 
-  // Cargar pedidos reales de Firestore
+  // Cargar pedidos reales de Firestore / Supabase por agencia
   useEffect(() => {
     fetchOrders();
     fetchEmployees();
     fetchBillingLines();
     fetchContacts();
     fetchPosCompanyProfile();
-  }, []);
+  }, [activeAgencyId]);
 
   const fetchPosCompanyProfile = async () => {
     try {
       if (isSupabase) {
-        const { data } = await (db as any).from('company_profile').select('*').maybeSingle();
-        if (!data) return;
-        setPosCompanyProfile({
-          name: data.friendly_name || data.legal_name || 'MERCO Business Software',
-          legalName: data.legal_name || '',
-          address: data.postal_address || '',
-          location: [data.city, data.state, data.country].filter(Boolean).join(', ')
-        });
-        return;
+        let query = (db as any).from('company_profile').select('*');
+        if (activeAgencyId) {
+          query = query.or(`owner_id.eq.${activeAgencyId},agency_id.eq.${activeAgencyId}`);
+        }
+        const { data } = await query.maybeSingle();
+        if (data) {
+          setPosCompanyProfile({
+            name: data.friendly_name || data.legal_name || (activeAgencyId === 'voltium-sanrey' ? 'Voltium Sanrey' : 'Websy'),
+            legalName: data.legal_name || '',
+            address: data.postal_address || '',
+            location: [data.city, data.state, data.country].filter(Boolean).join(', ')
+          });
+          return;
+        }
       }
 
-      const snapshot = await getDocs(collection(db, 'company_profile'));
-      if (snapshot.empty) return;
-      const data = snapshot.docs[0].data();
       setPosCompanyProfile({
-        name: data.friendly_name || data.friendlyName || data.legal_name || data.legalName || 'MERCO Business Software',
-        legalName: data.legal_name || data.legalName || '',
-        address: data.postal_address || data.postalAddress || '',
-        location: [data.city, data.state, data.country].filter(Boolean).join(', ')
+        name: activeAgencyId === 'voltium-sanrey' ? 'Voltium Sanrey' : 'Websy',
+        legalName: '',
+        address: '',
+        location: ''
       });
     } catch (error) {
       console.warn('No se pudo cargar el perfil de empresa para el comprobante:', error);
@@ -231,6 +237,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
         const querySnapshot = await getDocs(collection(db, "contacts"));
         list = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
+      list = (list || []).filter((c: any) => isContactForAgency(c, activeAgencyId));
       // Sort contacts alphabetically
       list.sort((a, b) => (a.name || a.nombre || '').localeCompare(b.name || b.nombre || ''));
       setContacts(list);
@@ -248,7 +255,8 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
           .select("*")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        setOrders((data || []).map((order: any) => ({
+        const filtered = (data || []).filter((order: any) => isOrderForAgency(order, activeAgencyId));
+        setOrders(filtered.map((order: any) => ({
           ...order,
           id: order.id,
           createdAt: order.created_at,
@@ -266,7 +274,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
         const ordersData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        })).filter((order: any) => isOrderForAgency(order, activeAgencyId));
         setOrders(ordersData);
       }
     } catch (error) {
@@ -349,11 +357,13 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
       if (isSupabase) {
         const { data, error } = await db.from("products").select("*");
         if (error) throw error;
-        setProducts(data || []);
+        const filtered = (data || []).filter((p: any) => isProductForAgency(p, activeAgencyId));
+        setProducts(filtered);
       } else {
         const querySnapshot = await getDocs(collection(db, "products"));
         const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setProducts(productsData);
+        const filtered = (productsData || []).filter((p: any) => isProductForAgency(p, activeAgencyId));
+        setProducts(filtered);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -528,7 +538,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
       <tr>
         <td style="padding: 4px 0; font-size: 11px;">${escapeReceiptText(item.name)}</td>
         <td style="text-align: center; padding: 4px 0; font-size: 11px;">x${item.quantity}</td>
-        <td style="text-align: right; padding: 4px 0; font-size: 11px;">$${(parseFloat(item.price || 0) * item.quantity).toLocaleString('es-CO')}</td>
+        <td style="text-align: right; padding: 4px 0; font-size: 11px;">${formatCurrency(parseFloat(item.price || 0) * item.quantity)}</td>
       </tr>
     `).join('');
 
@@ -539,7 +549,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
     const receiptHtml = `
       <html>
         <head>
-          <title>Ticket de Venta - Voltium Sanrey</title>
+          <title>Ticket de Venta - ${posCompanyProfile.name || 'Empresa'}</title>
           <style>
             @page { size: 80mm auto; margin: 0; }
             body {
@@ -593,17 +603,17 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
 
           <div class="flex-row">
             <span>Subtotal:</span>
-            <span>$${subtotal.toLocaleString('es-CO')}</span>
+            <span>${formatCurrency(subtotal)}</span>
           </div>
           ${discountAmount > 0 ? `
           <div class="flex-row" style="color: red;">
             <span>Descuento:</span>
-            <span>-$${discountAmount.toLocaleString('es-CO')}</span>
+            <span>-${formatCurrency(discountAmount)}</span>
           </div>
           ` : ''}
           <div class="flex-row bold" style="font-size: 12px; margin-top: 4px;">
             <span>TOTAL:</span>
-            <span>$${total.toLocaleString('es-CO')}</span>
+            <span>${formatCurrency(total)}</span>
           </div>
 
           <div class="divider"></div>
@@ -658,7 +668,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
     setSelectedProducts([...selectedProducts, newGenericProduct]);
     setShowCommonProductModal(false);
     setCommonProductData({ name: 'Artículo Común', price: '', quantity: '1' });
-    toast({ title: "Artículo agregado", description: `${newGenericProduct.name} - $${price.toLocaleString()}` });
+    toast({ title: "Artículo agregado", description: `${newGenericProduct.name} - ${formatCurrency(price)}` });
   };
 
   // --- FUNCIONALIDAD REAL DE ENTRADAS/SALIDAS DE CAJA (F7/F8) ---
@@ -700,7 +710,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
       setCashRegisterData({ amount: '', concept: '' });
       toast({
         title: cashRegisterType === 'entrada' ? "Entrada de caja registrada" : "Salida de caja registrada",
-        description: `$${amt.toLocaleString('es-CO')} · ${newTransaction.concept}`
+        description: `${formatCurrency(amt)} · ${newTransaction.concept}`
       });
     } catch (error: any) {
       toast({
@@ -1180,8 +1190,8 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
           "",
           p.name,
           String(p.quantity),
-          `$${price.toLocaleString('es-CO')}`,
-          `$${totalLine.toLocaleString('es-CO')}`
+          formatCurrency(price),
+          formatCurrency(totalLine)
         ];
       });
 
@@ -1246,7 +1256,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
       doc.setTextColor(71, 85, 105);
 
       doc.text("SUBTOTAL:", 130, totalsY);
-      doc.text(`$${subtotal.toLocaleString('es-CO')}`, 194, totalsY, { align: 'right' });
+      doc.text(formatCurrency(subtotal), 194, totalsY, { align: 'right' });
 
       if (discount > 0) {
         totalsY += 6;
@@ -1254,7 +1264,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
           ? `DESCUENTO ${quoteData.discountValue}%`
           : 'DESCUENTO';
         doc.text(`${discountLabel}:`, 130, totalsY);
-        doc.text(`-$${discount.toLocaleString('es-CO')}`, 194, totalsY, { align: 'right' });
+        doc.text(`-${formatCurrency(discount)}`, 194, totalsY, { align: 'right' });
       }
 
       // Banner del Total
@@ -1266,7 +1276,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
       doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
       doc.text("TOTAL:", 135, totalsY + 6.5);
-      doc.text(`$${total.toLocaleString('es-CO')}`, 189, totalsY + 6.5, { align: 'right' });
+      doc.text(formatCurrency(total), 189, totalsY + 6.5, { align: 'right' });
 
       // Notas y Condiciones de Validez
       let notesY = totalsY + 22;
@@ -1453,7 +1463,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
     if (physicalSaleData.paymentMethod === 'efectivo' && (parseFloat(pagoCon) || 0) < calculateTotal()) {
       toast({
         title: "Efectivo insuficiente",
-        description: `Faltan $${(calculateTotal() - (parseFloat(pagoCon) || 0)).toLocaleString('es-CO')} para completar el pago.`,
+        description: `Faltan ${formatCurrency(calculateTotal() - (parseFloat(pagoCon) || 0))} para completar el pago.`,
         variant: "destructive"
       });
       return false;
@@ -1508,6 +1518,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
             employeeName: empName,
             employeeEmail: empEmail,
             billingLineId: selectedBillingLineId,
+            agencyId: activeAgencyId || '2',
           })
         });
         const result = await response.json().catch(() => null);
@@ -1596,7 +1607,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
 
       toast({
         title: "Venta registrada exitosamente",
-        description: `Se ha registrado la venta por $${committedTotal.toLocaleString('es-CO')}.`,
+        description: `Se ha registrado la venta por ${formatCurrency(committedTotal)}.`,
         variant: "default"
       });
 
@@ -1937,7 +1948,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
           order.userEmail || "",
           order.userPhone || "",
           productsList,
-          typeof order.total === 'number' ? order.total.toLocaleString() : '0',
+          typeof order.total === 'number' ? formatCurrency(order.total) : formatCurrency(0),
           order.status === 'confirmed' ? 'Confirmado' : 'En espera',
           order.createdAt ? formatDate(order.createdAt) : 'N/A',
           order.confirmedAt ? formatDate(order.confirmedAt) : 'N/A',
@@ -2018,7 +2029,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
           order.userName || "Cliente",
           `${order.userPhone || "No especificado"}\n${order.userEmail || ""}`,
           productsList.length > 40 ? `${productsList.substring(0, 40)}...` : productsList,
-          typeof order.total === 'number' ? `$${order.total.toLocaleString()}` : '$0',
+          typeof order.total === 'number' ? formatCurrency(order.total) : formatCurrency(0),
           order.status === 'confirmed' ? 'Confirmado' : 'En espera',
           formatDate(order.createdAt)
         ];
@@ -2342,7 +2353,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                   <div className="min-w-0">
                     <span className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider block">Volumen Ventas</span>
                     <span className="text-base sm:text-lg font-black text-slate-800">
-                      ${orders.filter(o => o.status === 'confirmed').reduce((sum, o) => sum + (Number(o.total) || 0), 0).toLocaleString()}
+                      {formatCurrency(sumRealSales(orders))}
                     </span>
                   </div>
                 </CardContent>
@@ -2370,7 +2381,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                   <div className="min-w-0">
                     <span className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider block">Pedidos Confirmados</span>
                     <span className="text-base sm:text-lg font-black text-slate-800">
-                      {orders.filter(o => o.status === 'confirmed' && !o.physicalSale).length}
+                      {orders.filter(o => isRealSaleOrder(o) && !o.physicalSale).length}
                     </span>
                   </div>
                 </CardContent>
@@ -2462,14 +2473,14 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                       {/* Total - Siempre visible */}
                       <TableCell className="py-2 md:py-4">
                         <div className="font-semibold text-[hsl(214,100%,38%)] text-xs md:text-sm whitespace-nowrap">
-                          ${typeof order.total === 'number' ? order.total.toLocaleString() : '0'}
+                          {formatCurrency(typeof order.total === 'number' ? order.total : 0)}
                         </div>
                         {order.discountType && order.discountType !== 'none' && (
                           <div className="text-[10px] md:text-xs text-red-500 mt-1 flex items-center gap-1">
                             <Tags className="h-3 w-3" />
                             {order.discountType === 'percentage' ?
                               `${order.discountValue}% desc.` :
-                              `$${order.discountAmount?.toLocaleString() || 0} desc.`}
+                              `${formatCurrency(order.discountAmount || 0)} desc.`}
                           </div>
                         )}
                       </TableCell>
@@ -2762,7 +2773,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                 <div className="flex items-center gap-3">
                   <div className="hidden md:block text-right border-r border-slate-200 pr-3">
                     <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Ventas de hoy</p>
-                    <p className="text-sm font-bold text-[#245878]">${dailySales.total.toLocaleString('es-CO')} <span className="text-[10px] font-medium text-slate-400">({dailySales.count})</span></p>
+                    <p className="text-sm font-bold text-[#245878]">{formatCurrency(dailySales.total)} <span className="text-[10px] font-medium text-slate-400">({dailySales.count})</span></p>
                   </div>
                   <div className="w-9 h-9 bg-[#2c86b7] text-white flex items-center justify-center font-semibold text-xs">
                     {(user?.name || user?.email || 'AD').substring(0, 2).toUpperCase()}
@@ -2936,7 +2947,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                               {item.name}
                             </div>
                             <div className="col-span-3 text-right font-semibold text-neutral-600">
-                              ${parseFloat(item.price || 0).toLocaleString()}
+                              {formatCurrency(parseFloat(item.price || 0))}
                             </div>
                             <div className="col-span-3 text-right flex items-center justify-end gap-1">
                               {/* Quantity adjustments */}
@@ -3094,7 +3105,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                                 {/* Product Price Badge */}
                                 <div className="text-center">
                                   <span className="inline-block text-[#0a7b58] text-sm font-black">
-                                    {parseFloat(product.price || 0).toLocaleString('es-CO')} $
+                                    {formatCurrency(parseFloat(product.price || 0))}
                                   </span>
                                   <div className="text-[9px] text-slate-400 mt-1">
                                     Stock: {stock}
@@ -3118,7 +3129,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
               <div className="col-span-12 lg:col-span-5 flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-bold text-neutral-600">
                   <div>
-                    Total: <span className="text-neutral-900">${calculateTotal().toLocaleString()}</span>
+                    Total: <span className="text-neutral-900">{formatCurrency(calculateTotal())}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span>Pago Con:</span>
@@ -3134,7 +3145,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                     />
                   </div>
                   <div>
-                    Cambio: <span className="text-neutral-900">${Math.max(0, (parseFloat(pagoCon) || 0) - calculateTotal()).toLocaleString()}</span>
+                    Cambio: <span className="text-neutral-900">{formatCurrency(Math.max(0, (parseFloat(pagoCon) || 0) - calculateTotal()))}</span>
                   </div>
                 </div>
 
@@ -3180,7 +3191,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
               <div className="col-span-12 sm:col-span-7 lg:col-span-4 flex items-center justify-end gap-4">
                 <div className="text-right">
                   <span className="text-[#245878] text-3xl sm:text-4xl font-black tracking-tight">
-                    ${calculateTotal().toLocaleString()}
+                    {formatCurrency(calculateTotal())}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -3450,17 +3461,17 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                   <div className="bg-[#F6F5F3] border border-[#D8D5CD] p-3 space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-500 uppercase font-semibold">Subtotal:</span>
-                      <span className="font-bold">${calculateSubtotal().toLocaleString()}</span>
+                    <span className="font-bold">{formatCurrency(calculateSubtotal())}</span>
                     </div>
                     {physicalSaleData.discountType !== 'none' && (
                       <div className="flex justify-between text-red-600">
                         <span className="uppercase font-semibold">Descuento ({physicalSaleData.discountType === 'percentage' ? `${physicalSaleData.discountValue}%` : 'Monto Fijo'}):</span>
-                        <span className="font-bold">-${calculateDiscount().toLocaleString()}</span>
+                        <span className="font-bold">-{formatCurrency(calculateDiscount())}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-base font-bold border-t pt-2 border-slate-300">
                       <span className="text-slate-800 uppercase">Total a Pagar:</span>
-                      <span className="text-[#245878]">${calculateTotal().toLocaleString()}</span>
+                      <span className="text-[#245878]">{formatCurrency(calculateTotal())}</span>
                     </div>
                   </div>
 
@@ -3505,8 +3516,8 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                       <span className="font-bold text-green-800 uppercase">Cambio a entregar:</span>
                       <span className={cn("text-lg font-black", (parseFloat(pagoCon) || 0) >= calculateTotal() ? "text-emerald-700" : "text-red-700")}>
                         {(parseFloat(pagoCon) || 0) >= calculateTotal()
-                          ? `$${((parseFloat(pagoCon) || 0) - calculateTotal()).toLocaleString('es-CO')}`
-                          : `Faltan $${(calculateTotal() - (parseFloat(pagoCon) || 0)).toLocaleString('es-CO')}`}
+                          ? formatCurrency((parseFloat(pagoCon) || 0) - calculateTotal())
+                          : `Faltan ${formatCurrency(calculateTotal() - (parseFloat(pagoCon) || 0))}`}
                       </span>
                     </div>
                   )}
@@ -3819,14 +3830,14 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                                   "font-bold",
                                   tx.type === 'entrada' ? "text-green-600" : "text-red-600"
                                 )}>
-                                  {tx.type === 'entrada' ? '+' : '-'}${tx.amount.toLocaleString()}
+                                  {tx.type === 'entrada' ? '+' : '-'}{formatCurrency(tx.amount)}
                                 </span>
                               </div>
                             ))}
                           </div>
                           <div className="bg-[#EAE8E2] p-2 mt-2 border text-xs font-bold flex justify-between">
                             <span>Balance Neto en Caja:</span>
-                            <span className="text-slate-900">${(totalIn - totalOut).toLocaleString()}</span>
+                            <span className="text-slate-900">{formatCurrency(totalIn - totalOut)}</span>
                           </div>
                         </>
                       );
@@ -3880,7 +3891,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                           </div>
                         </div>
                         <span className="text-[#0066FF] font-black text-sm">
-                          ${held.total.toLocaleString()}
+                          {formatCurrency(held.total)}
                         </span>
                       </div>
 

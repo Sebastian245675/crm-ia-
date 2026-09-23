@@ -6,8 +6,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Mail, Eye, EyeOff, Save } from 'lucide-react';
 import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId } from '@/lib/agency-isolation';
 
 export const MailConfiguration: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = getActiveAgencyId(user);
+  const configId = `mail_config_${activeAgencyId || '2'}`;
   const [mailConfig, setMailConfig] = useState({
     email: '',
     password: '',
@@ -30,7 +35,7 @@ export const MailConfiguration: React.FC = () => {
     return () => {
       window.removeEventListener('mailConfigUpdated', handleUpdate);
     };
-  }, []);
+  }, [configId]);
 
   const loadMailConfig = async () => {
     try {
@@ -38,7 +43,7 @@ export const MailConfiguration: React.FC = () => {
       const { data, error } = await db
         .from('mail_config')
         .select()
-        .eq('id', 'default_mail')
+        .eq('id', configId)
         .maybeSingle();
 
       if (error) {
@@ -52,6 +57,28 @@ export const MailConfiguration: React.FC = () => {
           smtpHost: data.smtp_host || 'smtp.hostinger.com',
           smtpPort: data.smtp_port || '465'
         });
+      } else if (!activeAgencyId || activeAgencyId === '2') {
+        // Fallback to legacy default_mail if websy
+        const fallback = await db.from('mail_config').select().eq('id', 'default_mail').maybeSingle();
+        if (fallback.data) {
+          setMailConfig({
+            email: fallback.data.email || '',
+            password: fallback.data.password || '',
+            imapHost: fallback.data.imap_host || 'imap.hostinger.com',
+            imapPort: fallback.data.imap_port || '993',
+            smtpHost: fallback.data.smtp_host || 'smtp.hostinger.com',
+            smtpPort: fallback.data.smtp_port || '465'
+          });
+        }
+      } else {
+        setMailConfig({
+          email: '',
+          password: '',
+          imapHost: 'imap.hostinger.com',
+          imapPort: '993',
+          smtpHost: 'smtp.hostinger.com',
+          smtpPort: '465'
+        });
       }
     } catch (e) {
       console.error('Error in loadMailConfig:', e);
@@ -64,7 +91,8 @@ export const MailConfiguration: React.FC = () => {
     setIsSaving(true);
     try {
       const payload = {
-        id: 'default_mail',
+        id: configId,
+        agency_id: activeAgencyId || '2',
         email: mailConfig.email,
         password: mailConfig.password,
         imap_host: mailConfig.imapHost,

@@ -97,10 +97,11 @@ export class SubaccountsController {
   async list(@Req() request: express.Request) {
     const owner = await this.requireAgencyOwner(request);
     const rows = await this.db.query(
-      `SELECT id, nombre, correo, phone, liberta, agency_id, parent_user_id, permissions, active, created_at, updated_at
-       FROM usuarios
-       WHERE agency_id = %s AND account_role = %s
-       ORDER BY created_at DESC`,
+      `SELECT u.id, u.nombre, u.correo, u.phone, u.liberta, m.agency_id, u.parent_user_id, m.permissions, m.active, m.created_at, m.updated_at
+       FROM agencia_miembros m
+       JOIN usuarios u ON u.id = m.user_id
+       WHERE m.agency_id = %s AND m.role = %s
+       ORDER BY m.created_at DESC`,
       [owner.agencyId, 'agency_user']
     );
     return { success: true, agency_id: owner.agencyId, data: rows.map((row) => this.serialize(row)) };
@@ -113,12 +114,41 @@ export class SubaccountsController {
     const email = String(body?.email || '').trim().toLowerCase();
     const password = String(body?.password || '');
     if (!name || !email || !email.includes('@')) throw new BadRequestException('Nombre y correo válido son obligatorios.');
-    if (password.length < 8) throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
-
-    const duplicate = await this.db.query('SELECT id FROM usuarios WHERE correo = %s', [email]);
-    if (duplicate.length) throw new BadRequestException('El correo ya está registrado.');
 
     const permissions = this.normalizePermissions(body?.permissions);
+    const duplicate = await this.db.query('SELECT id, nombre, correo, phone, liberta, agency_id, parent_user_id, permissions, active, created_at, updated_at FROM usuarios WHERE correo = %s', [email]);
+
+    if (duplicate.length) {
+      const existingUser = duplicate[0];
+      const memberCheck = await this.db.query(
+        'SELECT id FROM agencia_miembros WHERE agency_id = %s AND user_id = %s',
+        [owner.agencyId, existingUser.id]
+      );
+      if (memberCheck.length) {
+        throw new BadRequestException('El correo ya está registrado en esta agencia.');
+      }
+
+      await this.db.query(
+        `INSERT INTO agencia_miembros
+         (agency_id, user_id, role, permissions, active, created_at, updated_at)
+         VALUES (%s, %s, %s, %s, %s, NOW(), NOW())`,
+        [owner.agencyId, existingUser.id, 'agency_user', JSON.stringify(permissions), 1]
+      );
+
+      return {
+        success: true,
+        data: this.serialize({
+          ...existingUser,
+          agency_id: owner.agencyId,
+          parent_user_id: String(owner.id),
+          permissions: JSON.stringify(permissions),
+          active: true,
+        })
+      };
+    }
+
+    if (password.length < 8) throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
+
     const inserted = await this.db.query(
       `INSERT INTO usuarios
        (nombre, correo, contraseña, sub_cuenta, liberta, account_role, agency_id, parent_user_id, permissions, active, phone, created_at, updated_at)
@@ -137,22 +167,35 @@ export class SubaccountsController {
         String(body?.phone || '').trim(),
       ]
     );
+    const newUserId = inserted[0]?.id;
+
+    await this.db.query(
+      `INSERT INTO agencia_miembros
+       (agency_id, user_id, role, permissions, active, created_at, updated_at)
+       VALUES (%s, %s, %s, %s, %s, NOW(), NOW())`,
+      [owner.agencyId, newUserId, 'agency_user', JSON.stringify(permissions), 1]
+    );
+
     const rows = await this.db.query(
       `SELECT id, nombre, correo, phone, liberta, agency_id, parent_user_id, permissions, active, created_at, updated_at
-       FROM usuarios WHERE id = %s AND agency_id = %s`,
-      [String(inserted[0]?.id), owner.agencyId]
+       FROM usuarios WHERE id = %s`,
+      [String(newUserId)]
     );
-    return { success: true, data: this.serialize(rows[0]) };
+    return { success: true, data: this.serialize({ ...rows[0], agency_id: owner.agencyId }) };
   }
 
   @Patch(':id')
   async update(@Req() request: express.Request, @Param('id') id: string, @Body() body: any) {
     const owner = await this.requireAgencyOwner(request);
-    const targetRows = await this.db.query(
-      'SELECT id FROM usuarios WHERE id = %s AND agency_id = %s AND account_role = %s',
-      [String(id), owner.agencyId, 'agency_user']
+    const memberRows = await this.db.query(
+      'SELECT id FROM agencia_miembros WHERE user_id = %s AND agency_id = %s',
+      [String(id), owner.agencyId]
     );
-    if (!targetRows.length) throw new NotFoundException('La subcuenta no pertenece a esta agencia.');
+    const targetRows = await this.db.query(
+      'SELECT id FROM usuarios WHERE id = %s AND (agency_id = %s OR id IN (SELECT user_id FROM agencia_miembros WHERE agency_id = %s))',
+      [String(id), owner.agencyId, owner.agencyId]
+    );
+    if (!memberRows.length && !targetRows.length) throw new NotFoundException('La subcuenta no pertenece a esta agencia.');
 
     const name = String(body?.name || '').trim();
     if (!name) throw new BadRequestException('El nombre es obligatorio.');
@@ -165,30 +208,47 @@ export class SubaccountsController {
     await this.db.query(
       `UPDATE usuarios
        SET nombre = %s, phone = %s, permissions = %s, liberta = %s, active = %s, updated_at = NOW()
-       WHERE id = %s AND agency_id = %s AND account_role = %s`,
-      [name, String(body?.phone || '').trim(), JSON.stringify(permissions), permissions.publishProducts ? 'si' : 'no', active, String(id), owner.agencyId, 'agency_user']
+       WHERE id = %s`,
+      [name, String(body?.phone || '').trim(), JSON.stringify(permissions), permissions.publishProducts ? 'si' : 'no', active ? 1 : 0, String(id)]
+    );
+    await this.db.query(
+      `UPDATE agencia_miembros
+       SET permissions = %s, active = %s, updated_at = NOW()
+       WHERE user_id = %s AND agency_id = %s`,
+      [JSON.stringify(permissions), active ? 1 : 0, String(id), owner.agencyId]
     );
     if (newPassword) {
       await this.db.query(
-        'UPDATE usuarios SET contraseña = %s, updated_at = NOW() WHERE id = %s AND agency_id = %s AND account_role = %s',
-        [this.authService.hashPassword(newPassword), String(id), owner.agencyId, 'agency_user']
+        'UPDATE usuarios SET contraseña = %s, updated_at = NOW() WHERE id = %s',
+        [this.authService.hashPassword(newPassword), String(id)]
       );
     }
     const rows = await this.db.query(
       `SELECT id, nombre, correo, phone, liberta, agency_id, parent_user_id, permissions, active, created_at, updated_at
-       FROM usuarios WHERE id = %s AND agency_id = %s`,
-      [String(id), owner.agencyId]
+       FROM usuarios WHERE id = %s`,
+      [String(id)]
     );
-    return { success: true, data: this.serialize(rows[0]) };
+    return { success: true, data: this.serialize({ ...rows[0], agency_id: owner.agencyId, permissions: JSON.stringify(permissions), active }) };
   }
 
   @Delete(':id')
   async remove(@Req() request: express.Request, @Param('id') id: string) {
     const owner = await this.requireAgencyOwner(request);
     await this.db.query(
-      'DELETE FROM usuarios WHERE id = %s AND agency_id = %s AND account_role = %s',
-      [String(id), owner.agencyId, 'agency_user']
+      'DELETE FROM agencia_miembros WHERE user_id = %s AND agency_id = %s',
+      [String(id), owner.agencyId]
     );
+    // If not in any other agency, also delete from usuarios
+    const otherAgencies = await this.db.query(
+      'SELECT id FROM agencia_miembros WHERE user_id = %s',
+      [String(id)]
+    );
+    if (!otherAgencies.length) {
+      await this.db.query(
+        'DELETE FROM usuarios WHERE id = %s AND agency_id = %s AND account_role = %s',
+        [String(id), owner.agencyId, 'agency_user']
+      );
+    }
     return { success: true };
   }
 }

@@ -88,7 +88,7 @@ export const MercadoPagoButton: React.FC<MercadoPagoButtonProps> = ({ items, pay
                             title: item.name,
                             unit_price: Number(item.price),
                             quantity: Number(item.quantity),
-                            currency_id: 'ARS',
+                            currency_id: 'MXN',
                             picture_url: item.image
                         })),
                         // Agregar el costo de envío como un item si existe
@@ -97,7 +97,7 @@ export const MercadoPagoButton: React.FC<MercadoPagoButtonProps> = ({ items, pay
                             title: 'Costo de Envío',
                             unit_price: Number(deliveryFee),
                             quantity: 1,
-                            currency_id: 'ARS'
+                            currency_id: 'MXN'
                         }] : [])
                     ],
                     payer: payer ? {

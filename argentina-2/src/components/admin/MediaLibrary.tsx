@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { db, getAuthHeaders } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isMediaForAgency } from '@/lib/agency-isolation';
 import { 
   Upload, 
   Trash2, 
@@ -33,9 +35,18 @@ interface MediaItem {
   type: string;
   created_at: string;
   folder_id?: string | null;
+  agency_id?: string;
+  owner_id?: string;
 }
 
-export const MediaLibrary: React.FC = () => {
+interface MediaLibraryProps {
+  onSelectImage?: (url: string) => void;
+}
+
+export const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectImage }) => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -58,8 +69,9 @@ export const MediaLibrary: React.FC = () => {
       if (isSupabase) {
         const { data, error } = await db.from('media_library').select('*');
         if (error) throw error;
-        // Ordenar por fecha de creación desc
-        const items = (data || []).sort((a: any, b: any) => 
+        // Filtrar por agencia activa y ordenar por fecha desc
+        const filtered = (data || []).filter((item: any) => isMediaForAgency(item, activeAgencyId));
+        const items = filtered.sort((a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setMediaItems(items);
@@ -73,11 +85,16 @@ export const MediaLibrary: React.FC = () => {
 
   useEffect(() => {
     loadMedia();
-  }, []);
+  }, [activeAgencyId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files[0]) {
+      if (onSelectImage && !files[0].type.startsWith('image/')) {
+        toast({ variant: 'destructive', title: 'Selecciona una imagen', description: 'Para usarla en una campaña, sube un archivo de imagen.' });
+        e.target.value = '';
+        return;
+      }
       handleUpload(files[0]);
     }
   };
@@ -131,7 +148,9 @@ export const MediaLibrary: React.FC = () => {
           size: file.size,
           type: file.type || 'application/octet-stream',
           created_at: new Date().toISOString(),
-          folder_id: currentFolderId
+          folder_id: currentFolderId,
+          agency_id: activeAgencyId || '2',
+          owner_id: activeAgencyId || '2'
         };
 
         const { error } = await db.from('media_library').upsert(newItem);
@@ -197,7 +216,9 @@ export const MediaLibrary: React.FC = () => {
         size: 0,
         type: 'folder',
         created_at: new Date().toISOString(),
-        folder_id: null
+        folder_id: null,
+        agency_id: activeAgencyId || '2',
+        owner_id: activeAgencyId || '2'
       };
 
       const { error } = await db.from('media_library').upsert(newFolder);
@@ -355,6 +376,7 @@ export const MediaLibrary: React.FC = () => {
             type="file"
             ref={fileInputRef}
             onChange={handleFileSelect}
+            accept={onSelectImage ? 'image/*' : undefined}
             className="hidden"
             disabled={uploading}
           />
@@ -577,6 +599,16 @@ export const MediaLibrary: React.FC = () => {
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
+                    {isImg && onSelectImage && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onSelectImage(`${window.location.origin}${item.url}`)}
+                        className="h-8 rounded-full bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 shadow cursor-pointer animate-in zoom-in-50 duration-150"
+                      >
+                        Usar en campaña
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="secondary"

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/contexts/CartContext';
+import { formatCurrency } from '@/lib/currency';
 import { toast } from '@/hooks/use-toast';
 import { ShoppingCart, Plus, Minus, Trash2, MessageCircle, X } from 'lucide-react';
 import { db, auth } from "@/firebase";
@@ -91,7 +92,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
         return itemText;
       }).join('\n')}\n\n` +
       (orderNotes ? `*📝 Notas adicionales:*\n${orderNotes}\n\n` : '') +
-      `💰 *TOTAL A PAGAR: $${total.toLocaleString()}*\n\n` +
+      `💰 *TOTAL A PAGAR: ${formatCurrency(total)}*\n\n` +
       `⏰ Fecha: ${new Date().toLocaleDateString('es-AR')} - ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}\n\n` +
       `✅ Por favor confirma la disponibilidad y tiempo de entrega.\n`;
 
@@ -187,7 +188,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm leading-tight">{item.name}</h4>
-                      <p className="text-sm text-muted-foreground">${item.price.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-xs">{item.category}</Badge>
                         {item.selectedColor && (
@@ -249,18 +250,18 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
               <div className="space-y-3 bg-muted/30 p-4 rounded-lg mb-6">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
-                  <span>${subtotal.toLocaleString()}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Domicilio:</span>
                   <span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>
-                    {deliveryFee === 0 ? '¡GRATIS!' : `$${deliveryFee.toLocaleString()}`}
+                    {deliveryFee === 0 ? '¡GRATIS!' : formatCurrency(deliveryFee)}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total:</span>
-                  <span className="gradient-text-orange">${total.toLocaleString()}</span>
+                  <span className="gradient-text-orange">{formatCurrency(total)}</span>
                 </div>
                 {subtotal < 60000 && (
                   <p className="text-xs text-muted-foreground mt-2 text-center">

@@ -345,6 +345,31 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         );
       `);
       await this.runSqlite(`
+        CREATE TABLE IF NOT EXISTS agencias (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          owner_id TEXT NOT NULL,
+          logo TEXT,
+          plan TEXT DEFAULT 'basic',
+          status TEXT DEFAULT 'active',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await this.runSqlite(`
+        CREATE TABLE IF NOT EXISTS agencia_miembros (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agency_id TEXT NOT NULL,
+          user_id INTEGER NOT NULL,
+          role TEXT NOT NULL DEFAULT 'agency_user',
+          permissions TEXT DEFAULT '{}',
+          active INTEGER DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(agency_id, user_id)
+        );
+      `);
+      await this.runSqlite(`
         CREATE TABLE IF NOT EXISTS contabilidad (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           tipo TEXT NOT NULL,
@@ -487,6 +512,31 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         );
       `);
       await this.runPg(`
+        CREATE TABLE IF NOT EXISTS agencias (
+          id VARCHAR(100) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          owner_id VARCHAR(100) NOT NULL,
+          logo TEXT,
+          plan VARCHAR(100) DEFAULT 'basic',
+          status VARCHAR(50) DEFAULT 'active',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await this.runPg(`
+        CREATE TABLE IF NOT EXISTS agencia_miembros (
+          id SERIAL PRIMARY KEY,
+          agency_id VARCHAR(100) NOT NULL,
+          user_id INTEGER NOT NULL,
+          role VARCHAR(50) NOT NULL DEFAULT 'agency_user',
+          permissions TEXT DEFAULT '{}',
+          active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(agency_id, user_id)
+        );
+      `);
+      await this.runPg(`
         CREATE TABLE IF NOT EXISTS contabilidad (
           id SERIAL PRIMARY KEY,
           tipo VARCHAR(50) NOT NULL,
@@ -565,7 +615,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   private async migrateAgencyOwnership() {
     const users = await this.query(
-      'SELECT id, sub_cuenta, account_role, agency_id FROM usuarios ORDER BY id ASC'
+      'SELECT id, nombre, correo, sub_cuenta, account_role, agency_id, parent_user_id, permissions, active FROM usuarios ORDER BY id ASC'
     );
     const defaultOwner = users.find((user) => !user.sub_cuenta) || null;
 
@@ -592,6 +642,58 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         'UPDATE usuarios SET account_role = %s, agency_id = %s, parent_user_id = NULL WHERE id = %s',
         ['agency_owner', id, id]
       );
+    }
+
+    // Populate agencias and agencia_miembros
+    for (const user of users) {
+      const id = String(user.id);
+      if (user.sub_cuenta === 'saas-admin') continue;
+
+      const isOwner = !user.sub_cuenta || user.sub_cuenta === 'no' || user.account_role === 'agency_owner';
+      if (isOwner) {
+        const existingAgency = await this.query('SELECT id FROM agencias WHERE id = %s', [id]);
+        if (!existingAgency.length) {
+          const agencyName = user.nombre ? `${user.nombre}` : 'Mi Agencia';
+          await this.query(
+            'INSERT INTO agencias (id, name, owner_id, plan, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+            [id, agencyName, id, 'basic', 'active']
+          );
+        }
+
+        const existingMember = await this.query(
+          'SELECT id FROM agencia_miembros WHERE agency_id = %s AND user_id = %s',
+          [id, user.id]
+        );
+        if (!existingMember.length) {
+          await this.query(
+            'INSERT INTO agencia_miembros (agency_id, user_id, role, permissions, active, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+            [id, user.id, 'agency_owner', user.permissions || '{}', user.active !== 0 && user.active !== false ? 1 : 0]
+          );
+        }
+      } else {
+        const targetAgencyId = user.agency_id || (defaultOwner ? String(defaultOwner.id) : null);
+        if (targetAgencyId) {
+          // Ensure target agency exists
+          const existingAgency = await this.query('SELECT id FROM agencias WHERE id = %s', [targetAgencyId]);
+          if (!existingAgency.length) {
+            await this.query(
+              'INSERT INTO agencias (id, name, owner_id, plan, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+              [targetAgencyId, 'Mi Agencia', targetAgencyId, 'basic', 'active']
+            );
+          }
+
+          const existingMember = await this.query(
+            'SELECT id FROM agencia_miembros WHERE agency_id = %s AND user_id = %s',
+            [targetAgencyId, user.id]
+          );
+          if (!existingMember.length) {
+            await this.query(
+              'INSERT INTO agencia_miembros (agency_id, user_id, role, permissions, active, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, NOW(), NOW())',
+              [targetAgencyId, user.id, 'agency_user', user.permissions || '{}', user.active !== 0 && user.active !== false ? 1 : 0]
+            );
+          }
+        }
+      }
     }
   }
 

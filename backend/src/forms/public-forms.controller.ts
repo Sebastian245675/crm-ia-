@@ -15,6 +15,7 @@ type PublicFormField = {
 
 type StoredForm = {
   id: string;
+  name?: string;
   title: string;
   description?: string;
   buttonText?: string;
@@ -123,6 +124,41 @@ export class PublicFormsController {
       "INSERT INTO documentos (tabla_nombre, id, datos) VALUES ('website_form_submissions', %s, %s)",
       [id, JSON.stringify(submission)],
     );
+
+    // Si la respuesta incluye un correo, guardar como Contacto (nunca como oportunidad de venta)
+    try {
+      const emailField = Object.values(formData).find(val => typeof val === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val));
+      const nameField = Object.values(formData).find(val => typeof val === 'string' && val !== emailField && val.length < 100);
+      if (emailField) {
+        const formNameLower = (form.name || '').toLowerCase();
+        const formTitleLower = (form.title || '').toLowerCase();
+        const isNewsletter = formNameLower.includes('bolet') || formTitleLower.includes('bolet') || formNameLower.includes('newsletter') || formTitleLower.includes('noticia');
+        const contactId = `contact-${randomUUID()}`;
+        const contactData = {
+          id: contactId,
+          name: nameField || emailField.split('@')[0],
+          email: emailField,
+          phone: '',
+          company: '',
+          tags: isNewsletter ? ['Boletín', 'Newsletter'] : ['Formulario Web'],
+          owner_id: form.owner_id,
+          agency_id: form.owner_id ? String(form.owner_id) : 'voltium-sanrey',
+          created_at: new Date().toISOString(),
+          custom_fields: {
+            formId: form.id,
+            formName: form.name,
+            origen: isNewsletter ? 'newsletter' : 'formulario'
+          }
+        };
+        await this.db.query(
+          "INSERT INTO documentos (tabla_nombre, id, datos) VALUES ('contacts', %s, %s)",
+          [contactId, JSON.stringify(contactData)],
+        );
+      }
+    } catch (contactErr) {
+      // Registro de contacto silencioso
+    }
+
     return { success: true, submissionId: id, message: form.successMessage };
   }
 }

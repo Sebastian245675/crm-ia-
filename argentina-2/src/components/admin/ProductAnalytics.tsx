@@ -24,6 +24,9 @@ import {
   getDetailedViewEvents
 } from '@/lib/product-analytics';
 import { db, collection, getDocs, query, where, limit, orderBy } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isOrderForAgency, isProductForAgency } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
 const Timestamp = {
   fromDate: (date: Date) => ({ toDate: () => date }),
   now: () => ({ toDate: () => new Date() })
@@ -303,6 +306,8 @@ const getVisitorAnalytics = async (productId?: string, startDate?: string, endDa
 };
 
 export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ products }) => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const [mostViewed, setMostViewed] = useState<ProductAnalytics[]>([]);
   const [leastViewed, setLeastViewed] = useState<ProductAnalytics[]>([]);
   const [trend, setTrend] = useState<{ date: string; views: number }[]>([]);
@@ -395,7 +400,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
           .lte('created_at', end.toISOString())
           .eq('status', 'confirmed');
         if (error) throw error;
-        orders = data || [];
+        orders = (data || []).filter((o: any) => isOrderForAgency(o, activeAgencyId));
       } else {
         const ordersQuery = query(
           collection(db, "orders"),
@@ -404,7 +409,9 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
           where("createdAt", "<=", Timestamp.fromDate(end))
         );
         const snapshot = await getDocs(ordersQuery);
-        orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        orders = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter((o: any) => isOrderForAgency(o, activeAgencyId));
       }
 
       // Calcular ventas
@@ -641,13 +648,15 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
           getProductViewsTrend()
         ]);
 
-        setMostViewed(mostData);
-        setLeastViewed(leastData);
+        const filteredMost = mostData.filter((p: any) => isProductForAgency(p, activeAgencyId));
+        const filteredLeast = leastData.filter((p: any) => isProductForAgency(p, activeAgencyId));
+        setMostViewed(filteredMost);
+        setLeastViewed(filteredLeast);
         setTrend(trendData);
 
         // Calcular distribución por categoría
         const catMap: Record<string, number> = {};
-        mostData.forEach((p: any) => {
+        filteredMost.forEach((p: any) => {
           const cat = (p.category || 'Sin categoría').toString();
           catMap[cat] = (catMap[cat] || 0) + (p.totalViews || 0);
         });
@@ -660,7 +669,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
     };
 
     fetchData();
-  }, []);
+  }, [activeAgencyId]);
 
   // Cargar métricas de ventas cuando cambia el rango de fechas o cuando se cargan los productos
   useEffect(() => {
@@ -669,7 +678,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
       console.log('[ProductAnalytics] Llamando fetchSalesMetrics...');
       fetchSalesMetrics();
     }
-  }, [dateRange, isLoading, mostViewed.length]);
+  }, [dateRange, isLoading, mostViewed.length, activeAgencyId]);
 
   // Cargar datos de visitantes cuando se selecciona un producto
   useEffect(() => {
@@ -1571,8 +1580,8 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
                 <p className="text-green-50 text-sm mb-2 opacity-90">VENTAS</p>
                 <div className="space-y-1">
                   <p className="text-3xl font-bold leading-tight">Online:</p>
-                  <p className="text-2xl font-semibold">{loadingMetrics ? '...' : `${salesData.online.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}</p>
-                  <p className="text-sm text-green-50 opacity-80 mt-2">Otros: {salesData.others.toLocaleString('es-AR', { minimumFractionDigits: 2 })} €</p>
+                  <p className="text-2xl font-semibold">{loadingMetrics ? '...' : formatCurrency(salesData.online)}</p>
+                  <p className="text-sm text-green-50 opacity-80 mt-2">Otros: {formatCurrency(salesData.others)}</p>
                 </div>
               </div>
               <div className="opacity-25 absolute right-0 top-0 -mr-4 -mt-4">
@@ -1692,7 +1701,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
                           stroke="#d1d5db"
                         />
                         <Tooltip
-                          formatter={(value: any) => [`${Number(value).toFixed(2)} €`, 'Ventas']}
+                          formatter={(value: any) => [formatCurrency(Number(value)), 'Ventas']}
                           labelFormatter={(date) => {
                             const d = new Date(date);
                             return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -1747,7 +1756,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
                             cy="50%"
                             outerRadius={100}
                             innerRadius={60}
-                            label={({ name, value }) => `${value.toFixed(2)}€`}
+                            label={({ name, value }) => formatCurrency(Number(value))}
                             labelLine={false}
                           >
                             {topCustomersByPrice.map((_, index) => (
@@ -1755,7 +1764,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
                             ))}
                           </Pie>
                           <RechartsTooltip
-                            formatter={(value: any) => `${Number(value).toFixed(2)} €`}
+                            formatter={(value: any) => formatCurrency(Number(value))}
                             contentStyle={{
                               backgroundColor: 'white',
                               border: '1px solid #e5e7eb',
@@ -1767,7 +1776,7 @@ export const ProductAnalyticsView: React.FC<ProductAnalyticsViewProps> = ({ prod
                             height={36}
                             formatter={(value, entry: any) => {
                               const data = topCustomersByPrice.find(c => c.name === value);
-                              return data ? `${value} (${data.value.toFixed(2)}€)` : value;
+                              return data ? `${value} (${formatCurrency(Number(data.value))})` : value;
                             }}
                             wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }}
                           />

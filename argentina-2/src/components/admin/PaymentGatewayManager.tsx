@@ -25,7 +25,13 @@ interface GatewayConfig {
   bankInstructions: string;
 }
 
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId } from '@/lib/agency-isolation';
+
 export const PaymentGatewayManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = getActiveAgencyId(user);
+  const storageKey = `admin_payment_gateway_config_${activeAgencyId || '2'}`;
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<GatewayConfig>({
     mercadoPagoEnabled: false,
@@ -47,20 +53,37 @@ export const PaymentGatewayManager: React.FC = () => {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('admin_payment_gateway_config');
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         setConfig(JSON.parse(saved));
       } catch (err) {
         console.error('Error al cargar pasarelas:', err);
       }
+    } else {
+      setConfig({
+        mercadoPagoEnabled: false,
+        mercadoPagoPublicKey: '',
+        mercadoPagoAccessToken: '',
+        mercadoPagoSandbox: true,
+        stripeEnabled: false,
+        stripePublishableKey: '',
+        stripeSecretKey: '',
+        stripeLiveMode: false,
+        bankEnabled: false,
+        bankName: '',
+        bankCbu: '',
+        bankOwner: '',
+        bankCuit: '',
+        bankInstructions: ''
+      });
     }
-  }, []);
+  }, [storageKey]);
 
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
-      localStorage.setItem('admin_payment_gateway_config', JSON.stringify(config));
+      localStorage.setItem(storageKey, JSON.stringify(config));
       setLoading(false);
       toast({
         title: 'Configuración Guardada',

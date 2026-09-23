@@ -35,6 +35,7 @@ export const SeguridadManager: React.FC = () => {
   const { user } = useAuth();
   const sessionEmail = user?.email?.trim() || '';
   const [loading, setLoading] = useState(true);
+  const [statusError, setStatusError] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [email2faEnabled, setEmail2faEnabled] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -63,6 +64,8 @@ export const SeguridadManager: React.FC = () => {
   // ─── Email 2FA Disable state ───
   const [showEmailDisableDialog, setShowEmailDisableDialog] = useState(false);
   const [disablingEmail, setDisablingEmail] = useState(false);
+  const [emailDisablePassword, setEmailDisablePassword] = useState('');
+  const [showEmailDisablePassword, setShowEmailDisablePassword] = useState(false);
 
   // ─── Backup Codes state ───
   const [showBackupCodesDialog, setShowBackupCodesDialog] = useState(false);
@@ -93,8 +96,10 @@ export const SeguridadManager: React.FC = () => {
 
   const check2faStatus = async () => {
     setLoading(true);
+    setStatusError(false);
     try {
       const token = getAuthToken();
+      if (!token) throw new Error('No hay una sesión autenticada');
       const res = await fetch('/api/auth/2fa/status', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -107,6 +112,7 @@ export const SeguridadManager: React.FC = () => {
         setUserEmail(sessionEmail || data.email || '');
         setBackupCodesCount(data.backupCodesCount || 0);
       } else {
+        setStatusError(true);
         // Fallback user email from session
         const sessionRaw = localStorage.getItem('auth_user_session');
         if (sessionRaw) {
@@ -118,6 +124,7 @@ export const SeguridadManager: React.FC = () => {
       }
     } catch (e: any) {
       console.error('Error checking 2fa status:', e);
+      setStatusError(true);
     } finally {
       setLoading(false);
     }
@@ -336,12 +343,17 @@ export const SeguridadManager: React.FC = () => {
   };
 
   const handleDisableEmail2fa = async () => {
+    if (!emailDisablePassword) {
+      toast({ title: 'Confirma tu identidad', description: 'Introduce tu contraseña actual para desactivar este método.', variant: 'destructive' });
+      return;
+    }
     setDisablingEmail(true);
     try {
       const token = getAuthToken();
       const res = await fetch('/api/auth/2fa/email/disable', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: emailDisablePassword })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -351,6 +363,7 @@ export const SeguridadManager: React.FC = () => {
         });
         setEmail2faEnabled(false);
         setShowEmailDisableDialog(false);
+        setEmailDisablePassword('');
       } else {
         toast({
           title: 'Error',
@@ -371,6 +384,11 @@ export const SeguridadManager: React.FC = () => {
 
   // ─── Backup Codes Handlers ───
   const handleGenerateBackupCodes = async () => {
+    if (!totpEnabled && !email2faEnabled) {
+      toast({ title: 'Activa primero el 2FA', description: 'Los códigos de recuperación solo se habilitan cuando existe un segundo factor activo.', variant: 'destructive' });
+      return;
+    }
+    if (backupCodesCount > 0 && !window.confirm('Regenerar los códigos invalidará todos los códigos anteriores. ¿Deseas continuar?')) return;
     setGeneratingBackupCodes(true);
     try {
       const token = getAuthToken();
@@ -446,12 +464,21 @@ export const SeguridadManager: React.FC = () => {
       });
       return;
     }
-    if (newPassword.length < 6) {
+    const passwordIsStrong = newPassword.length >= 12
+      && /[a-z]/.test(newPassword)
+      && /[A-Z]/.test(newPassword)
+      && /[0-9]/.test(newPassword)
+      && /[^A-Za-z0-9]/.test(newPassword);
+    if (!passwordIsStrong) {
       toast({
         title: 'Contraseña débil',
-        description: 'La nueva contraseña debe contener al menos 6 caracteres.',
+        description: 'Usa al menos 12 caracteres, mayúscula, minúscula, número y símbolo.',
         variant: 'destructive'
       });
+      return;
+    }
+    if (newPassword === currentPassword) {
+      toast({ title: 'Contraseña repetida', description: 'La nueva contraseña debe ser diferente de la actual.', variant: 'destructive' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -502,14 +529,19 @@ export const SeguridadManager: React.FC = () => {
   };
 
   const activeMethodsCount = (totpEnabled ? 1 : 0) + (email2faEnabled ? 1 : 0);
+  const strongPassword = newPassword.length >= 12 && /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) && /[^A-Za-z0-9]/.test(newPassword);
 
   return (
-    <div className="max-w-4xl pb-12 text-slate-900">
-      <div className="border-b border-slate-200 pb-5">
-        <h1 className="text-xl font-semibold tracking-tight">Seguridad</h1>
+    <div className="mx-auto max-w-5xl pb-12 text-slate-900">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-600 to-emerald-500" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700">Centro de protección</p><h1 className="mt-1 text-xl font-bold tracking-tight">Seguridad</h1>
         <p className="mt-1 text-sm text-slate-500">
           Configuración de acceso para <span className="font-medium text-slate-700">{userEmail || 'esta cuenta'}</span>
-        </p>
+        </p></div>
+        <div className={cn('flex items-center gap-3 rounded-xl border px-4 py-3', activeMethodsCount > 0 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}><ShieldCheck className={cn('h-7 w-7', activeMethodsCount > 0 ? 'text-emerald-600' : 'text-amber-600')} /><div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Nivel de protección</p><p className={cn('text-sm font-bold', activeMethodsCount > 0 ? 'text-emerald-800' : 'text-amber-800')}>{activeMethodsCount === 2 ? 'Protección reforzada' : activeMethodsCount === 1 ? 'Protección activa' : 'Requiere atención'}</p></div></div>
+        </div>
       </div>
 
       {loading ? (
@@ -518,7 +550,8 @@ export const SeguridadManager: React.FC = () => {
           Cargando configuración…
         </div>
       ) : (
-        <div className="space-y-8 pt-7">
+        <div className="space-y-6 pt-5">
+          {statusError && <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800 sm:flex-row sm:items-center sm:justify-between"><span><strong>No pudimos verificar el estado de seguridad.</strong> No realices cambios hasta recuperar la conexión.</span><Button type="button" variant="outline" size="sm" onClick={() => void check2faStatus()} className="h-8 border-red-200 bg-white text-red-700 hover:bg-red-100"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Reintentar</Button></div>}
           {/* ─── Sección 1: Métodos de Autenticación en 2 Pasos (2FA) ─── */}
           <div>
             <div className="mb-4 flex items-end justify-between gap-4">
@@ -533,7 +566,7 @@ export const SeguridadManager: React.FC = () => {
               <span className="hidden text-xs text-slate-500 sm:block">{activeMethodsCount} de 2 métodos activos</span>
             </div>
 
-            <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               {/* ── MÉTODO 1: CÓDIGO POR CORREO ELECTRÓNICO (EMAIL OTP) ── */}
               <Card className="grid rounded-none border-0 bg-white shadow-none md:grid-cols-[minmax(0,1fr)_340px]">
                 <CardHeader className="p-5">
@@ -574,7 +607,7 @@ export const SeguridadManager: React.FC = () => {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={sendingEmailCode || emailCooldown > 0}
+                          disabled={sendingEmailCode || emailCooldown > 0 || statusError}
                           onClick={handleSendEmailCode}
                           className="h-8 text-xs border-slate-300 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5"
                         >
@@ -586,6 +619,7 @@ export const SeguridadManager: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowEmailDisableDialog(true)}
+                          disabled={statusError}
                           className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                         >
                           Desactivar
@@ -595,7 +629,7 @@ export const SeguridadManager: React.FC = () => {
                       <Button
                         type="button"
                         onClick={handleSendEmailCode}
-                        disabled={sendingEmailCode}
+                        disabled={sendingEmailCode || statusError}
                         variant="outline"
                         className="h-8 text-xs font-medium"
                       >
@@ -651,6 +685,7 @@ export const SeguridadManager: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowTotpDisableDialog(true)}
+                          disabled={statusError}
                           className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                         >
                           Desactivar
@@ -660,6 +695,7 @@ export const SeguridadManager: React.FC = () => {
                       <Button
                         type="button"
                         onClick={handleStartTotpSetup}
+                        disabled={statusError}
                         variant="outline"
                         className="h-8 text-xs font-medium"
                       >
@@ -675,7 +711,7 @@ export const SeguridadManager: React.FC = () => {
           </div>
 
           {/* ─── Sección 2: Códigos de Respaldo de Emergencia (Backup Codes) ─── */}
-          <Card className="rounded-none border-x-0 border-y border-slate-200 bg-white shadow-none">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -702,18 +738,18 @@ export const SeguridadManager: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleGenerateBackupCodes}
-                  disabled={generatingBackupCodes}
+                  disabled={generatingBackupCodes || activeMethodsCount === 0 || statusError}
                   className="h-9 text-xs border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 shrink-0 flex items-center gap-1.5"
                 >
                   {generatingBackupCodes ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  {backupCodesCount > 0 ? 'Regenerar códigos' : 'Generar códigos'}
+                  {activeMethodsCount === 0 ? 'Activa primero el 2FA' : backupCodesCount > 0 ? 'Regenerar códigos' : 'Generar códigos'}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* ─── Sección 3: Cambio de Contraseña Administrativa ─── */}
-          <Card className="rounded-none border-x-0 border-y border-slate-200 bg-white shadow-none">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <CardHeader className="pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600">
@@ -734,6 +770,7 @@ export const SeguridadManager: React.FC = () => {
                   <div className="relative mt-1">
                     <Input
                       type={showCurrentPass ? "text" : "password"}
+                      autoComplete="current-password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="Introduce tu contraseña actual"
@@ -744,6 +781,7 @@ export const SeguridadManager: React.FC = () => {
                       type="button"
                       onClick={() => setShowCurrentPass(!showCurrentPass)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      aria-label={showCurrentPass ? 'Ocultar contraseña actual' : 'Mostrar contraseña actual'}
                     >
                       {showCurrentPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -756,9 +794,10 @@ export const SeguridadManager: React.FC = () => {
                     <div className="relative mt-1">
                       <Input
                         type={showNewPass ? "text" : "password"}
+                        autoComplete="new-password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
+                        placeholder="12+ caracteres, número y símbolo"
                         className="text-xs h-9 bg-slate-50 pr-10 border-slate-200 focus:bg-white"
                         required
                       />
@@ -766,6 +805,7 @@ export const SeguridadManager: React.FC = () => {
                         type="button"
                         onClick={() => setShowNewPass(!showNewPass)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        aria-label={showNewPass ? 'Ocultar contraseña nueva' : 'Mostrar contraseña nueva'}
                       >
                         {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -776,6 +816,7 @@ export const SeguridadManager: React.FC = () => {
                     <Label className="text-xs font-medium text-slate-700">Confirmar nueva contraseña</Label>
                     <Input
                       type="password"
+                      autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Repite la nueva clave"
@@ -791,17 +832,17 @@ export const SeguridadManager: React.FC = () => {
                     <span className="text-slate-500">Fortaleza:</span>
                     <span className={cn(
                       "font-bold",
-                      newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword)
+                      strongPassword
                         ? "text-emerald-600"
-                        : newPassword.length >= 6
+                        : newPassword.length >= 12
                           ? "text-amber-600"
                           : "text-rose-600"
                     )}>
-                      {newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword)
-                        ? "Excelente (Robusta)"
-                        : newPassword.length >= 6
-                          ? "Aceptable"
-                          : "Débil (Mínimo 6 caracteres)"}
+                      {strongPassword
+                        ? "Robusta"
+                        : newPassword.length >= 12
+                          ? "Falta mayúscula, minúscula, número o símbolo"
+                          : "Débil (mínimo 12 caracteres)"}
                     </span>
                   </div>
                 )}
@@ -809,7 +850,7 @@ export const SeguridadManager: React.FC = () => {
                 <div className="pt-2 flex justify-start">
                   <Button
                     type="submit"
-                    disabled={changingPassword || !currentPassword || !newPassword}
+                    disabled={changingPassword || !currentPassword || !strongPassword || newPassword !== confirmPassword}
                     className="h-9 text-xs bg-slate-800 hover:bg-slate-900 text-white font-semibold flex items-center gap-1.5"
                   >
                     {changingPassword && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -821,7 +862,7 @@ export const SeguridadManager: React.FC = () => {
           </Card>
 
           {/* ─── Sesión actual ─── */}
-          <Card className="rounded-none border-x-0 border-y border-slate-200 bg-white shadow-none">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <CardHeader className="pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-md bg-slate-50 text-slate-700 border border-slate-200">
@@ -929,7 +970,7 @@ export const SeguridadManager: React.FC = () => {
       </Dialog>
 
       {/* ─── Modal 2: Desactivar Email 2FA ─── */}
-      <Dialog open={showEmailDisableDialog} onOpenChange={setShowEmailDisableDialog}>
+      <Dialog open={showEmailDisableDialog} onOpenChange={(open) => { setShowEmailDisableDialog(open); if (!open) { setEmailDisablePassword(''); setShowEmailDisablePassword(false); } }}>
         <DialogContent className="bg-white border sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle className="text-rose-600 flex items-center gap-2 text-base">
@@ -940,6 +981,13 @@ export const SeguridadManager: React.FC = () => {
               ¿Estás seguro de que deseas desactivar la verificación en dos pasos por correo electrónico? Tu cuenta quedará menos protegida frente a accesos no autorizados.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="disable-email-password" className="text-xs font-semibold text-slate-700">Contraseña actual</Label>
+            <div className="relative mt-1.5">
+              <Input id="disable-email-password" type={showEmailDisablePassword ? 'text' : 'password'} value={emailDisablePassword} onChange={(event) => setEmailDisablePassword(event.target.value)} autoComplete="current-password" placeholder="Confirma tu contraseña" className="h-10 pr-10" />
+              <button type="button" onClick={() => setShowEmailDisablePassword((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" aria-label={showEmailDisablePassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showEmailDisablePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+            </div>
+          </div>
           <DialogFooter className="border-t pt-3 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowEmailDisableDialog(false)}>
               Cancelar
@@ -947,7 +995,7 @@ export const SeguridadManager: React.FC = () => {
             <Button
               variant="destructive"
               size="sm"
-              disabled={disablingEmail}
+              disabled={disablingEmail || !emailDisablePassword}
               onClick={handleDisableEmail2fa}
             >
               {disablingEmail && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { X, Search, Plus, Minus, Trash2, FileText, Download, RefreshCw, Mail, Phone, Building2, Calendar, ShoppingBag, MapPin, ShieldCheck } from 'lucide-react';
 import { db, collection, getDocs } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -217,7 +218,7 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
   const total = subtotal - discount;
 
   const formatDate = (d: Date) => d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-  const formatMoney = (value: number) => `$ ${Number(value || 0).toLocaleString('es-CO', { maximumFractionDigits: 2 })}`;
+  const formatMoney = (value: number) => formatCurrency(value);
   const documentNumber = `${docType === 'proforma' ? 'PRO' : 'COT'}-${documentSequence}`;
   const expiryDate = useMemo(() => {
     const date = new Date();
@@ -319,7 +320,7 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
       const meta = [
         ['FECHA DE EMISIÓN', formatDate(new Date())],
         ['VÁLIDA HASTA', formatDate(expiryDate)],
-        ['MONEDA', 'COP · Pesos colombianos'],
+        ['MONEDA', 'MXN · Pesos mexicanos'],
       ];
       meta.forEach(([label, value], index) => {
         const x = 16 + index * 59.35;
@@ -486,7 +487,7 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
         <div className="flex items-center gap-3">
           <div className="text-right mr-2 hidden sm:block">
             <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total</span>
-            <span className="text-lg font-bold text-slate-800 leading-none">${total.toLocaleString()}</span>
+            <span className="text-lg font-bold text-slate-800 leading-none">{formatMoney(total)}</span>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-slate-600 rounded-lg h-9 w-9">
             <X className="h-5 w-5" />
@@ -638,7 +639,7 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
                                 </span>
                               </div>
                             </div>
-                            <span className="font-semibold text-slate-600 text-sm flex-shrink-0 ml-3">${parseFloat(p.price || 0).toLocaleString()}</span>
+                            <span className="font-semibold text-slate-600 text-sm flex-shrink-0 ml-3">{formatMoney(parseFloat(p.price || 0))}</span>
                           </button>
                         );
                       })
@@ -694,8 +695,8 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
                                 </button>
                               </div>
                             </td>
-                            <td className="py-2 px-3 text-right text-xs text-slate-500">${price.toLocaleString()}</td>
-                            <td className="py-2 px-3 text-right text-xs font-semibold text-slate-700">${(price * p.quantity).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right text-xs text-slate-500">{formatMoney(price)}</td>
+                            <td className="py-2 px-3 text-right text-xs font-semibold text-slate-700">{formatMoney(price * p.quantity)}</td>
                             <td className="py-2 pr-2">
                               <button onClick={() => removeProduct(p.id)} className="text-slate-300 hover:text-red-500 transition-colors p-0.5">
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -780,17 +781,17 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-slate-500">
                 <span>Subtotal</span>
-                <span className="font-medium text-slate-700">${subtotal.toLocaleString()}</span>
+                <span className="font-medium text-slate-700">{formatMoney(subtotal)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-red-500 text-xs">
                   <span>Descuento {quoteData.discountType === 'percentage' ? `(${quoteData.discountValue}%)` : ''}</span>
-                  <span className="font-medium">-${discount.toLocaleString()}</span>
+                  <span className="font-medium">-{formatMoney(discount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-bold text-slate-800 pt-2 border-t border-slate-200">
                 <span>Total</span>
-                <span>${total.toLocaleString()}</span>
+                <span>{formatMoney(total)}</span>
               </div>
             </div>
             <div className="flex gap-3 mt-4">
@@ -855,7 +856,7 @@ export const QuoteBuilder: React.FC<QuoteBuilderProps> = ({ isOpen, onClose, ini
                 </div>
                 <div className="pl-3 border-l border-slate-200">
                   <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.12em]">Moneda</p>
-                  <p className="text-[9px] font-semibold text-slate-700 mt-1">COP · Pesos colombianos</p>
+                  <p className="text-[9px] font-semibold text-slate-700 mt-1">MXN · Pesos mexicanos</p>
                 </div>
               </div>
 

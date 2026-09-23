@@ -1,4 +1,5 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { formatCurrency } from '@/lib/currency';
 import { db } from '@/firebase';
 import { AdvancedHeader } from '@/components/layout/AdvancedHeader';
 import { TopPromoBar } from '@/components/layout/TopPromoBar';
@@ -153,10 +154,10 @@ const SimilarProductsCarousel = (props: SimilarProductsCarouselProps) => {
 
                   {/* Precio y descuento */}
                   <div className="mt-auto">
-                    <p className="text-lg font-semibold text-gray-900">${prod.price.toLocaleString()}</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(prod.price)}</p>
                     {prod.isOffer && prod.originalPrice && (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs line-through text-gray-500">${prod.originalPrice.toLocaleString()}</span>
+                        <span className="text-xs line-through text-gray-500">{formatCurrency(prod.originalPrice)}</span>
                       </div>
                     )}
 
@@ -334,7 +335,7 @@ const ProductDetailPage = () => {
         offers: {
           '@type': 'Offer',
           price: product.price,
-          priceCurrency: 'ARS',
+          priceCurrency: 'MXN',
           availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
           url: productUrl,
           ...(product.id && { sku: product.id })
@@ -999,16 +1000,16 @@ const ProductDetailPage = () => {
           {/* Columna derecha: título, precio, formas de pago, ml, cantidad, CTA, envío */}
           <div className="flex flex-col">
             <h1 className="text-3xl md:text-4xl font-bold text-black mb-1">{product.name}</h1>
-            <div className="text-4xl md:text-5xl font-bold text-black mb-2">${currentPrice.toLocaleString('es-AR')}</div>
+            <div className="text-4xl md:text-5xl font-bold text-black mb-2">{formatCurrency(currentPrice)}</div>
 
             {/* Precio sin impuestos — solo para sellados */}
             {!isDecant && (
-              <p className="text-sm text-neutral-500 mb-3">Precio sin impuestos ${(currentPrice / 1.21).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+              <p className="text-sm text-neutral-500 mb-3">Precio sin impuestos {formatCurrency(currentPrice / 1.16)}</p>
             )}
 
             {/* Cuotas — solo para sellados */}
             {!isDecant && (
-              <p className="text-sm text-neutral-700 mb-4">6 x ${(currentPrice / 6).toLocaleString('es-AR', { maximumFractionDigits: 0 })} sin interés con tarjeta de crédito</p>
+              <p className="text-sm text-neutral-700 mb-4">6 x {formatCurrency(currentPrice / 6)} sin interés con tarjeta de crédito</p>
             )}
 
             <p className="text-sm text-neutral-600 mb-6">Envío gratis superando los $150.000</p>
@@ -1425,7 +1426,7 @@ const ProductDetailPage = () => {
                 </div>
                 <div className="p-4 border-t border-neutral-100">
                   <p className="font-medium text-black text-sm line-clamp-2 mb-2">{p.name}</p>
-                  <p className="text-xl font-bold text-black mb-1">${p.price.toLocaleString('es-AR')}</p>
+                  <p className="text-xl font-bold text-black mb-1">{formatCurrency(p.price)}</p>
                   <div className="flex gap-2">
                     <Button
                       size="sm"

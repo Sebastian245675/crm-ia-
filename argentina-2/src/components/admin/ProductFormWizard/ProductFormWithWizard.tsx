@@ -10,9 +10,11 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isProductForAgency, isCategoryForAgency } from '@/lib/agency-isolation';
 import { ProductFormWizard } from './ProductFormWizard';
 import { CustomClock } from '@/components/ui/CustomClock';
 import {
@@ -57,6 +59,7 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
   onProductSelected
 }) => {
   const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,7 +112,7 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [activeAgencyId]);
 
   // Efecto para búsqueda y filtrado debounced (server-side)
   useEffect(() => {
@@ -141,11 +144,13 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
           .order("created_at", { ascending: true });
         if (error) throw error;
 
-        const allCategories = (data || []).map((cat: any) => ({
-          id: cat.id,
-          name: cat.name || "Categoría sin nombre",
-          parentId: cat.parent_id ?? cat.parentId ?? null
-        }));
+        const allCategories = (data || [])
+          .filter((cat: any) => isCategoryForAgency(cat, activeAgencyId))
+          .map((cat: any) => ({
+            id: cat.id,
+            name: cat.name || "Categoría sin nombre",
+            parentId: cat.parent_id ?? cat.parentId ?? null
+          }));
         setCategories(allCategories);
       }
     } catch (error) {
@@ -174,20 +179,22 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
         
         if (error) throw error;
 
-        const normalized = (data || []).map((product: any) => ({
-          id: product.id,
-          ...product,
-          price: product.price ?? 0,
-          originalPrice: product.original_price ?? product.originalPrice ?? product.price ?? 0,
-          additionalImages: product.additional_images ?? [],
-          category: product.category_id ?? product.category ?? '',
-          subcategory: product.subcategory ?? '',
-          terceraCategoria: product.tercera_categoria ?? '',
-          isOffer: product.is_offer ?? product.isOffer ?? false,
-          isPublished: product.is_published ?? product.isPublished ?? true,
-          categoryName: categories.find(c => c.id === (product.category_id ?? product.category))?.name || product.category,
-          subcategoryName: categories.find(c => c.id === product.subcategory)?.name || product.subcategory,
-        }));
+        const normalized = (data || [])
+          .filter((product: any) => isProductForAgency(product, activeAgencyId))
+          .map((product: any) => ({
+            id: product.id,
+            ...product,
+            price: product.price ?? 0,
+            originalPrice: product.original_price ?? product.originalPrice ?? product.price ?? 0,
+            additionalImages: product.additional_images ?? [],
+            category: product.category_id ?? product.category ?? '',
+            subcategory: product.subcategory ?? '',
+            terceraCategoria: product.tercera_categoria ?? '',
+            isOffer: product.is_offer ?? product.isOffer ?? false,
+            isPublished: product.is_published ?? product.isPublished ?? true,
+            categoryName: categories.find(c => c.id === (product.category_id ?? product.category))?.name || product.category,
+            subcategoryName: categories.find(c => c.id === product.subcategory)?.name || product.subcategory,
+          }));
         setProducts(normalized);
         // Reset visible products to initial 20 when results change
         setVisibleProducts(20);
@@ -377,7 +384,8 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
       if (isSupabase) {
         const { data, error } = await db.from('pending_merchandise').select('*');
         if (error) throw error;
-        const sorted = (data || []).sort((a: any, b: any) => 
+        const filtered = (data || []).filter((item: any) => isProductForAgency(item, activeAgencyId));
+        const sorted = filtered.sort((a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setPendingMerchandise(sorted);
@@ -387,7 +395,7 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
     } finally {
       setLoadingPending(false);
     }
-  }, [isSupabase]);
+  }, [isSupabase, activeAgencyId]);
 
   // Load pending merchandise when tabs change or on mount
   useEffect(() => {
@@ -418,6 +426,7 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
         status: pendingFormData.status,
         expected_date: pendingFormData.expectedDate || null,
         notes: pendingFormData.notes.trim() || null,
+        agency_id: activeAgencyId || '2',
         created_at: editingPending?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -1390,11 +1399,11 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
                               )}
                             </div>
                             <span className="text-lg font-bold text-green-600">
-                              ${(product.price || 0).toLocaleString()}
+                              {formatCurrency(product.price || 0)}
                               {product.cost && liberta === "si" && (
                                 <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                   <span>Costo: </span>
-                                  <span className="text-amber-700 font-medium">${Number(product.cost).toLocaleString()}</span>
+                                  <span className="text-amber-700 font-medium">{formatCurrency(Number(product.cost))}</span>
                                   {product.price && product.cost && (
                                     <Badge variant="outline" className="ml-1 text-[10px] h-5 bg-green-50 text-green-700 border-green-200">
                                       {Math.round(((Number(product.price) - Number(product.cost)) / Number(product.price)) * 100)}% margen
@@ -1659,7 +1668,7 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
                           <div>
                             <span className="text-slate-400 font-normal">Costo Unitario:</span>{' '}
                             <div className="text-green-700 font-extrabold mt-0.5">
-                              {item.unit_cost ? `$${parseFloat(item.unit_cost).toLocaleString()}` : '-'}
+                              {item.unit_cost ? formatCurrency(parseFloat(item.unit_cost)) : '-'}
                             </div>
                           </div>
                         </div>
@@ -1679,7 +1688,7 @@ export const ProductFormWithWizard: React.FC<ProductFormWithWizardProps> = ({
                           <div>
                             <span className="text-slate-400 font-normal">Costo Envío (Flete):</span>{' '}
                             <div className="text-slate-800 font-bold mt-0.5">
-                              {item.shipping_cost ? `$${parseFloat(item.shipping_cost).toLocaleString()}` : '-'}
+                              {item.shipping_cost ? formatCurrency(parseFloat(item.shipping_cost)) : '-'}
                             </div>
                           </div>
                         </div>

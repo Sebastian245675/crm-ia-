@@ -18,6 +18,9 @@ import {
   getAuthHeaders
 } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isProductForAgency, isOrderForAgency, isContactForAgency, normalizeAgencyId } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
+import { REAL_SALE_STATUS } from '@/lib/sales';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -74,7 +77,8 @@ import {
   Trash2,
   Edit,
   UserX,
-  Menu
+  Menu,
+  Building2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { CustomClock } from '@/components/ui/CustomClock';
@@ -209,6 +213,7 @@ export const AdminPanel: React.FC = () => {
   const [isSubAdmin, setIsSubAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user, logout } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -245,7 +250,9 @@ export const AdminPanel: React.FC = () => {
     if (!isRecognizedPath || tabFromUrl !== requestedTab) navigate(canonicalPath, { replace: true });
   }, [location.pathname, navigate, user]);
 
-  const remainingDays = useMemo(() => {
+  const isVoltiumAgency = normalizeAgencyId(getActiveAgencyId(user)) === 'voltium-sanrey';
+  const remainingDays = useMemo<number | null>(() => {
+    if (isVoltiumAgency || user?.subscription?.status !== 'trial') return null;
     if (user?.subscription?.trial_ends_at) {
       const diff = new Date(user.subscription.trial_ends_at).getTime() - Date.now();
       return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -262,7 +269,7 @@ export const AdminPanel: React.FC = () => {
       return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
     }
     return 14;
-  }, [user]);
+  }, [user, isVoltiumAgency]);
 
   const [orders, setOrders] = useState<any[]>([]);
   const [subName, setSubName] = useState('');
@@ -313,7 +320,7 @@ export const AdminPanel: React.FC = () => {
 
       // 1. Notificación sobre el plan / días restantes de prueba
       const planNotifId = `notif-plan-${user?.id || 'main'}-${remainingDays}`;
-      if (!deletedIds.has(planNotifId)) {
+      if (remainingDays !== null && !deletedIds.has(planNotifId)) {
         const isExpiringSoon = remainingDays <= 3;
         notifs.push({
           id: planNotifId,
@@ -407,7 +414,7 @@ export const AdminPanel: React.FC = () => {
   const [dateRange] = useState("2025-12-28 → 2026-01-27");
 
   // Caché para evitar recalcular ventas mensuales en la misma sesión
-  const monthlySalesCacheRef = useRef<{ month: number; year: number; value: number } | null>(null);
+  const monthlySalesCacheRef = useRef<{ agencyId: string; month: number; year: number; value: number } | null>(null);
 
   // Implementar el hook para prevenir problemas de pantalla blanca en subcuentas
   const { hasRenderIssues, manualRefresh } = useSubAccountRenderFix(user?.subCuenta === "si");
@@ -440,6 +447,8 @@ export const AdminPanel: React.FC = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showUserMenu]);
+
+
 
   const handleAiAssistantSend = useCallback(() => {
     const msg = aiAssistantInput.trim();
@@ -609,7 +618,8 @@ export const AdminPanel: React.FC = () => {
           .order('created_at', { ascending: false })
           .limit(500);
         if (error) throw error;
-        setOrders(data || []);
+        const filtered = (data || []).filter((o: any) => isOrderForAgency(o, activeAgencyId));
+        setOrders(filtered);
         return;
       }
       const ordersQuery = query(
@@ -617,7 +627,7 @@ export const AdminPanel: React.FC = () => {
         orderBy("createdAt", "desc")
       );
       const querySnapshot = await getDocs(ordersQuery);
-      const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((o: any) => isOrderForAgency(o, activeAgencyId));
       setOrders(docs);
     } catch (error) {
       try {
@@ -626,19 +636,19 @@ export const AdminPanel: React.FC = () => {
           orderBy("createdAt", "desc")
         );
         const querySnapshot = await getDocs(pedidosQuery);
-        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((o: any) => isOrderForAgency(o, activeAgencyId));
         setOrders(docs);
       } catch {
         const querySnapshot = await getDocs(collection(db, "pedidos"));
-        setOrders(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setOrders(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((o: any) => isOrderForAgency(o, activeAgencyId)));
       }
     }
-  }, [isSupabase]);
+  }, [isSupabase, activeAgencyId]);
 
   useEffect(() => {
     if (activeTab !== 'orders' && activeTab !== 'dashboard') return;
     fetchOrdersForPanel();
-  }, [activeTab, fetchOrdersForPanel]);
+  }, [activeTab, fetchOrdersForPanel, activeAgencyId]);
 
   // Cargar productos solo cuando se necesita
   useEffect(() => {
@@ -656,7 +666,8 @@ export const AdminPanel: React.FC = () => {
             .order('created_at', { ascending: false })
             .limit(1000); // Aumentar límite para mejorar visibilidad de productos antiguos
           if (error) throw error;
-          setProducts((data || []).map(p => ({ ...p, id: p.id })));
+          const filtered = (data || []).filter((p: any) => isProductForAgency(p, activeAgencyId));
+          setProducts(filtered.map(p => ({ ...p, id: p.id })));
           return;
         }
         // Cargar todos los productos ordenados por fecha de creación
@@ -665,17 +676,17 @@ export const AdminPanel: React.FC = () => {
           orderBy("createdAt", "desc")
         );
         const querySnapshot = await getDocs(productsQuery);
-        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((p: any) => isProductForAgency(p, activeAgencyId));
         setProducts(docs);
       } catch {
         // Fallback Firestore: cargar sin límite en caso de que falle el ordenamiento
         const querySnapshot = await getDocs(collection(db, "products"));
-        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((p: any) => isProductForAgency(p, activeAgencyId));
         setProducts(docs);
       }
     };
     fetchProducts();
-  }, [activeTab]);
+  }, [activeTab, activeAgencyId]);
 
   // OPTIMIZACIÓN: Calcular ventas con debouncing y caché de fecha
   const todayDateRef = useRef<string>('');
@@ -684,9 +695,9 @@ export const AdminPanel: React.FC = () => {
     const calculateTodaySales = async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayKey = today.toISOString();
+      const todayKey = `${activeAgencyId}_${today.toISOString()}`;
 
-      // Si ya calculamos para hoy, no recalcular a menos que cambie el día
+      // Si ya calculamos para hoy y esta agencia, no recalcular
       if (todayDateRef.current === todayKey && todaySales > 0) {
         return;
       }
@@ -707,20 +718,23 @@ export const AdminPanel: React.FC = () => {
               .select('*')
               .gte('created_at', today.toISOString())
               .lt('created_at', tomorrow.toISOString())
-              .eq('status', 'confirmed');
+              .eq('status', REAL_SALE_STATUS);
             if (error) throw error;
-            data?.forEach(o => { salesTotal += Number((o as any).total || 0); });
+            const agencyOrders = (data || []).filter((o: any) => isOrderForAgency(o, activeAgencyId));
+            agencyOrders.forEach(o => { salesTotal += Number((o as any).total || 0); });
           } else {
             // Optimización: Consulta con filtros en Firebase y límite
             const todayOrdersQuery = query(
               collection(db, "orders"),
-              where("status", "==", "confirmed"),
+              where("status", "==", REAL_SALE_STATUS),
               where("createdAt", ">=", Timestamp.fromDate(today)),
               where("createdAt", "<", Timestamp.fromDate(tomorrow))
             );
             const ordersSnapshot = await getDocs(todayOrdersQuery);
-            ordersSnapshot.docs.forEach(doc => {
-              const data = doc.data();
+            const agencyOrders = ordersSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter((o: any) => isOrderForAgency(o, activeAgencyId));
+            agencyOrders.forEach((data: any) => {
               salesTotal += Number(data.total || 0);
             });
           }
@@ -728,31 +742,33 @@ export const AdminPanel: React.FC = () => {
           console.warn("Falling back to client-side filter for daily sales:", queryError);
           if (isSupabase) {
             const { data } = await db.from('orders').select('*');
-            data?.forEach((o: any) => {
+            (data || []).filter((o: any) => isOrderForAgency(o, activeAgencyId)).forEach((o: any) => {
               const orderDate = o.created_at ? new Date(o.created_at) : null;
               if (!orderDate) return;
               const orderDay = new Date(orderDate);
               orderDay.setHours(0, 0, 0, 0);
-              if (orderDay.getTime() === today.getTime() && o.status === "confirmed") {
+              if (orderDay.getTime() === today.getTime() && o.status === REAL_SALE_STATUS) {
                 salesTotal += Number(o.total || 0);
               }
             });
           } else {
             const ordersSnapshot = await getDocs(collection(db, "orders"));
-            ordersSnapshot.docs.forEach(doc => {
-              const data = doc.data();
-              const orderDate = data.createdAt?.toDate ?
-                data.createdAt.toDate() :
-                data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : null;
+            ordersSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter((o: any) => isOrderForAgency(o, activeAgencyId))
+              .forEach((data: any) => {
+                const orderDate = data.createdAt?.toDate ?
+                  data.createdAt.toDate() :
+                  data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : null;
 
-              if (orderDate) {
-                const orderDay = new Date(orderDate);
-                orderDay.setHours(0, 0, 0, 0);
-                if (orderDay.getTime() === today.getTime() && data.status === "confirmed") {
-                  salesTotal += Number(data.total || 0);
+                if (orderDate) {
+                  const orderDay = new Date(orderDate);
+                  orderDay.setHours(0, 0, 0, 0);
+                  if (orderDay.getTime() === today.getTime() && data.status === REAL_SALE_STATUS) {
+                    salesTotal += Number(data.total || 0);
+                  }
                 }
-              }
-            });
+              });
           }
         }
 
@@ -774,7 +790,7 @@ export const AdminPanel: React.FC = () => {
       setTodaySales(0);
       setTodaySalesLoading(false);
     }
-  }, [activeTab]); // No incluir todaySales para evitar loops
+  }, [activeTab, activeAgencyId]);
 
   // Calcular conversaciones promedio
   useEffect(() => {
@@ -783,17 +799,15 @@ export const AdminPanel: React.FC = () => {
       try {
         let contactsData: any[] = [];
         if (isSupabase) {
-          const { data, error } = await db.from('contacts').select('created_at');
+          const { data, error } = await db.from('contacts').select('*');
           if (!error && data) {
-            contactsData = data;
+            contactsData = (data || []).filter((c: any) => isContactForAgency(c, activeAgencyId));
           }
         } else {
           try {
             const querySnapshot = await getDocs(collection(db, "contacts"));
-            contactsData = querySnapshot.docs.map(doc => {
-              const d = doc.data();
-              return { created_at: d.created_at || d.createdAt?.toDate?.()?.toISOString() || d.createdAt };
-            });
+            const allContacts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            contactsData = allContacts.filter((c: any) => isContactForAgency(c, activeAgencyId));
           } catch (e) {
             console.warn("Could not query Firebase contacts:", e);
           }
@@ -806,7 +820,7 @@ export const AdminPanel: React.FC = () => {
 
         const uniqueDays = new Set<string>();
         contactsData.forEach(c => {
-          const dateStr = c.created_at;
+          const dateStr = c.created_at || c.createdAt;
           if (dateStr) {
             const date = new Date(dateStr);
             if (!isNaN(date.getTime())) {
@@ -833,7 +847,7 @@ export const AdminPanel: React.FC = () => {
       setAvgConversations(0);
       setAvgConversationsLoading(false);
     }
-  }, [activeTab, isSupabase]);
+  }, [activeTab, isSupabase, activeAgencyId]);
 
   // Escuchar eventos de actualización del dashboard (siempre activo para ventas físicas)
   useEffect(() => {
@@ -845,7 +859,7 @@ export const AdminPanel: React.FC = () => {
           const nuevo = prev + orderTotal;
           setTimeout(() => {
             const el = document.querySelector('.dashboard-today-sales');
-            if (el) el.textContent = `$${nuevo.toLocaleString()}`;
+            if (el) el.textContent = formatCurrency(nuevo);
           }, 50);
           return nuevo;
         });
@@ -854,14 +868,14 @@ export const AdminPanel: React.FC = () => {
           const nuevo = prev + orderTotal;
           setTimeout(() => {
             const el = document.querySelector('.dashboard-monthly-sales');
-            if (el) el.textContent = `$${nuevo.toLocaleString()}`;
+            if (el) el.textContent = formatCurrency(nuevo);
           }, 50);
           return nuevo;
         });
 
         toast({
           title: "Venta registrada",
-          description: `Las estadísticas han sido actualizadas. Venta: $${orderTotal.toLocaleString()}`,
+          description: `Las estadísticas han sido actualizadas. Venta: ${formatCurrency(orderTotal)}`,
         });
       }
     };
@@ -882,8 +896,9 @@ export const AdminPanel: React.FC = () => {
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
 
-      // Si ya tenemos el cálculo para este mes en caché, usarlo
+      // Si ya tenemos el cálculo para este mes y agencia en caché, usarlo
       if (monthlySalesCacheRef.current &&
+        monthlySalesCacheRef.current.agencyId === activeAgencyId &&
         monthlySalesCacheRef.current.month === currentMonth &&
         monthlySalesCacheRef.current.year === currentYear) {
         setMonthlySales(monthlySalesCacheRef.current.value);
@@ -916,42 +931,48 @@ export const AdminPanel: React.FC = () => {
               .select('*')
               .gte('created_at', firstDayOfMonth.toISOString())
               .lte('created_at', lastDayOfMonth.toISOString())
-              .eq('status', 'confirmed');
+              .eq('status', REAL_SALE_STATUS);
             if (monthErr) throw monthErr;
-            monthData?.forEach(o => { monthlySalesTotal += Number((o as any).total || 0); });
+            const agencyMonthOrders = (monthData || []).filter((o: any) => isOrderForAgency(o, activeAgencyId));
+            agencyMonthOrders.forEach(o => { monthlySalesTotal += Number((o as any).total || 0); });
 
             const { data: lastMonthData, error: lastMonthErr } = await db
               .from('orders')
               .select('*')
               .gte('created_at', firstDayOfLastMonth.toISOString())
               .lte('created_at', lastDayOfLastMonth.toISOString())
-              .eq('status', 'confirmed');
+              .eq('status', REAL_SALE_STATUS);
             if (lastMonthErr) throw lastMonthErr;
-            lastMonthData?.forEach(o => { lastMonthSalesTotal += Number((o as any).total || 0); });
+            const agencyLastMonthOrders = (lastMonthData || []).filter((o: any) => isOrderForAgency(o, activeAgencyId));
+            agencyLastMonthOrders.forEach(o => { lastMonthSalesTotal += Number((o as any).total || 0); });
           } else {
             // Optimización: Consulta con filtros en Firebase para mes actual
             const monthlyOrdersQuery = query(
               collection(db, "orders"),
-              where("status", "==", "confirmed"),
+              where("status", "==", REAL_SALE_STATUS),
               where("createdAt", ">=", Timestamp.fromDate(firstDayOfMonth)),
               where("createdAt", "<=", Timestamp.fromDate(lastDayOfMonth))
             );
             const monthlySnapshot = await getDocs(monthlyOrdersQuery);
-            monthlySnapshot.docs.forEach(doc => {
-              const data = doc.data();
+            const agencyOrders = monthlySnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter((o: any) => isOrderForAgency(o, activeAgencyId));
+            agencyOrders.forEach((data: any) => {
               monthlySalesTotal += Number(data.total || 0);
             });
 
             // Consulta para mes anterior
             const lastMonthOrdersQuery = query(
               collection(db, "orders"),
-              where("status", "==", "confirmed"),
+              where("status", "==", REAL_SALE_STATUS),
               where("createdAt", ">=", Timestamp.fromDate(firstDayOfLastMonth)),
               where("createdAt", "<=", Timestamp.fromDate(lastDayOfLastMonth))
             );
             const lastMonthSnapshot = await getDocs(lastMonthOrdersQuery);
-            lastMonthSnapshot.docs.forEach(doc => {
-              const data = doc.data();
+            const lastMonthAgencyOrders = lastMonthSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter((o: any) => isOrderForAgency(o, activeAgencyId));
+            lastMonthAgencyOrders.forEach((data: any) => {
               lastMonthSalesTotal += Number(data.total || 0);
             });
           }
@@ -959,8 +980,8 @@ export const AdminPanel: React.FC = () => {
           console.warn("Falling back to client-side filter for monthly sales:", queryError);
           if (isSupabase) {
             const { data } = await db.from('orders').select('*');
-            data?.forEach((o: any) => {
-              if (o.status === 'confirmed') {
+            (data || []).filter((o: any) => isOrderForAgency(o, activeAgencyId)).forEach((o: any) => {
+              if (o.status === REAL_SALE_STATUS) {
                 const date = new Date(o.created_at);
                 if (date >= firstDayOfMonth && date <= lastDayOfMonth) monthlySalesTotal += Number(o.total || 0);
                 if (date >= firstDayOfLastMonth && date <= lastDayOfLastMonth) lastMonthSalesTotal += Number(o.total || 0);
@@ -968,29 +989,32 @@ export const AdminPanel: React.FC = () => {
             });
           } else {
             const ordersSnapshot = await getDocs(collection(db, "orders"));
-            ordersSnapshot.docs.forEach(doc => {
-              const data = doc.data();
-              const orderDate = data.createdAt?.toDate ?
-                data.createdAt.toDate() :
-                data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : null;
+            ordersSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter((o: any) => isOrderForAgency(o, activeAgencyId))
+              .forEach((data: any) => {
+                const orderDate = data.createdAt?.toDate ?
+                  data.createdAt.toDate() :
+                  data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : null;
 
-              if (orderDate) {
-                // Si la fecha del pedido está dentro del mes actual
-                if (data.status === "confirmed" && orderDate >= firstDayOfMonth && orderDate <= lastDayOfMonth) {
-                  monthlySalesTotal += Number(data.total || 0);
-                }
+                if (orderDate) {
+                  // Si la fecha del pedido está dentro del mes actual
+                  if (data.status === REAL_SALE_STATUS && orderDate >= firstDayOfMonth && orderDate <= lastDayOfMonth) {
+                    monthlySalesTotal += Number(data.total || 0);
+                  }
 
-                // Si la fecha del pedido está dentro del mes anterior
-                if (data.status === "confirmed" && orderDate >= firstDayOfLastMonth && orderDate <= lastDayOfLastMonth) {
-                  lastMonthSalesTotal += Number(data.total || 0);
+                  // Si la fecha del pedido está dentro del mes anterior
+                  if (data.status === REAL_SALE_STATUS && orderDate >= firstDayOfLastMonth && orderDate <= lastDayOfLastMonth) {
+                    lastMonthSalesTotal += Number(data.total || 0);
+                  }
                 }
-              }
-            });
+              });
           }
         }
 
         // Guardar en caché
         monthlySalesCacheRef.current = {
+          agencyId: activeAgencyId || '2',
           month: currentMonth,
           year: currentYear,
           value: monthlySalesTotal
@@ -1011,7 +1035,7 @@ export const AdminPanel: React.FC = () => {
       setMonthlySales(0);
       setMonthlySalesLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, activeAgencyId]);
 
   const handleCreateSubAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1679,13 +1703,15 @@ export const AdminPanel: React.FC = () => {
               <Menu className="h-5 w-5" />
             </button>
             <span className="uppercase tracking-wide font-bold shrink-0">MERCO Business Software</span>
-            <span className="hidden sm:inline text-slate-500">• {remainingDays} {remainingDays === 1 ? 'día restante' : 'días restantes'}</span>
+            {remainingDays !== null && <span className="hidden sm:inline text-slate-500">• {remainingDays} {remainingDays === 1 ? 'día restante' : 'días restantes'}</span>}
             <button
               onClick={() => setActiveTab('planes')}
               className="bg-white hover:bg-[#edf6fb] text-[#245878] border border-[#9fb9ca] px-3 py-1 text-[11px] font-semibold transition-colors rounded shadow-xs"
             >
               Plan actual
             </button>
+
+
           </div>
 
           {/* El ERP inserta aquí su navegación secundaria para aprovechar el encabezado */}
@@ -1768,6 +1794,12 @@ export const AdminPanel: React.FC = () => {
                   <div className="px-4 py-2 border-b border-slate-100 text-left">
                     <p className="text-sm font-semibold text-slate-700">{user?.name || "Administrador"}</p>
                     <p className="text-xs text-slate-500">{user?.email || "admin@gmail.com"}</p>
+                    {user?.agencies && (
+                      <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                        <Building2 className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{user.agencies.find(a => a.id === user.agencyId)?.name || 'Agencia activa'}</span>
+                      </p>
+                    )}
                   </div>
                   <ul>
                     {canAccessAdminTab(user, 'configuration') && <li>
@@ -1915,109 +1947,109 @@ export const AdminPanel: React.FC = () => {
               </TabsList>
 
               <TabsContent value="dashboard" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
-                    <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
-                      <CardContent className="p-5 relative z-10">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            {avgConversationsLoading ? (
-                              <div className="flex items-center space-x-2 mb-1">
-                                <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                                <span className="text-2xl font-bold">...</span>
-                              </div>
-                            ) : (
-                              <h3 className="text-3xl font-bold mb-1">{avgConversations}</h3>
-                            )}
-                            <p className="text-sm text-teal-50 opacity-90">Conversaciones</p>
-                          </div>
-                          <div className="opacity-20">
-                            <MessagesSquare className="h-16 w-16" />
-                          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+                  <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
+                    <CardContent className="p-5 relative z-10">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          {avgConversationsLoading ? (
+                            <div className="flex items-center space-x-2 mb-1">
+                              <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                              <span className="text-2xl font-bold">...</span>
+                            </div>
+                          ) : (
+                            <h3 className="text-3xl font-bold mb-1">{avgConversations}</h3>
+                          )}
+                          <p className="text-sm text-teal-50 opacity-90">Conversaciones</p>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-teal-400/30">
-                          <button
-                            onClick={() => setActiveTab('mensajeria')}
-                            className="text-xs text-teal-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
-                          >
-                            Ir a Mensajes
-                            <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                          </button>
+                        <div className="opacity-20">
+                          <MessagesSquare className="h-16 w-16" />
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-teal-400/30">
+                        <button
+                          onClick={() => setActiveTab('mensajeria')}
+                          className="text-xs text-teal-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                        >
+                          Ir a Mensajes
+                          <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    {/* Ventas de Hoy - Verde */}
-                    <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
-                      <CardContent className="p-5 relative z-10">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            {todaySalesLoading ? (
-                              <div className="flex items-center space-x-2 mb-1">
-                                <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                                <span className="text-2xl font-bold">...</span>
-                              </div>
-                            ) : (
-                              <h3 className="text-3xl font-bold mb-1 dashboard-today-sales">${todaySales.toLocaleString()}</h3>
-                            )}
-                            <p className="text-sm text-green-50 opacity-90">Ventas de Hoy</p>
-                          </div>
-                          <div className="opacity-20">
-                            <ShoppingBag className="h-16 w-16" />
-                          </div>
+                  {/* Ventas de Hoy - Verde */}
+                  <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
+                    <CardContent className="p-5 relative z-10">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          {todaySalesLoading ? (
+                            <div className="flex items-center space-x-2 mb-1">
+                              <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                              <span className="text-2xl font-bold">...</span>
+                            </div>
+                          ) : (
+                            <h3 className="text-3xl font-bold mb-1 dashboard-today-sales">{formatCurrency(todaySales)}</h3>
+                          )}
+                          <p className="text-sm text-green-50 opacity-90">Ventas de Hoy</p>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-green-400/30">
-                          <a href="#" className="text-xs text-green-50 hover:text-white transition-colors flex items-center group">
-                            Más información
-                            <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                          </a>
+                        <div className="opacity-20">
+                          <ShoppingBag className="h-16 w-16" />
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-green-400/30">
+                        <a href="#" className="text-xs text-green-50 hover:text-white transition-colors flex items-center group">
+                          Más información
+                          <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    {/* Ingresos Mensuales - Amarillo/Naranja */}
-                    <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
-                      <CardContent className="p-5 relative z-10">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            {monthlySalesLoading ? (
-                              <div className="flex items-center space-x-2 mb-1">
-                                <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                                <span className="text-2xl font-bold">...</span>
-                              </div>
-                            ) : (
-                              <h3 className="text-3xl font-bold mb-1 dashboard-monthly-sales">${monthlySales.toLocaleString()}</h3>
-                            )}
-                            <p className="text-sm text-yellow-50 opacity-90">Ingresos Mensuales</p>
-                          </div>
-                          <TrendingUp className="h-12 w-12 opacity-20" />
+                  {/* Ingresos Mensuales - Amarillo/Naranja */}
+                  <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden relative">
+                    <CardContent className="p-5 relative z-10">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          {monthlySalesLoading ? (
+                            <div className="flex items-center space-x-2 mb-1">
+                              <div className="h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                              <span className="text-2xl font-bold">...</span>
+                            </div>
+                          ) : (
+                            <h3 className="text-3xl font-bold mb-1 dashboard-monthly-sales">{formatCurrency(monthlySales)}</h3>
+                          )}
+                          <p className="text-sm text-yellow-50 opacity-90">Ingresos Mensuales</p>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-orange-400/30">
-                          <button
-                            onClick={() => setActiveTab('orders')}
-                            className="text-xs text-orange-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
-                          >
-                            Ver pedidos
-                            <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                          </button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  <DashboardStats orders={orders} />
+                        <TrendingUp className="h-12 w-12 opacity-20" />
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-orange-400/30">
+                        <button
+                          onClick={() => setActiveTab('orders')}
+                          className="text-xs text-orange-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                        >
+                          Ver pedidos
+                          <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                <DashboardStats />
               </TabsContent>
 
               <TabsContent value="products" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <ProductFormWithWizard key={selectedProductId || 'new-product'} selectedProductId={selectedProductId} onProductSelected={() => setSelectedProductId(null)} />
+                  <ProductFormWithWizard key={user?.agencyId ? `${user.agencyId}-${selectedProductId || 'new'}` : (selectedProductId || 'new-product')} selectedProductId={selectedProductId} onProductSelected={() => setSelectedProductId(null)} />
                 </Suspense>
               </TabsContent>
 
               <TabsContent value="orders" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}><OrdersList /></Suspense>
+                <Suspense fallback={<LoadingFallback />}><OrdersList key={user?.agencyId || 'default'} /></Suspense>
               </TabsContent>
 
               <TabsContent value="categories" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}><CategoryManager /></Suspense>
+                <Suspense fallback={<LoadingFallback />}><CategoryManager key={user?.agencyId || 'default'} /></Suspense>
               </TabsContent>
 
               <TabsContent value="help-manual" className="space-y-6">
@@ -2840,7 +2872,7 @@ export const AdminPanel: React.FC = () => {
 
                   <TabsContent value="analytics" className="space-y-6">
                     <Suspense fallback={<LoadingFallback />}>
-                      <WebsiteManager initialTab="analytics" isAdmin={isAdmin} onNavigate={setActiveTab} />
+                      <WebsiteManager key={user?.agencyId || 'default'} initialTab="analytics" isAdmin={isAdmin} onNavigate={setActiveTab} />
                     </Suspense>
                   </TabsContent>
 
@@ -2869,145 +2901,145 @@ export const AdminPanel: React.FC = () => {
               {/* Configuration tab - disponible para admin y subadmin */}
               <TabsContent value="configuration" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <CompanyConfiguration />
+                  <CompanyConfiguration key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Calendars tab - disponible para todos */}
               <TabsContent value="calendars" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <CalendarDashboard />
+                  <CalendarDashboard key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Opportunities tab */}
               <TabsContent value="opportunities" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <OpportunitiesKanban />
+                  <OpportunitiesKanban key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Modalities tab - disponible para todos */}
               <TabsContent value="modalities" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <ModalitiesManager />
+                  <ModalitiesManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Marketing tab - disponible para todos */}
               <TabsContent value="marketing" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <MarketingManager />
+                  <MarketingManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Media tab - disponible para todos */}
               <TabsContent value="media" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <MediaLibrary />
+                  <MediaLibrary key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Filters tab - disponible para admin y subadmin */}
               <TabsContent value="filters" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <FilterManager />
+                  <FilterManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* WPP tab - disponible para admin y subadmin */}
               <TabsContent value="wpp" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WppConfiguration />
+                  <WppConfiguration key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Mail Config tab */}
               <TabsContent value="mail-config" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <MailConfiguration />
+                  <MailConfiguration key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Pasarelas de Pago tab */}
               <TabsContent value="payment-gateways" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <PaymentGatewayManager />
+                  <PaymentGatewayManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               <TabsContent value="reportes" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <ReportsManager />
+                  <ReportsManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Facturacion tab */}
               <TabsContent value="facturacion" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <FacturacionManager />
+                  <FacturacionManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Seguridad tab */}
               <TabsContent value="seguridad" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <SeguridadManager />
+                  <SeguridadManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Contabilidad tab */}
               <TabsContent value="contabilidad" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <AccountingManager standalone />
+                  <AccountingManager key={user?.agencyId || 'default'} standalone />
                 </Suspense>
               </TabsContent>
 
               {/* Centro ERP integral */}
               <TabsContent value="erp" className="space-y-0 m-0 p-0 border-none outline-none mt-0">
                 <Suspense fallback={<LoadingFallback />}>
-                  <ERPManager onExit={() => setActiveTab('dashboard')} />
+                  <ERPManager key={user?.agencyId || 'default'} onExit={() => setActiveTab('dashboard')} />
                 </Suspense>
               </TabsContent>
 
               <TabsContent value="contacts" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <ContactsManager />
+                  <ContactsManager key={user?.agencyId || 'default'} />
                 </Suspense>
               </TabsContent>
 
               {/* Sitio Web principal */}
               <TabsContent value="website" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
+                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* Comments tab */}
               <TabsContent value="comments" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="comments" isAdmin={isAdmin} onNavigate={setActiveTab} />
+                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="comments" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* Funnels tab */}
               <TabsContent value="funnels" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
+                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* Sitios tab */}
               <TabsContent value="sitios" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="sitios" isAdmin={isAdmin} onNavigate={setActiveTab} />
+                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="sitios" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
               {/* SEO tab */}
               <TabsContent value="seo" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager initialTab="seo" isAdmin={isAdmin} onNavigate={setActiveTab} />
+                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="seo" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
 
@@ -3023,7 +3055,7 @@ export const AdminPanel: React.FC = () => {
                   </CardHeader>
                   <CardContent className="p-6">
                     <Suspense fallback={<LoadingFallback />}>
-                      <EmployeeManager />
+                      <EmployeeManager key={user?.agencyId || 'default'} />
                     </Suspense>
                   </CardContent>
                 </Card>
@@ -3069,7 +3101,7 @@ export const AdminPanel: React.FC = () => {
                       </div>
                       <div className="mt-4 flex items-baseline">
                         <span className="text-4xl font-extrabold text-slate-900">$50</span>
-                        <span className="ml-1 text-xs text-slate-500">USD/mes</span>
+                        <span className="ml-1 text-xs text-slate-500">MXN/mes</span>
                       </div>
                       <p className="mt-2 text-xs text-slate-500 leading-relaxed">
                         Ideal para tiendas en crecimiento que quieren empezar a automatizar su atención.
@@ -3100,7 +3132,7 @@ export const AdminPanel: React.FC = () => {
                     <div className="mt-8">
                       <Button
                         onClick={() => {
-                          toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Base de $50 USD." });
+                          toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Base de $50 MXN." });
                         }}
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-lg"
                       >
@@ -3122,7 +3154,7 @@ export const AdminPanel: React.FC = () => {
                       </div>
                       <div className="mt-4 flex items-baseline">
                         <span className="text-4xl font-extrabold text-slate-900">$120</span>
-                        <span className="ml-1 text-xs text-slate-500">USD/mes</span>
+                        <span className="ml-1 text-xs text-slate-500">MXN/mes</span>
                       </div>
                       <p className="mt-2 text-xs text-slate-500 leading-relaxed">
                         Para negocios establecidos que requieren mayor capacidad y entrenamiento personalizado.
@@ -3141,7 +3173,7 @@ export const AdminPanel: React.FC = () => {
                         </li>
                         <li className="flex items-center gap-2">
                           <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
-                          Carga de manuales en Knowledge Base
+                          Carga de manuales en la base de conocimiento
                         </li>
                         <li className="flex items-center gap-2">
                           <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
@@ -3153,7 +3185,7 @@ export const AdminPanel: React.FC = () => {
                     <div className="mt-8">
                       <Button
                         onClick={() => {
-                          toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Intermedio de $120 USD." });
+                          toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Intermedio de $120 MXN." });
                         }}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-lg shadow-sm"
                       >
@@ -3170,7 +3202,7 @@ export const AdminPanel: React.FC = () => {
                       </div>
                       <div className="mt-4 flex items-baseline">
                         <span className="text-4xl font-extrabold text-slate-900">$500</span>
-                        <span className="ml-1 text-xs text-slate-500">USD/mes</span>
+                        <span className="ml-1 text-xs text-slate-500">MXN/mes</span>
                       </div>
                       <p className="mt-2 text-xs text-slate-500 leading-relaxed">
                         Solución de alta escala para operaciones complejas con volumen de productos ilimitados.
@@ -3201,7 +3233,7 @@ export const AdminPanel: React.FC = () => {
                     <div className="mt-8">
                       <Button
                         onClick={() => {
-                          toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Avanzado de $500 USD." });
+                          toast({ title: "Plan Seleccionado", description: "Iniciando proceso de suscripción al Plan Avanzado de $500 MXN." });
                         }}
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-lg"
                       >
@@ -3251,8 +3283,8 @@ export const AdminPanel: React.FC = () => {
                           <div>
                             <h3 className="text-base font-bold text-orange-700">{oferta.name}</h3>
                             <div className="flex items-center mt-1">
-                              <span className="text-orange-600 font-medium mr-2">${oferta.price?.toLocaleString()}</span>
-                              <span className="text-xs text-gray-400 line-through">${Math.round(oferta.price * 1.2).toLocaleString()}</span>
+                              <span className="text-orange-600 font-medium mr-2">{formatCurrency(oferta.price)}</span>
+                              <span className="text-xs text-gray-400 line-through">{formatCurrency(Math.round(oferta.price * 1.2))}</span>
                             </div>
                           </div>
                         </div>
@@ -3363,7 +3395,7 @@ export const AdminPanel: React.FC = () => {
                   const updated = prev.map(n => ({ ...n, read: true }));
                   try {
                     localStorage.setItem('merco_read_notifications', JSON.stringify(updated.map(n => n.id)));
-                  } catch {}
+                  } catch { }
                   return updated;
                 });
                 toast({ title: "Notificaciones leídas", description: "Se marcaron todas las notificaciones del sistema como leídas." });
@@ -3396,7 +3428,7 @@ export const AdminPanel: React.FC = () => {
                       const updated = prev.map(item => item.id === n.id ? { ...item, read: true } : item);
                       try {
                         localStorage.setItem('merco_read_notifications', JSON.stringify(updated.filter(i => i.read).map(i => i.id)));
-                      } catch {}
+                      } catch { }
                       return updated;
                     });
                     if (n.actionTab) {

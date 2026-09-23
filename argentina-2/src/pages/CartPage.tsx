@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency } from '@/lib/currency';
 import { TopPromoBar } from '@/components/layout/TopPromoBar';
 import { AdvancedHeader } from '@/components/layout/AdvancedHeader';
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,7 @@ export const CartPage: React.FC = () => {
       `👤 *Nombre:* ${userName}\n📧 *Email:* ${userEmail}\n📱 *Teléfono:* ${userPhone || 'No especificado'}\n\n` +
       `*📦 PRODUCTOS:*\n${items.map(i => `${i.name} x${i.quantity}${i.selectedColor ? ` (${i.selectedColor.name})` : ''}`).join('\n')}\n\n` +
       (orderNotes ? `*Notas:* ${orderNotes}\n\n` : '') +
-      `💰 *TOTAL: $${getTotal().toLocaleString()}*\n\n` +
+      `💰 *TOTAL: ${formatCurrency(getTotal())}*\n\n` +
       `⏰ ${new Date().toLocaleDateString('es-AR')} - ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}\n✅ Confirma disponibilidad y entrega.`;
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
@@ -165,7 +166,7 @@ export const CartPage: React.FC = () => {
                   <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-lg" />
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium">{item.name}</h4>
-                    <p className="text-sm text-gray-600">${item.price?.toLocaleString?.() ?? item.price}</p>
+                    <p className="text-sm text-gray-600">{formatCurrency(item.price)}</p>
                     {item.selectedColor && (
                       <span className="text-xs text-gray-500">Color: {item.selectedColor.name}</span>
                     )}
@@ -193,10 +194,10 @@ export const CartPage: React.FC = () => {
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toLocaleString()}</span></div>
-              <div className="flex justify-between text-sm"><span>Envío</span><span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>{deliveryFee === 0 ? '¡GRATIS!' : `$${deliveryFee.toLocaleString()}`}</span></div>
+              <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+              <div className="flex justify-between text-sm"><span>Envío</span><span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>{deliveryFee === 0 ? '¡GRATIS!' : formatCurrency(deliveryFee)}</span></div>
               <Separator />
-              <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>${total.toLocaleString()}</span></div>
+              <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>{formatCurrency(total)}</span></div>
               {subtotal < 60000 && <p className="text-xs text-gray-500 text-center mt-1">*Envío gratis en compras +$60.000</p>}
             </div>
 

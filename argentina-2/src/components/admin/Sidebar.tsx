@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Bell,
@@ -36,7 +36,8 @@ import {
   Image,
   Star,
   Kanban,
-  Factory
+  Factory,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -44,6 +45,7 @@ import { toast } from '@/hooks/use-toast';
 import { db } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccessAdminTab } from '@/lib/agency-permissions';
+import { getActiveAgencyId, normalizeAgencyId } from '@/lib/agency-isolation';
 
 interface SidebarProps {
   activeTab: string;
@@ -61,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   navigateToHome
 }) => {
   const isMobile = useIsMobile();
-  const { user } = useAuth();
+  const { user, switchAgency } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [showConfigurationMenu, setShowConfigurationMenu] = useState(false);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
@@ -69,31 +71,95 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [companyCity, setCompanyCity] = useState<string>('');
   const [companyState, setCompanyState] = useState<string>('');
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
+  const [isSwitchingAgency, setIsSwitchingAgency] = useState(false);
+  const branchMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close branch/agency menu when clicking outside
+  useEffect(() => {
+    if (!isBranchMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (branchMenuRef.current && !branchMenuRef.current.contains(target)) {
+        setIsBranchMenuOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isBranchMenuOpen]);
+
+  const handleAgencySwitch = async (agencyId: string) => {
+    if (agencyId === user?.agencyId) return;
+    setIsSwitchingAgency(true);
+    try {
+      toast({
+        title: "Cambiando de agencia...",
+        description: "Cargando espacio de trabajo.",
+      });
+      const res = await switchAgency(agencyId);
+      if (!res.success) {
+        throw res.error;
+      }
+      setIsBranchMenuOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast({
+        title: "Error al cambiar de agencia",
+        description: err?.message || "No se pudo cambiar de agencia.",
+        variant: "destructive"
+      });
+      setIsSwitchingAgency(false);
+    }
+  };
 
   // Determinar qué mostrar en el sidebar
   const showMainMenu = !showConfigurationMenu;
 
-  // Función para cargar el perfil de empresa
+  // Función para cargar el perfil de empresa de la agencia activa
   const loadCompanyProfile = async () => {
     const isSupabase = typeof (db as any)?.from === 'function';
+    const activeAgency = getActiveAgencyId(user);
+    const isVoltiumAgency = normalizeAgencyId(activeAgency) === 'voltium-sanrey';
+    if (isVoltiumAgency) {
+      setCompanyCity('México · ubicación pendiente de confirmar');
+      setCompanyState('');
+    }
     try {
       if (isSupabase) {
-        const { data, error } = await db
-          .from('company_profile')
-          .select()
-          .maybeSingle();
+        let query = db.from('company_profile').select();
+        if (activeAgency) {
+          query = query.or(`owner_id.eq.${activeAgency},agency_id.eq.${activeAgency}`);
+        }
+        const { data, error } = await query.maybeSingle();
 
         if (error) {
           if (error.code !== 'PGRST116') {
             console.warn('[Sidebar] company_profile:', error.code || 'error', (error as any)?.message || error);
           }
-          return;
         }
         if (data) {
-          if (data.logo) setCompanyLogo(data.logo);
-          if (data.friendly_name) setCompanyName(data.friendly_name);
-          if (data.city) setCompanyCity(data.city);
-          if (data.state) setCompanyState(data.state);
+          setCompanyLogo(data.logo || null);
+          setCompanyName(data.friendly_name || data.legal_name || (activeAgency === 'voltium-sanrey' ? 'Voltium Sanrey' : 'Websy'));
+          setCompanyCity(isVoltiumAgency ? 'México · ubicación pendiente de confirmar' : (data.city || ''));
+          setCompanyState(isVoltiumAgency ? '' : (data.state || ''));
+        } else {
+          setCompanyLogo(null);
+          if (activeAgency === 'voltium-sanrey') {
+            setCompanyName('Voltium Sanrey');
+            setCompanyCity('México · ubicación pendiente de confirmar');
+            setCompanyState('');
+          } else {
+            setCompanyName('Websy');
+            setCompanyCity('');
+            setCompanyState('');
+          }
         }
       }
     } catch (e: any) {
@@ -101,10 +167,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  // Cargar logo de empresa al montar el componente
+  // Cargar logo de empresa al montar el componente o cambiar de agencia
   useEffect(() => {
     loadCompanyProfile();
-  }, []);
+  }, [user?.agencyId]);
 
   // Escuchar cambios en el perfil de empresa (cuando se actualiza el logo)
   useEffect(() => {
@@ -120,12 +186,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     return () => {
       window.removeEventListener('companyProfileUpdated', handleProfileUpdate);
     };
-  }, []);
+  }, [user?.agencyId]);
 
   // Recargar logo cuando cambia la pestaña activa (por si se actualizó en otra vista)
   useEffect(() => {
     loadCompanyProfile();
-  }, [activeTab]);
+  }, [activeTab, user?.agencyId]);
 
   // Abrir el menú de configuración automáticamente si estamos en configuration, subaccounts, info, filters, wpp, mail-config, revisiones, payment-gateways o modalities
   useEffect(() => {
@@ -248,37 +314,104 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* User / Location Selector */}
-        <div className="p-4">
-          <div
-            className="bg-white rounded-sm p-2.5 flex items-center justify-between border border-[#b6cbd8] cursor-pointer hover:bg-[#e4f1f8] transition-colors"
-            onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
-          >
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-8 h-8 rounded-sm bg-[#397da8] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                {companyName.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase()}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold text-[#244d68] truncate">{companyName || 'Empresa principal'}</span>
-                <span className="text-xs text-slate-500 truncate">
-                  {companyCity && companyState ? `${companyCity}, ${companyState}` : companyCity || companyState || 'Sin ubicación'}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <ChevronDown className={`h-4 w-4 text-[#668aa1] transition-transform duration-200 ${isBranchMenuOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </div>
+        {/* User / Location Selector & Agency Switcher */}
+        {(() => {
+          const currentAgency = user?.agencies?.find(a => a.id === user?.agencyId);
+          const currentAgencyDisplayName = currentAgency?.name || companyName || 'Empresa principal';
+          const agencyInitials = currentAgencyDisplayName
+            .split(' ')
+            .filter(Boolean)
+            .map(word => word[0])
+            .join('')
+            .substring(0, 2)
+            .toUpperCase() || 'EM';
 
-          {/* Dropdown de sucursales */}
-          {isBranchMenuOpen && (
-            <div className="mt-2 bg-slate-800/30 rounded-lg p-3 border border-slate-700/50">
-              <p className="text-xs text-slate-400 text-center italic">
-                No hay sucursales asociadas
-              </p>
+          const activeAgencyId = user?.agencyId || currentAgency?.id || user?.agencies?.[0]?.id;
+          const otherAgencies = (user?.agencies || []).filter(agency => agency.id !== activeAgencyId);
+
+          return (
+            <div className="p-4 relative" ref={branchMenuRef}>
+              <div
+                className="bg-white rounded-sm p-2.5 flex items-center justify-between border border-[#b6cbd8] cursor-pointer hover:bg-[#e4f1f8] transition-colors"
+                onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
+                title="Seleccionar agencia o sucursal"
+              >
+                <div className="flex items-center space-x-3 overflow-hidden">
+                  <div className="w-8 h-8 rounded-sm bg-[#397da8] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                    {agencyInitials}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-semibold text-[#244d68] truncate">{currentAgencyDisplayName}</span>
+                    <span className="text-xs text-slate-500 truncate">
+                      {companyCity && companyState ? `${companyCity}, ${companyState}` : companyCity || companyState || 'Espacio activo'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <ChevronDown className={`h-4 w-4 text-[#668aa1] transition-transform duration-200 ${isBranchMenuOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+
+              {/* Dropdown de sucursales y agencias */}
+              {isBranchMenuOpen && (
+                <div className="mt-2 bg-white rounded-md shadow-lg border border-[#b6cbd8] overflow-hidden animate-in fade-in duration-150 z-50">
+                  <div className="px-3 py-1.5 bg-[#f5f9fc] border-b border-[#e2edf3] flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#245878] uppercase tracking-wider">
+                      {otherAgencies.length > 0 ? `Otras agencias (${otherAgencies.length})` : 'Otras agencias'}
+                    </span>
+                    {isSwitchingAgency && (
+                      <div className="w-3 h-3 border-2 border-[#9fb8c8] border-t-[#245878] rounded-full animate-spin" />
+                    )}
+                  </div>
+
+                  {otherAgencies.length > 0 ? (
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                      {otherAgencies.map((agency) => {
+                        const itemInitials = (agency.name || 'AG')
+                          .split(' ')
+                          .filter(Boolean)
+                          .map((w: string) => w[0])
+                          .join('')
+                          .substring(0, 2)
+                          .toUpperCase() || 'AG';
+                        return (
+                          <button
+                            key={agency.id}
+                            type="button"
+                            disabled={isSwitchingAgency}
+                            onClick={() => handleAgencySwitch(agency.id)}
+                            className="w-full flex items-center justify-between p-2.5 text-left transition-colors text-xs hover:bg-[#f0f6fa] text-slate-700 cursor-pointer group"
+                            title={`Cambiar a ${agency.name}`}
+                          >
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <div className="w-7 h-7 rounded-sm flex items-center justify-center text-xs font-bold shrink-0 bg-[#dde7ee] text-[#397da8] group-hover:bg-[#245878] group-hover:text-white transition-colors">
+                                {itemInitials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate leading-snug text-slate-700 group-hover:text-[#244d68]">
+                                  {agency.name || 'Agencia'}
+                                </p>
+                                <span className="text-[10px] text-slate-400 block">
+                                  {agency.role === 'owner' ? '👑 Propietario' : '👤 Colaborador'}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center">
+                      <p className="text-xs text-slate-400 italic">
+                        No hay otras agencias disponibles
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Search Bar */}
         <div className="px-4 mb-2">

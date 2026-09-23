@@ -4,6 +4,7 @@ import { Product } from '@/contexts/CartContext';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency } from '@/lib/currency';
 import { ShoppingCart, Eye, Sparkles } from 'lucide-react';
 
 // Utilidad para crear slugs SEO-friendly
@@ -153,7 +154,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({ product, onClick }) 
           {product.originalPrice && product.originalPrice > product.price && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600 font-medium line-through">
-                ${product.originalPrice.toLocaleString('es-AR')}
+                {formatCurrency(product.originalPrice)}
               </span>
               {discountPercentage > 0 && (
                 <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded">
@@ -164,7 +165,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({ product, onClick }) 
           )}
           <div className="flex items-baseline gap-2">
             <span className="text-base font-light tracking-widest text-gray-900">
-              ${product.price ? product.price.toLocaleString('es-AR') : 'Consultar'}
+              {product.price ? formatCurrency(product.price) : 'Consultar'}
             </span>
           </div>
         </div>

@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/currency';
+import { db } from '@/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isOpportunityForAgency } from '@/lib/agency-isolation';
 import {
   ChevronDown,
   MoreVertical,
@@ -26,42 +30,54 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-const WON_STATUSES = ['confirmed', 'delivered', 'shipped', 'processing'];
 const DAYS_OPTIONS = [
   { label: 'Últimos 7 días', days: 7 },
   { label: 'Últimos 31 días', days: 31 },
   { label: 'Últimos 90 días', days: 90 },
 ];
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(value).replace('ARS', '$');
-}
-
 function formatShortCurrency(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
   return formatCurrency(value);
 }
 
-function getOrderDate(o: any): number {
+function getOpportunityDate(o: any): number {
   const raw = o?.created_at ?? o?.createdAt;
   if (!raw) return 0;
   return new Date(raw).getTime();
 }
 
-interface DashboardStatsProps {
-  orders?: any[];
-}
+const getOpportunityOutcome = (opportunity: any): 'won' | 'lost' | 'open' => {
+  const stage = String(opportunity.stage || opportunity.status || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/^(ganado|ganada|won|closed_won)$/.test(stage) || stage.includes('negocio ganado')) return 'won';
+  if (/^(perdido|perdida|lost|closed_lost)$/.test(stage) || stage.includes('negocio perdido')) return 'lost';
+  return 'open';
+};
 
-export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onRefresh }) => {
+export const DashboardStats: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = useMemo(() => getActiveAgencyId(user), [user]);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
   const [daysRange, setDaysRange] = useState(31);
   const [dateRangeLabel, setDateRangeLabel] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadOpportunities = async () => {
+      try {
+        const { data, error } = await (db as any)
+          .from('sales_opportunities')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (!cancelled) setOpportunities((data || []).filter((item: any) => isOpportunityForAgency(item, activeAgencyId)));
+      } catch (error) {
+        console.error('[DashboardStats] No se pudieron cargar las oportunidades de PostgreSQL:', error);
+        if (!cancelled) setOpportunities([]);
+      }
+    };
+    void loadOpportunities();
+    return () => { cancelled = true; };
+  }, [activeAgencyId]);
 
   const { metrics, dateLabel } = useMemo(() => {
     const end = new Date();
@@ -81,44 +97,50 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
 
     const filterByDate = (list: any[], s: number, e: number) =>
       list.filter((o) => {
-        const t = getOrderDate(o);
+        const t = getOpportunityDate(o);
         return t >= s && t <= e;
       });
 
-    const currOrders = filterByDate(orders, startMs, endMs);
-    const prevOrders = filterByDate(orders, prevStartMs, prevEndMs);
+    const currOpportunities = filterByDate(opportunities, startMs, endMs);
+    const prevOpportunities = filterByDate(opportunities, prevStartMs, prevEndMs);
 
     const process = (list: any[]) => {
       let wonCount = 0;
-      let abandonedCount = 0;
-      let wonRevenue = 0;
-      let abandonedRevenue = 0;
-      list.forEach((o: any) => {
-        const total = Number(o.total || 0);
-        const status = String(o.status || 'pending').toLowerCase();
-        const isWon = WON_STATUSES.some((s) => status === s);
-        if (isWon) {
+      let lostCount = 0;
+      let openCount = 0;
+      let wonValue = 0;
+      let lostValue = 0;
+      let openValue = 0;
+      list.forEach((opportunity: any) => {
+        const value = Number(opportunity.value || 0);
+        const outcome = getOpportunityOutcome(opportunity);
+        if (outcome === 'won') {
           wonCount++;
-          wonRevenue += total;
+          wonValue += value;
+        } else if (outcome === 'lost') {
+          lostCount++;
+          lostValue += value;
         } else {
-          abandonedCount++;
-          abandonedRevenue += total;
+          openCount++;
+          openValue += value;
         }
       });
       return {
         wonCount,
-        abandonedCount,
-        totalCount: wonCount + abandonedCount,
-        wonRevenue,
-        abandonedRevenue,
-        totalRevenue: wonRevenue + abandonedRevenue,
+        lostCount,
+        openCount,
+        totalCount: list.length,
+        wonValue,
+        lostValue,
+        openValue,
+        totalValue: wonValue + lostValue + openValue,
       };
     };
 
-    const curr = process(currOrders);
-    const prev = process(prevOrders);
-    const conversionRate =
-      curr.totalRevenue > 0 ? (curr.wonRevenue / curr.totalRevenue) * 100 : 0;
+    const curr = process(currOpportunities);
+    const prev = process(prevOpportunities);
+    const closedCount = curr.wonCount + curr.lostCount;
+    const conversionRate = closedCount > 0 ? (curr.wonCount / closedCount) * 100 : 0;
 
     return {
       dateLabel: `${start.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}`,
@@ -126,13 +148,11 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
         ...curr,
         conversionRate,
         prevWonCount: prev.wonCount,
-        prevAbandonedCount: prev.abandonedCount,
         prevTotalCount: prev.totalCount,
-        prevWonRevenue: prev.wonRevenue,
-        prevTotalRevenue: prev.totalRevenue,
+        prevTotalValue: prev.totalValue,
       },
     };
-  }, [orders, daysRange]);
+  }, [opportunities, daysRange]);
 
   useEffect(() => {
     setDateRangeLabel(dateLabel);
@@ -140,12 +160,14 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
 
   const opportunityStatusData = [
     { name: 'Ganados', value: metrics.wonCount || 0, color: '#3b82f6' },
-    { name: 'Abandonados', value: metrics.abandonedCount || 0, color: '#06b6d4' },
+    { name: 'En proceso', value: metrics.openCount || 0, color: '#06b6d4' },
+    { name: 'Perdidos', value: metrics.lostCount || 0, color: '#f97316' },
   ].filter((d) => d.value > 0);
 
   const opportunityValueData = [
-    { name: 'Abandonados', value: metrics.abandonedRevenue || 0, fill: '#93c5fd' },
-    { name: 'Ganados', value: metrics.wonRevenue || 0, fill: '#3b82f6' },
+    { name: 'Ganadas', value: metrics.wonValue || 0, fill: '#3b82f6' },
+    { name: 'En proceso', value: metrics.openValue || 0, fill: '#06b6d4' },
+    { name: 'Perdidas', value: metrics.lostValue || 0, fill: '#f97316' },
   ].filter((d) => d.value > 0);
 
   const conversionData = [
@@ -154,21 +176,15 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
   ];
 
   const countChange =
-    metrics.prevTotalCount > 0
+      metrics.prevTotalCount > 0
       ? ((metrics.totalCount - metrics.prevTotalCount) / metrics.prevTotalCount) * 100
       : metrics.totalCount > 0 ? 100 : 0;
-  const revenueChange =
-    metrics.prevTotalRevenue > 0
-      ? ((metrics.totalRevenue - metrics.prevTotalRevenue) / metrics.prevTotalRevenue) * 100
-      : metrics.totalRevenue > 0 ? 100 : 0;
-  const wonRevenueChange =
-    metrics.prevWonRevenue > 0
-      ? ((metrics.wonRevenue - metrics.prevWonRevenue) / metrics.prevWonRevenue) * 100
-      : metrics.wonRevenue > 0 ? 100 : 0;
-
+  const valueChange =
+    metrics.prevTotalValue > 0
+      ? ((metrics.totalValue - metrics.prevTotalValue) / metrics.prevTotalValue) * 100
+      : metrics.totalValue > 0 ? 100 : 0;
   const maxBarValue = Math.max(
-    metrics.wonRevenue || 0,
-    metrics.abandonedRevenue || 0,
+    metrics.totalValue || 0,
     1000
   );
   const tick1 = Math.max(1000, Math.round((maxBarValue * 0.25) / 1000) * 1000);
@@ -289,7 +305,11 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-cyan-500 rounded-sm"></div>
-                <span className="text-sm text-slate-600">Abandonados - {metrics.abandonedCount}</span>
+                <span className="text-sm text-slate-600">En proceso - {metrics.openCount}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-sm"></div>
+                <span className="text-sm text-slate-600">Perdidos - {metrics.lostCount}</span>
               </div>
             </div>
           </CardContent>
@@ -309,15 +329,15 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-semibold text-slate-800 mt-2">
-              {formatShortCurrency(metrics.totalRevenue)}
+              {formatShortCurrency(metrics.totalValue)}
             </div>
             <div className="flex items-center mt-1 space-x-2">
               <span
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                  revenueChange >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                  valueChange >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
                 }`}
               >
-                {revenueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(revenueChange))}%
+                {valueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(valueChange))}%
               </span>
               <span className="text-xs text-slate-400">vs Últimos {daysRange} días</span>
             </div>
@@ -343,7 +363,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
                     <Tooltip
                       cursor={{ fill: 'transparent' }}
                       formatter={(v: number) => formatCurrency(v)}
-                      labelFormatter={(l) => (l === 'Ganados' ? 'Ganados' : 'Abandonados')}
+                      labelFormatter={(l) => String(l)}
                     />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                       {opportunityValueData.map((entry, index) => (
@@ -366,9 +386,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
             </div>
 
             <div className="mt-4 text-center">
-              <p className="text-xs text-slate-500">Ingresos totales</p>
+              <p className="text-xs text-slate-500">Valor total de oportunidades</p>
               <p className="text-lg font-semibold text-slate-700">
-                {formatCurrency(metrics.totalRevenue)}
+                {formatCurrency(metrics.totalValue)}
               </p>
             </div>
           </CardContent>
@@ -388,17 +408,10 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-semibold text-slate-800 mt-2">
-              {formatShortCurrency(metrics.wonRevenue)}
+              {metrics.conversionRate.toFixed(1)}%
             </div>
-            <div className="flex items-center mt-1 space-x-2">
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                  wonRevenueChange >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                }`}
-              >
-                {wonRevenueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(wonRevenueChange))}%
-              </span>
-              <span className="text-xs text-slate-400">vs Últimos {daysRange} días</span>
+            <div className="text-xs text-slate-400 mt-1">
+              {metrics.wonCount} ganadas de {metrics.wonCount + metrics.lostCount} oportunidades cerradas
             </div>
 
             <div className="flex items-center justify-center h-64 relative mt-2">
@@ -427,9 +440,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ orders = [], onR
             </div>
 
             <div className="mt-4 text-center">
-              <p className="text-xs text-slate-500">Ingresos ganados</p>
+              <p className="text-xs text-slate-500">Valor de oportunidades ganadas</p>
               <p className="text-lg font-semibold text-slate-700">
-                {formatCurrency(metrics.wonRevenue)}
+                {formatCurrency(metrics.wonValue)}
               </p>
             </div>
           </CardContent>

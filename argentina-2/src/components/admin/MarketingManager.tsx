@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { MediaLibrary } from './MediaLibrary';
 import { SocialPlanner } from './SocialPlanner';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isCampaignForAgency, isContactForAgency } from '@/lib/agency-isolation';
 
 interface Campaign {
   id: string;
@@ -45,6 +47,7 @@ interface Campaign {
   scheduledAt?: string;
   sentAt?: string;
   created_at: string;
+  agency_id?: string;
 }
 
 interface TikTokPost {
@@ -59,6 +62,9 @@ interface TikTokPost {
 }
 
 export const MarketingManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +84,8 @@ export const MarketingManager: React.FC = () => {
   const [recipients, setRecipients] = useState('todos');
   const [senderEmail, setSenderEmail] = useState('correo@tienda.com');
   const [body, setBody] = useState('');
+  const [isCampaignMediaPickerOpen, setIsCampaignMediaPickerOpen] = useState(false);
+  const campaignBodyRef = useRef<HTMLTextAreaElement>(null);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
 
@@ -135,10 +143,12 @@ export const MarketingManager: React.FC = () => {
       if (isSupabase) {
         const { data, error } = await db.from('marketing_campaigns').select('*');
         if (error) throw error;
-        // Ordenar por fecha desc
-        const sorted = (data || []).sort((a: any, b: any) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        // Filtrar por agencia activa y ordenar por fecha desc
+        const sorted = (data || [])
+          .filter((c: any) => isCampaignForAgency(c, activeAgencyId))
+          .sort((a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
         setCampaigns(sorted);
       }
     } catch (e: any) {
@@ -151,9 +161,10 @@ export const MarketingManager: React.FC = () => {
   const fetchContacts = async () => {
     try {
       if (isSupabase) {
-        const { data, error } = await db.from('contacts').select('id, name, email, phone');
+        const { data, error } = await db.from('contacts').select('id, name, email, phone, tags, company, agency_id, owner_id');
         if (error) throw error;
-        setContacts(data || []);
+        const filteredContacts = (data || []).filter((c: any) => isContactForAgency(c, activeAgencyId));
+        setContacts(filteredContacts);
       }
     } catch (e: any) {
       console.error('Error loading contacts in MarketingManager:', e);
@@ -555,6 +566,7 @@ export const MarketingManager: React.FC = () => {
       senderEmail: defaultSender,
       body: '',
       status: 'borrador',
+      agency_id: activeAgencyId || '2',
       created_at: new Date().toISOString()
     };
 
@@ -679,6 +691,7 @@ export const MarketingManager: React.FC = () => {
       status,
       scheduledAt: scheduledAtString,
       sentAt: status === 'enviada' ? new Date().toISOString() : selectedCampaign?.sentAt,
+      agency_id: selectedCampaign?.agency_id || activeAgencyId || '2',
       created_at: selectedCampaign?.created_at || new Date().toISOString()
     };
 
@@ -709,6 +722,20 @@ export const MarketingManager: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSelectCampaignImage = (url: string) => {
+    const textarea = campaignBodyRef.current;
+    const start = textarea?.selectionStart ?? body.length;
+    const end = textarea?.selectionEnd ?? body.length;
+    const imageHtml = `<img src="${url}" alt="" style="max-width:100%;height:auto;">`;
+    setBody((current) => `${current.slice(0, start)}${imageHtml}${current.slice(end)}`);
+    setIsCampaignMediaPickerOpen(false);
+    window.requestAnimationFrame(() => {
+      textarea?.focus();
+      const cursor = start + imageHtml.length;
+      textarea?.setSelectionRange(cursor, cursor);
+    });
   };
 
   const handleDeleteCampaign = async (id: string, campName: string) => {
@@ -1101,14 +1128,11 @@ export const MarketingManager: React.FC = () => {
                 <span className="text-xs text-slate-600 font-semibold block">Biblioteca Multimedia</span>
                 <button 
                   type="button"
-                  onClick={() => {
-                    setActiveSubTab('media');
-                    setSelectedCampaign(null);
-                  }}
+                  onClick={() => setIsCampaignMediaPickerOpen(true)}
                   className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 bg-white h-9.5 transition-colors cursor-pointer"
                 >
                   <FolderOpen className="h-4 w-4 text-slate-500" />
-                  Abrir Galería de Imágenes (Copiar URLs)
+                  Elegir imagen para la campaña
                 </button>
               </div>
             </div>
@@ -1117,6 +1141,7 @@ export const MarketingManager: React.FC = () => {
               <Label htmlFor="camp-body" className="text-xs text-slate-600 font-semibold">Contenido del Correo (HTML o Texto) *</Label>
               <textarea
                 id="camp-body"
+                ref={campaignBodyRef}
                 rows={10}
                 placeholder="Escribe tu mensaje aquí... Soporta HTML o texto sin formato"
                 value={body}
@@ -1198,6 +1223,16 @@ export const MarketingManager: React.FC = () => {
       {!selectedCampaign && activeSubTab === 'media' && (
         <MediaLibrary />
       )}
+
+      <Dialog open={isCampaignMediaPickerOpen} onOpenChange={setIsCampaignMediaPickerOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Elegir imagen para la campaña</DialogTitle>
+            <DialogDescription>Selecciona una imagen de la biblioteca o sube una nueva. Se insertará en el contenido del correo.</DialogDescription>
+          </DialogHeader>
+          <MediaLibrary onSelectImage={handleSelectCampaignImage} />
+        </DialogContent>
+      </Dialog>
 
       {/* TAB CONTENT: TikTok Marketing view */}
       {false && !selectedCampaign && activeSubTab === 'tiktok' && (

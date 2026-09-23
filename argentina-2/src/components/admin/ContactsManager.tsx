@@ -38,6 +38,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { db, getDocs, collection, query, orderBy } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { isContactForAgency, getActiveAgencyId } from '@/lib/agency-isolation';
 import { cn } from '@/lib/utils';
 
 interface Contact {
@@ -51,6 +52,7 @@ interface Contact {
   tags?: string[];
   avatar?: string;
   customFields?: Record<string, string>;
+  agency_id?: string;
 }
 
 interface Task {
@@ -98,6 +100,7 @@ const safeParseTags = (tagsVal: any): string[] => {
 
 export const ContactsManager: React.FC = () => {
   const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -126,7 +129,7 @@ export const ContactsManager: React.FC = () => {
   useEffect(() => {
     loadContacts();
     loadTasks();
-  }, []);
+  }, [activeAgencyId]);
 
   const handleExportContacts = () => {
     if (selectedContacts.length === 0) {
@@ -306,7 +309,8 @@ export const ContactsManager: React.FC = () => {
           email: newContact.email,
           company: newContact.company,
           tags: newContact.tags,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          agency_id: activeAgencyId || '2',
         };
 
         if (Object.keys(newContact.customFields).length > 0) {
@@ -445,10 +449,12 @@ export const ContactsManager: React.FC = () => {
             lastActivity: contact.last_activity ? new Date(contact.last_activity) : undefined,
             tags: safeParseTags(contact.tags),
             avatar: contact.avatar || '',
-            customFields: contact.custom_fields || contact.customFields || {}
+            customFields: contact.custom_fields || contact.customFields || {},
+            agency_id: contact.agency_id || contact.owner_id
           }));
-          setContacts(contactsData);
-          syncAvailableTags(contactsData);
+          const filteredContacts = contactsData.filter((c: any) => isContactForAgency(c, activeAgencyId));
+          setContacts(filteredContacts);
+          syncAvailableTags(filteredContacts);
         }
       } else {
         // Firebase fallback (MOCKED)
@@ -468,11 +474,13 @@ export const ContactsManager: React.FC = () => {
             lastActivity: data.lastActivity?.toDate(),
             tags: safeParseTags(data.tags),
             avatar: data.avatar || '',
-            customFields: data.customFields || {}
+            customFields: data.customFields || {},
+            agency_id: data.agency_id || data.owner_id
           });
         });
-        setContacts(contactsData);
-        syncAvailableTags(contactsData);
+        const filteredContacts = contactsData.filter((c: any) => isContactForAgency(c, activeAgencyId));
+        setContacts(filteredContacts);
+        syncAvailableTags(filteredContacts);
       }
     } catch (error) {
       console.error('Error loading contacts:', error);

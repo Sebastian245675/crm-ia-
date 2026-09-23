@@ -18,8 +18,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, FileCode, Eye, Plus, Trash2, Edit2, Download, Copy, Printer, RefreshCw, Play } from 'lucide-react';
 import { db } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { getActiveAgencyId, isItemForAgency } from '@/lib/agency-isolation';
+import { formatCurrency } from '@/lib/currency';
 
 export const FacturacionManager: React.FC = () => {
+  const { user } = useAuth();
+  const activeAgencyId = React.useMemo(() => getActiveAgencyId(user), [user]);
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
+
   const [activeTab, setActiveTab] = useState<'lineas' | 'historial'>('lineas');
   const [loadingLineas, setLoadingLineas] = useState(true);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
@@ -165,7 +172,7 @@ export const FacturacionManager: React.FC = () => {
   useEffect(() => {
     fetchLineas();
     fetchHistorial();
-  }, []);
+  }, [activeAgencyId]);
 
   // --- LINES CRUD ---
   const fetchLineas = async () => {
@@ -173,7 +180,22 @@ export const FacturacionManager: React.FC = () => {
     try {
       const { data, error } = await db.from('lineas_facturacion').select('*');
       if (error) throw error;
-      setLineas(data || []);
+      const agencyLines = (data || []).filter((l: any) => isItemForAgency(l, activeAgencyId));
+      setLineas(agencyLines);
+
+      // Fetch company profile for this agency
+      const targetAgency = activeAgencyId || '2';
+      const { data: profile } = await db
+        .from('company_profile')
+        .select('*')
+        .or(`owner_id.eq.${targetAgency},agency_id.eq.${targetAgency}`)
+        .maybeSingle();
+      if (profile) {
+        setCompanyProfile(profile);
+      } else {
+        const { data: fallback } = await db.from('company_profile').select('*').limit(1).maybeSingle();
+        setCompanyProfile(fallback || null);
+      }
     } catch (err: any) {
       console.error('Error fetching lines:', err);
       toast({
@@ -213,6 +235,8 @@ export const FacturacionManager: React.FC = () => {
           id: `line-${Date.now()}`,
           name: lineForm.name,
           type: lineForm.type,
+          agency_id: activeAgencyId || '2',
+          owner_id: activeAgencyId || '2',
           created_at: new Date().toISOString(),
         };
         const { error } = await db.from('lineas_facturacion').insert(newLine);
@@ -263,7 +287,20 @@ export const FacturacionManager: React.FC = () => {
       const res = await fetch('/api/facturacion/historial');
       if (!res.ok) throw new Error('Failed to fetch history');
       const data = await res.json();
-      setInvoices(data.facturas || []);
+      const allInvoices = data.facturas || [];
+
+      // Filter invoices matching this agency's billing lines or agency items
+      const { data: lineData } = await db.from('lineas_facturacion').select('*');
+      const agencyLines = (lineData || []).filter((l: any) => isItemForAgency(l, activeAgencyId));
+      const lineIds = new Set(agencyLines.map((l: any) => String(l.id)));
+
+      const filtered = allInvoices.filter((inv: any) => {
+        if (inv.billing_line_id) {
+          return lineIds.has(String(inv.billing_line_id));
+        }
+        return isItemForAgency(inv, activeAgencyId);
+      });
+      setInvoices(filtered);
     } catch (err: any) {
       console.error('Error fetching invoices:', err);
       toast({
@@ -292,6 +329,16 @@ export const FacturacionManager: React.FC = () => {
     );
   });
 
+  const emisorLegalName = companyProfile?.legal_name || companyProfile?.company_name || companyProfile?.friendly_name || (activeAgencyId === 'voltium-sanrey' ? 'VOLTIUM SANREY SA DE CV' : 'WEBSY SA DE CV');
+  const emisorRfc = companyProfile?.rfc || (activeAgencyId === 'voltium-sanrey' ? 'VOSA900909AA1' : 'XAXX010101000');
+  const emisorRegimen = companyProfile?.tax_system || '601 - General de Ley Personas Morales';
+  const emisorAddress = [
+    companyProfile?.address,
+    companyProfile?.city,
+    companyProfile?.state,
+    companyProfile?.postal_code ? `CP ${companyProfile.postal_code}` : ''
+  ].filter(Boolean).join(', ') || (activeAgencyId === 'voltium-sanrey' ? 'Av. Reforma 1234, Col. Centro, CP 26015, Piedras Negras, Coahuila' : 'Av. Insurgentes Sur 1602, Crédito Constructor, Benito Juárez, CDMX');
+
   const getXmlMockContent = (inv: any) => {
     const total = parseFloat(inv?.total) || 0;
     const subtotal = total / 1.16;
@@ -306,7 +353,7 @@ export const FacturacionManager: React.FC = () => {
     Total="${total.toFixed(2)}"
     Moneda="MXN" 
     TipoDeComprobante="I">
-  <cfdi:Emisor Rfc="VOSA900909AA1" Nombre="VOLTIUM SANREY SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Emisor Rfc="${emisorRfc}" Nombre="${emisorLegalName}" RegimenFiscal="${emisorRegimen}"/>
   <cfdi:Receptor Rfc="XAXX010101000" Nombre="PUBLICO EN GENERAL" UsoCFDI="S01" RegimenFiscalReceptor="616" DomicilioFiscalReceptor="26015"/>
   <cfdi:Conceptos>
     <cfdi:Concepto ClaveProdServ="01010101" Cantidad="1" ClaveUnidad="H87" Unidad="Pieza" Descripcion="Venta de ticket #${inv?.order_id || 'N/A'}" ValorUnitario="${subtotal.toFixed(2)}" Importe="${subtotal.toFixed(2)}" ObjetoImp="02">
@@ -455,7 +502,7 @@ export const FacturacionManager: React.FC = () => {
               <CardContent className="p-5 flex flex-col justify-between h-[100px]">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Facturado</span>
                 <div className="flex justify-between items-baseline">
-                  <span className="text-2xl font-black text-emerald-700">${totalFacturado.toLocaleString()}</span>
+                  <span className="text-2xl font-black text-emerald-700">{formatCurrency(totalFacturado)}</span>
                   <span className="text-xs text-slate-400">MXN</span>
                 </div>
               </CardContent>
@@ -535,7 +582,7 @@ export const FacturacionManager: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-bold text-slate-800 text-xs">
-                          ${(parseFloat(inv.total) || 0).toLocaleString()}
+                          {formatCurrency(parseFloat(inv.total) || 0)}
                         </TableCell>
                         <TableCell className="text-right pr-6 space-x-1.5">
                           <Button
@@ -661,7 +708,7 @@ export const FacturacionManager: React.FC = () => {
                 <div>
                   <span className="font-bold text-slate-500 uppercase block mb-1">Total Facturado</span>
                   <span className="text-emerald-700 block font-bold text-sm p-1">
-                    ${(parseFloat(selectedInvoice.total) || 0).toLocaleString()} MXN
+                    {formatCurrency(parseFloat(selectedInvoice.total) || 0)}
                   </span>
                 </div>
                 <div>
@@ -675,9 +722,9 @@ export const FacturacionManager: React.FC = () => {
               <div className="border-t pt-3">
                 <span className="text-xs font-bold text-slate-500 uppercase block mb-2">Emisor</span>
                 <div className="text-xs text-slate-700 bg-slate-50 p-3 rounded border space-y-1">
-                  <p><strong>Razón Social:</strong> VOLTIUM SANREY SA DE CV</p>
-                  <p><strong>RFC:</strong> VOSA900909AA1</p>
-                  <p><strong>Régimen Fiscal:</strong> 601 - General de Ley Personas Morales</p>
+                  <p><strong>Razón Social:</strong> {emisorLegalName}</p>
+                  <p><strong>RFC:</strong> {emisorRfc}</p>
+                  <p><strong>Régimen Fiscal:</strong> {emisorRegimen}</p>
                 </div>
               </div>
             </div>
@@ -690,7 +737,7 @@ export const FacturacionManager: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* PDF representation (Voltium Sanrey print sheet) */}
+      {/* PDF representation (Agency print sheet) */}
       <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
         <DialogContent className="bg-white border sm:max-w-[700px] overflow-y-auto max-h-[90vh] p-0">
           <div className="bg-slate-800 text-white p-3 flex justify-between items-center sticky top-0 z-50">
@@ -718,11 +765,10 @@ export const FacturacionManager: React.FC = () => {
               {/* Header section */}
               <div className="grid grid-cols-2 gap-6 border-b pb-4">
                 <div className="space-y-1">
-                  <h2 className="text-sm font-bold text-slate-900">VOLTIUM SANREY SA DE CV</h2>
-                  <p><strong>RFC:</strong> VOSA900909AA1</p>
-                  <p><strong>Régimen Fiscal:</strong> 601 - General de Ley Personas Morales</p>
-                  <p><strong>Domicilio:</strong> Av. Reforma 1234, Col. Centro, CP 26015</p>
-                  <p>Piedras Negras, Coahuila, México</p>
+                  <h2 className="text-sm font-bold text-slate-900">{emisorLegalName}</h2>
+                  <p><strong>RFC:</strong> {emisorRfc}</p>
+                  <p><strong>Régimen Fiscal:</strong> {emisorRegimen}</p>
+                  <p><strong>Domicilio:</strong> {emisorAddress}</p>
                 </div>
                 <div className="text-right space-y-1">
                   <h2 className="text-xs font-bold text-[#2563EB]">COMPROBANTE FISCAL DIGITAL (CFDI)</h2>
@@ -757,40 +803,40 @@ export const FacturacionManager: React.FC = () => {
                       <TableHead className="font-bold text-xs h-8 text-slate-700">Descripción</TableHead>
                       <TableHead className="font-bold text-xs h-8 text-slate-700 text-center">Cant.</TableHead>
                       <TableHead className="font-bold text-xs h-8 text-slate-700 text-right">Unitario</TableHead>
-                      <TableHead className="font-bold text-xs h-8 text-slate-700 text-right">Importe</TableHead>
+                      <TableHead className="font-bold text-xs h-8 text-slate-700 text-right pr-4">Importe</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow className="border-b">
-                      <TableCell className="font-mono py-2">01010101</TableCell>
-                      <TableCell className="py-2">Venta de productos del ticket #{selectedInvoice.order_id}</TableCell>
-                      <TableCell className="text-center py-2">1</TableCell>
-                      <TableCell className="text-right py-2">${(parseFloat(selectedInvoice.total) / 1.16).toFixed(2)}</TableCell>
-                      <TableCell className="text-right py-2">${(parseFloat(selectedInvoice.total) / 1.16).toFixed(2)}</TableCell>
+                    <TableRow>
+                      <TableCell className="font-mono">01010101</TableCell>
+                      <TableCell className="font-medium">Venta de ticket #{selectedInvoice.order_id || 'N/A'}</TableCell>
+                      <TableCell className="text-center">1</TableCell>
+                      <TableCell className="text-right">{formatCurrency(parseFloat(selectedInvoice.total) / 1.16)}</TableCell>
+                      <TableCell className="text-right pr-4">{formatCurrency(parseFloat(selectedInvoice.total) / 1.16)}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
 
-              {/* Totals */}
-              <div className="flex justify-end">
-                <div className="w-[200px] border p-3 rounded space-y-1.5 text-xs bg-slate-50">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal:</span>
-                    <span>${(parseFloat(selectedInvoice.total) / 1.16).toFixed(2)}</span>
+              {/* Totals section */}
+              <div className="flex justify-end pt-2">
+                <div className="w-48 space-y-1.5 text-right font-medium">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Subtotal:</span>
+                    <span>{formatCurrency(parseFloat(selectedInvoice.total) / 1.16)}</span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>IVA (16%):</span>
-                    <span>${(parseFloat(selectedInvoice.total) - parseFloat(selectedInvoice.total) / 1.16).toFixed(2)}</span>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">IVA Trasladado (16%):</span>
+                    <span>{formatCurrency(parseFloat(selectedInvoice.total) - parseFloat(selectedInvoice.total) / 1.16)}</span>
                   </div>
                   <div className="flex justify-between font-black text-slate-900 border-t pt-1">
                     <span>TOTAL:</span>
-                    <span>${(parseFloat(selectedInvoice.total) || 0).toLocaleString()} MXN</span>
+                    <span>{formatCurrency(parseFloat(selectedInvoice.total) || 0)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Digital stamps (voltium sanrey authentic styling) */}
+              {/* Digital stamps */}
               <div className="space-y-3 border-t pt-4 text-[8px] text-slate-400 font-mono">
                 <div className="bg-slate-50 p-2 rounded border break-all leading-normal">
                   <p className="font-bold text-slate-500 uppercase mb-0.5">Sello Digital del Emisor</p>
@@ -798,7 +844,7 @@ export const FacturacionManager: React.FC = () => {
                 </div>
                 <div className="bg-slate-50 p-2 rounded border break-all leading-normal">
                   <p className="font-bold text-slate-500 uppercase mb-0.5">Cadena Original del Complemento de Certificación Digital del SAT</p>
-                  ||4.0|{selectedInvoice.uuid}|{new Date(selectedInvoice.fecha).toISOString()}|VOSA900909AA1|fXF8+Xf7/6d4X9d8dFHD7FjG6H7JjH6H7G6H5GfF5F4d3s2a1S01sDGFD6==
+                  ||4.0|{selectedInvoice.uuid}|{new Date(selectedInvoice.fecha).toISOString()}|{emisorRfc}|fXF8+Xf7/6d4X9d8dFHD7FjG6H7JjH6H7G6H5GfF5F4d3s2a1S01sDGFD6==
                 </div>
               </div>
             </div>

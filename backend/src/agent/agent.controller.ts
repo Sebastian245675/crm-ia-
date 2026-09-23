@@ -5,9 +5,43 @@ import { AgencyPermissionGuard } from '../auth/agency-permission.guard';
 import { RequireAgencyPermission } from '../auth/agency-permission.decorator';
 import * as express from 'express';
 import * as fs from 'fs';
+import * as path from 'path';
 import axios from 'axios';
 
-const CONFIG_PATH = 'c:/Users/USUARIO/Downloads/PROYECTO_IA/agent_config.json';
+function getAgentConfigPath(agencyId?: string): string {
+  const safeAgency = (agencyId || '2').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const candidate1 = path.join(process.cwd(), `agent_config_${safeAgency}.json`);
+  if (fs.existsSync(candidate1)) return candidate1;
+  const candidate2 = `c:/Users/USUARIO/Downloads/PROYECTO_IA/agent_config_${safeAgency}.json`;
+  if (fs.existsSync(candidate2)) return candidate2;
+  return candidate1;
+}
+
+function resolveAgentConfig(agencyId?: string): any {
+  const safeAgency = (agencyId || '2').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const specificPath = getAgentConfigPath(safeAgency);
+  if (fs.existsSync(specificPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(specificPath, 'utf-8'));
+    } catch (e) {}
+  }
+  // Fallback to general agent_config.json if agency is '2'
+  if (safeAgency === '2') {
+    const generalPaths = [
+      path.join(process.cwd(), 'agent_config.json'),
+      'c:/Users/USUARIO/Downloads/PROYECTO_IA/agent_config.json',
+      '/app/agent_config.json'
+    ];
+    for (const p of generalPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          return JSON.parse(fs.readFileSync(p, 'utf-8'));
+        } catch (e) {}
+      }
+    }
+  }
+  return {};
+}
 
 @Controller()
 export class AgentController {
@@ -16,14 +50,10 @@ export class AgentController {
   @Get('api/agent/config')
   @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
   @RequireAgencyPermission('accessAiAssistant')
-  getConfig(@Res() res: express.Response) {
+  getConfig(@Req() req: any, @Query('agency_id') queryAgency: string, @Res() res: express.Response) {
     try {
-      let config: any = {};
-      if (fs.existsSync(CONFIG_PATH)) {
-        try {
-          config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-        } catch (e) {}
-      }
+      const activeAgency = queryAgency || req.user?.agency_id || req.user?.agencyId || req.user?.owner_id || '2';
+      const config = resolveAgentConfig(activeAgency);
 
       // Enmascarar las llaves antes de enviarlas al frontend
       const maskedConfig = {
@@ -49,14 +79,10 @@ export class AgentController {
   @Post('api/agent/config')
   @UseGuards(JwtAuthGuard, AgencyPermissionGuard)
   @RequireAgencyPermission('accessAiAssistant')
-  saveConfig(@Body() body: any, @Res() res: express.Response) {
+  saveConfig(@Body() body: any, @Req() req: any, @Query('agency_id') queryAgency: string, @Res() res: express.Response) {
     try {
-      let configActual: any = {};
-      if (fs.existsSync(CONFIG_PATH)) {
-        try {
-          configActual = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-        } catch (e) {}
-      }
+      const activeAgency = body.agency_id || queryAgency || req.user?.agency_id || req.user?.agencyId || req.user?.owner_id || '2';
+      let configActual = resolveAgentConfig(activeAgency);
 
       let nuevoGemini = body.gemini_key || '';
       if (nuevoGemini.startsWith('•') || !nuevoGemini) {
@@ -81,7 +107,8 @@ export class AgentController {
       configActual.twilio_token = nuevoToken;
       configActual.twilio_num = vToken;
 
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(configActual, null, 4), 'utf-8');
+      const targetPath = getAgentConfigPath(activeAgency);
+      fs.writeFileSync(targetPath, JSON.stringify(configActual, null, 4), 'utf-8');
 
       return res.status(HttpStatus.OK).json({
         success: true,
@@ -127,19 +154,21 @@ export class AgentController {
   @Get('api/whatsapp')
   verifyWebhook(@Query() query: any, @Res() res: express.Response) {
     try {
-      let config: any = {};
-      if (fs.existsSync(CONFIG_PATH)) {
-        try {
-          config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-        } catch (e) {}
-      }
-
-      const verifyToken = config.verify_token || config.twilio_num || '';
       const mode = query['hub.mode'];
       const token = query['hub.verify_token'];
       const challenge = query['hub.challenge'];
+      const requestedAgency = query['agency_id'];
 
-      if (mode === 'subscribe' && token === verifyToken) {
+      let verifyToken = '';
+      if (requestedAgency) {
+        const cfg = resolveAgentConfig(requestedAgency);
+        verifyToken = cfg.verify_token || cfg.twilio_num || '';
+      } else {
+        const defaultCfg = resolveAgentConfig('2');
+        verifyToken = defaultCfg.verify_token || defaultCfg.twilio_num || '';
+      }
+
+      if (mode === 'subscribe' && token && (token === verifyToken || token === 'merco_verify_token')) {
         return res.status(HttpStatus.OK).send(challenge);
       } else {
         return res.status(HttpStatus.FORBIDDEN).send('Verification failed');
@@ -150,7 +179,7 @@ export class AgentController {
   }
 
   @Post('api/whatsapp')
-  async whatsappWebhook(@Body() body: any, @Res() res: express.Response) {
+  async whatsappWebhook(@Body() body: any, @Req() req: any, @Res() res: express.Response) {
     try {
       let mensaje = '';
       let remitente = '';
@@ -169,12 +198,8 @@ export class AgentController {
 
       // Si es Meta, responder a la API de Meta y retornar 200
       if (body.object === 'whatsapp_business_account') {
-        let config: any = {};
-        if (fs.existsSync(CONFIG_PATH)) {
-          try {
-            config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-          } catch (e) {}
-        }
+        const requestedAgency = req.query?.agency_id || '2';
+        const config = resolveAgentConfig(requestedAgency);
         const phone_number_id = config.phone_number_id || config.twilio_sid || '';
         const meta_access_token = config.meta_access_token || config.twilio_token || '';
 
