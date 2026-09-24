@@ -296,7 +296,7 @@ export const AdminPanel: React.FC = () => {
   const [sessionStart, setSessionStart] = useState<Date>(new Date());
   const [todaySales, setTodaySales] = useState<number>(0);
   const [todaySalesLoading, setTodaySalesLoading] = useState<boolean>(true);
-  const [downloadingTodaySales, setDownloadingTodaySales] = useState(false);
+  const [downloadingSalesPeriod, setDownloadingSalesPeriod] = useState<'day' | 'month' | null>(null);
   const [monthlySales, setMonthlySales] = useState<number>(0);
   const [monthlySalesLoading, setMonthlySalesLoading] = useState<boolean>(true);
   const [avgConversations, setAvgConversations] = useState<number>(0);
@@ -413,12 +413,15 @@ export const AdminPanel: React.FC = () => {
   // Caché para evitar recalcular ventas mensuales en la misma sesión
   const monthlySalesCacheRef = useRef<{ agencyId: string; month: number; year: number; value: number } | null>(null);
 
-  const handleDownloadTodaySalesDetails = async () => {
-    setDownloadingTodaySales(true);
+  const handleDownloadSalesDetails = async (period: 'day' | 'month') => {
+    setDownloadingSalesPeriod(period);
     try {
-      const start = new Date();
+      const now = new Date();
+      const start = new Date(now);
+      if (period === 'month') start.setDate(1);
       start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
+      const end = new Date(now);
+      end.setHours(0, 0, 0, 0);
       end.setDate(end.getDate() + 1);
       let sales: any[] = [];
 
@@ -481,8 +484,9 @@ export const AdminPanel: React.FC = () => {
         dateStyle: 'medium', timeStyle: 'medium', timeZone: 'America/Mexico_City'
       });
       const report = [
-        'DETALLE DE VENTAS DEL DÍA',
+        period === 'month' ? 'DETALLE DE VENTAS DEL MES' : 'DETALLE DE VENTAS DEL DÍA',
         `Fecha de generación: ${mexicoDateTime.format(new Date())}`,
+        `Periodo: ${start.toLocaleDateString('es-MX')} - ${new Date(end.getTime() - 1).toLocaleDateString('es-MX')}`,
         `Cuenta: ${user?.sub_cuenta || user?.name || activeAgencyId || 'Cuenta activa'}`,
         `Ventas registradas: ${salesToday.length}`,
         `Total de ventas: ${money(salesToday.reduce((sum, order) => sum + Number(order.total || 0), 0))}`,
@@ -538,23 +542,25 @@ export const AdminPanel: React.FC = () => {
           return [...lines, '', ''];
         })
       ];
-      if (!salesToday.length) report.push('No se registraron ventas confirmadas para hoy.');
+      if (!salesToday.length) report.push(period === 'month' ? 'No se registraron ventas confirmadas en este mes.' : 'No se registraron ventas confirmadas para hoy.');
 
       const blob = new Blob(['\uFEFF' + report.join('\r\n')], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `ventas-del-dia-${start.toISOString().slice(0, 10)}.txt`;
+      link.download = period === 'month'
+        ? `ventas-del-mes-${start.toISOString().slice(0, 7)}.txt`
+        : `ventas-del-dia-${start.toISOString().slice(0, 10)}.txt`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast({ title: 'Reporte descargado', description: `Archivo TXT con ${salesToday.length} ventas del día.` });
+      toast({ title: 'Reporte descargado', description: `Archivo TXT con ${salesToday.length} ventas ${period === 'month' ? 'del mes' : 'del d\u00eda'}.` });
     } catch (error) {
       console.error('[AdminPanel] No se pudo generar el detalle diario de ventas:', error);
       toast({ title: 'No se pudo descargar el reporte', description: 'Ocurrió un error al consultar o preparar las ventas del día.', variant: 'destructive' });
     } finally {
-      setDownloadingTodaySales(false);
+      setDownloadingSalesPeriod(null);
     }
   };
 
@@ -2139,8 +2145,8 @@ export const AdminPanel: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-4 pt-3 border-t border-green-400/30">
-                        <button type="button" onClick={handleDownloadTodaySalesDetails} disabled={downloadingTodaySales} className="text-xs text-green-50 hover:text-white transition-colors flex items-center group disabled:opacity-60">
-                          {downloadingTodaySales ? 'Preparando archivo...' : 'M\u00e1s informaci\u00f3n'}
+                        <button type="button" onClick={() => handleDownloadSalesDetails('day')} disabled={downloadingSalesPeriod !== null} className="text-xs text-green-50 hover:text-white transition-colors flex items-center group disabled:opacity-60">
+                          {downloadingSalesPeriod === 'day' ? 'Preparando archivo...' : 'M\u00e1s informaci\u00f3n'}
                           <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
                         </button>
                       </div>
@@ -2166,10 +2172,12 @@ export const AdminPanel: React.FC = () => {
                       </div>
                       <div className="mt-4 pt-3 border-t border-orange-400/30">
                         <button
-                          onClick={() => setActiveTab('orders')}
-                          className="text-xs text-orange-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                          type="button"
+                          onClick={() => handleDownloadSalesDetails('month')}
+                          disabled={downloadingSalesPeriod !== null}
+                          className="text-xs text-orange-50 hover:text-white transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer disabled:opacity-60"
                         >
-                          Ver pedidos
+                          {downloadingSalesPeriod === 'month' ? 'Preparando archivo...' : 'M\u00e1s informaci\u00f3n'}
                           <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
                         </button>
                       </div>
