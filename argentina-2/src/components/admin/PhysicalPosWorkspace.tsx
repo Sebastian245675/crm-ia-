@@ -57,6 +57,7 @@ interface PhysicalPosWorkspaceProps {
   notes: string;
   employees: PosEmployee[];
   selectedEmployeeId: string;
+  branchName: string;
   subtotal: number;
   discount: number;
   total: number;
@@ -83,6 +84,7 @@ interface PhysicalPosWorkspaceProps {
   onDiscountValueChange: (value: number) => void;
   onNotesChange: (value: string) => void;
   onEmployeeChange: (id: string) => void;
+  onBranchNameChange: (name: string) => void;
 }
 
 const money = formatCurrency;
@@ -105,6 +107,7 @@ export const PhysicalPosWorkspace: React.FC<PhysicalPosWorkspaceProps> = ({
   notes,
   employees,
   selectedEmployeeId,
+  branchName,
   subtotal,
   discount,
   total,
@@ -131,6 +134,7 @@ export const PhysicalPosWorkspace: React.FC<PhysicalPosWorkspaceProps> = ({
   onDiscountValueChange,
   onNotesChange,
   onEmployeeChange,
+  onBranchNameChange,
 }) => {
   const [showSaleSettings, setShowSaleSettings] = useState(false);
   const categories = useMemo(
@@ -177,7 +181,7 @@ export const PhysicalPosWorkspace: React.FC<PhysicalPosWorkspaceProps> = ({
                 </span>
               </div>
               <p className="truncate text-[11px] text-slate-500">
-                {isQuoteMode ? 'Cotización y proforma' : 'Venta presencial'} · Caja principal
+                {isQuoteMode ? 'Cotización y proforma' : 'Venta presencial'} · Sucursal: {branchName.trim() || 'Sin sucursal'}
               </p>
             </div>
           </div>
@@ -261,7 +265,7 @@ export const PhysicalPosWorkspace: React.FC<PhysicalPosWorkspaceProps> = ({
                 onClick={() => setShowSaleSettings(current => !current)}
                 className={cn(
                   'flex shrink-0 items-center gap-1.5 border-l border-slate-200 px-3 text-[9px] font-bold uppercase tracking-wide hover:bg-slate-50',
-                  showSaleSettings || discount > 0 || notes ? 'bg-blue-50 text-[#245878]' : 'text-slate-500'
+                  showSaleSettings || discount > 0 || notes || branchName ? 'bg-blue-50 text-[#245878]' : 'text-slate-500'
                 )}
                 aria-expanded={showSaleSettings}
               >
@@ -272,6 +276,10 @@ export const PhysicalPosWorkspace: React.FC<PhysicalPosWorkspaceProps> = ({
             {showSaleSettings && (
               <div className="shrink-0 border-b border-slate-300 bg-[#f8fafb] p-3">
                 <div className="grid grid-cols-2 gap-2">
+                  <label className="min-w-0">
+                    <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-500">Sucursal</span>
+                    <input value={branchName} onChange={event => onBranchNameChange(event.target.value)} placeholder="Ej. Centro" className="h-9 w-full border border-slate-300 bg-white px-2 text-[11px] font-semibold text-slate-700 outline-none focus:border-[#2c86b7]" />
+                  </label>
                   <label className="min-w-0">
                     <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-500">Vendedor</span>
                     <select

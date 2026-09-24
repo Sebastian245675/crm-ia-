@@ -74,6 +74,9 @@ const responsiveStyles = `
   }
 `;
 
+const getOrderBranch = (order: any) => String(order?.branch_name || order?.branchName || order?.sucursal || order?.sucursal_nombre || 'Sin sucursal').trim() || 'Sin sucursal';
+const normalizePhone = (phone: string) => String(phone || '').replace(/\D/g, '');
+
 export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -148,6 +151,8 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState<string>('all');
   const [selectedEmployeeForSale, setSelectedEmployeeForSale] = useState<string>('none');
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
+  const [selectedBranchForSale, setSelectedBranchForSale] = useState('');
 
   // Estados para Facturación Electrónica
   const [billingLines, setBillingLines] = useState<any[]>([]);
@@ -1514,6 +1519,8 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
             discountType: physicalSaleData.discountType,
             discountValue,
             notes: physicalSaleData.notes,
+            contactId: selectedContactId === 'general' ? null : selectedContactId,
+            branchName: selectedBranchForSale.trim() || 'Sin sucursal',
             employeeId: empId,
             employeeName: empName,
             employeeEmail: empEmail,
@@ -1598,7 +1605,11 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
             employeeId: empId,
             employeeName: empName,
             billingLineId: selectedBillingLineId,
-            billing_line_id: selectedBillingLineId
+            billing_line_id: selectedBillingLineId,
+            contact_id: selectedContactId === 'general' ? null : selectedContactId,
+            branch_name: selectedBranchForSale.trim() || 'Sin sucursal',
+            agency_id: activeAgencyId || '2',
+            agencyId: activeAgencyId || '2'
           });
 
           return stockUpdates;
@@ -1749,6 +1760,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
         discountType: 'none',
         discountValue: 0,
       });
+      setSelectedContactId('general');
       setProductSearchTerm('');
 
       // Recargar pedidos y productos
@@ -2188,7 +2200,22 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
         return !order.employee_id && !order.employeeId;
       }
       return order.employee_id === selectedEmployeeFilter || order.employeeId === selectedEmployeeFilter;
-    });
+    })
+    .filter(order => selectedBranchFilter === 'all' || getOrderBranch(order) === selectedBranchFilter);
+
+  const branchOptions = Array.from(new Set(orders.map(getOrderBranch).filter((branch) => branch !== 'Sin sucursal'))).sort((a, b) => a.localeCompare(b, 'es'));
+  const getOrderContact = (order: any) => {
+    const contactId = order.contact_id ?? order.contactId ?? order.customer_id ?? order.customerId;
+    const email = String(order.userEmail || order.user_email || order.customer_email || order.customerEmail || '').trim().toLowerCase();
+    const phone = normalizePhone(order.userPhone || order.user_phone || order.customer_phone || order.customerPhone || '');
+    const name = String(order.userName || order.user_name || order.customer_name || order.customerName || '').trim().toLowerCase();
+    const exactNameMatches = name ? contacts.filter((contact) => String(contact.name || contact.nombre || '').trim().toLowerCase() === name) : [];
+    return contacts.find((contact) => contactId && String(contact.id) === String(contactId))
+      || contacts.find((contact) => email && String(contact.email || contact.correo || '').trim().toLowerCase() === email)
+      || contacts.find((contact) => phone && normalizePhone(contact.phone || contact.telefono || contact.mobile || '') === phone)
+      || (exactNameMatches.length === 1 ? exactNameMatches[0] : null)
+      || null;
+  };
 
   if (showQuoteModal) {
     return (
@@ -2219,7 +2246,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
             </div>
           </div>
 
-          <div className="flex-1 w-full md:w-auto flex flex-col sm:flex-row gap-2.5 items-center justify-end">
+          <div className="flex-1 w-full md:w-auto flex flex-col sm:flex-row flex-wrap gap-2.5 items-center justify-end">
             <div className="relative w-full max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
@@ -2245,6 +2272,18 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                       {emp.nombre || emp.name || 'Sin nombre'}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-[180px] shrink-0">
+              <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter}>
+                <SelectTrigger className="h-9.5 text-[11px] border-slate-200 rounded-xl bg-slate-50/50 hover:bg-white transition-colors">
+                  <SelectValue placeholder="Filtrar por sucursal" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border z-50">
+                  <SelectItem value="all">Todas las sucursales</SelectItem>
+                  <SelectItem value="Sin sucursal">Sin sucursal</SelectItem>
+                  {branchOptions.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -2408,6 +2447,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                   <TableRow className="bg-slate-50 border-b border-slate-200 hover:bg-slate-50">
                     <TableHead className="font-semibold text-slate-700 text-xs md:text-sm whitespace-nowrap">Cliente</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-xs md:text-sm whitespace-nowrap hidden sm:table-cell">Contacto</TableHead>
+                    <TableHead className="font-semibold text-slate-700 text-xs md:text-sm whitespace-nowrap hidden lg:table-cell">Sucursal</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-xs md:text-sm whitespace-nowrap hidden md:table-cell">Productos</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-xs md:text-sm whitespace-nowrap">Total</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-xs md:text-sm whitespace-nowrap hidden sm:table-cell">Fecha</TableHead>
@@ -2416,13 +2456,15 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
+                  {filteredOrders.map((order) => {
+                    const linkedContact = getOrderContact(order);
+                    return (
                     <TableRow key={order.id} className="hover:bg-slate-50/80 text-xs md:text-sm border-b border-slate-100">
                       {/* Cliente - Siempre visible */}
                       <TableCell className="py-2 md:py-4">
                         <div>
                           <div className="font-semibold text-xs md:text-sm line-clamp-1">
-                            {order.userName || 'Cliente'}
+                            {linkedContact?.name || linkedContact?.nombre || order.userName || order.user_name || 'Cliente'}
                           </div>
                           <div className="text-[10px] md:text-xs text-muted-foreground mt-1 hidden xs:block">
                             ID: {order.id.substring(0, 6)}...
@@ -2434,14 +2476,19 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                       <TableCell className="hidden sm:table-cell py-2 md:py-4">
                         <div>
                           <div className="font-medium text-xs md:text-sm flex items-center gap-1 line-clamp-1">
-                            {order.userPhone || 'No especificado'}
+                            {[order.userPhone, order.user_phone, order.customer_phone, linkedContact?.phone, linkedContact?.telefono, linkedContact?.mobile, linkedContact?.email, linkedContact?.correo, linkedContact?.name, linkedContact?.nombre].find((value) => {
+                              const text = String(value || '').trim();
+                              return text && !/^no especificado$/i.test(text);
+                            }) || 'No especificado'}
                           </div>
                           <div className="text-[10px] md:text-xs text-[hsl(214,100%,38%)] font-semibold mt-1 flex items-center gap-1">
                             <Mail className="h-3 w-3" />
-                            <span className="line-clamp-1">{order.userEmail}</span>
+                            <span className="line-clamp-1">{order.userEmail || order.user_email || order.customer_email || linkedContact?.email || linkedContact?.correo || ''}</span>
                           </div>
                         </div>
                       </TableCell>
+
+                      <TableCell className="hidden lg:table-cell py-2 md:py-4">{getOrderBranch(order)}</TableCell>
 
                       {/* Productos - Oculto en móvil */}
                       <TableCell className="hidden md:table-cell py-2 md:py-4">
@@ -2580,7 +2627,8 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -2645,6 +2693,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
             notes={physicalSaleData.notes}
             employees={employees}
             selectedEmployeeId={selectedEmployeeForSale}
+            branchName={selectedBranchForSale}
             subtotal={calculateSubtotal()}
             discount={calculateDiscount()}
             total={calculateTotal()}
@@ -2685,6 +2734,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
             onDiscountValueChange={discountValue => setPhysicalSaleData(current => ({ ...current, discountValue }))}
             onNotesChange={notes => setPhysicalSaleData(current => ({ ...current, notes }))}
             onEmployeeChange={setSelectedEmployeeForSale}
+            onBranchNameChange={setSelectedBranchForSale}
           />
 
           {showLegacyPos && (
@@ -3418,12 +3468,18 @@ export const OrdersList: React.FC<OrdersListProps> = ({ orders: initialOrders })
                           name: physicalSaleData.customerName,
                           phone: physicalSaleData.customerPhone || '',
                           email: physicalSaleData.customerEmail || '',
+                          agency_id: activeAgencyId || '2',
+                          owner_id: activeAgencyId || '2',
                           created_at: new Date().toISOString()
                         };
                         if (isSupabase) {
-                          await (db as any).from('contacts').insert(contactData);
+                          const { data, error } = await (db as any).from('contacts').insert(contactData).select('id').single();
+                          if (error) throw error;
+                          const savedContact = Array.isArray(data) ? data[0] : data;
+                          if (savedContact?.id) setSelectedContactId(String(savedContact.id));
                         } else {
-                          await addDoc(collection(db, 'contacts'), contactData);
+                          const savedContact = await addDoc(collection(db, 'contacts'), contactData);
+                          setSelectedContactId(String(savedContact.id));
                         }
                         toast({ title: "Contacto Guardado", description: `${physicalSaleData.customerName} fue agregado a tus contactos.` });
                         fetchContacts();

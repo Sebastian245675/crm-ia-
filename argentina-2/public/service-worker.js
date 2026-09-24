@@ -2,7 +2,7 @@
 // Este archivo debe colocarse en la carpeta public para que sea accesible desde la raíz
 
 // Nombre y versión de la caché
-const CACHE_NAME = 'regala-algo-cache-v8';
+const CACHE_NAME = 'regala-algo-cache-v9';
 
 // Recursos que se cachearán durante la instalación
 const PRECACHE_ASSETS = [

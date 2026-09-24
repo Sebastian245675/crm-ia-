@@ -111,6 +111,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         user_email: input?.customerEmail || null,
         userPhone: input?.customerPhone || null,
         user_phone: input?.customerPhone || null,
+        contact_id: input?.contactId || null,
+        contactId: input?.contactId || null,
+        branch_name: String(input?.branchName || 'Sin sucursal').trim() || 'Sin sucursal',
+        branchName: String(input?.branchName || 'Sin sucursal').trim() || 'Sin sucursal',
+        agency_id: String(input?.agencyId || '2'),
+        agencyId: String(input?.agencyId || '2'),
         items: normalizedItems,
         subtotal,
         discountType,
@@ -150,8 +156,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       for (const item of normalizedItems.filter((item) => !String(item.id).startsWith('generic-'))) {
         const proportionalTotal = subtotal > 0 ? (item.price * item.quantity * total) / subtotal : 0;
         await this.query(
-          'INSERT INTO ventas (producto_id, cantidad, total, fecha) VALUES (%s, %s, %s, NOW())',
-          [Number(item.id), item.quantity, proportionalTotal]
+          'INSERT INTO ventas (producto_id, cantidad, total, fecha, agency_id, branch_name) VALUES (%s, %s, %s, NOW(), %s, %s)',
+          [Number(item.id), item.quantity, proportionalTotal, String(input?.agencyId || '2'), order.branch_name]
         );
         await this.query(
           'INSERT INTO historial_modificaciones (producto_id, usuario_correo) VALUES (%s, %s)',
@@ -309,9 +315,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           producto_id INTEGER NOT NULL,
           cantidad REAL NOT NULL,
           total REAL NOT NULL,
-          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          agency_id TEXT,
+          branch_name TEXT
         );
       `);
+      for (const statement of [
+        'ALTER TABLE ventas ADD COLUMN agency_id TEXT;',
+        'ALTER TABLE ventas ADD COLUMN branch_name TEXT;'
+      ]) {
+        try { await this.runSqlite(statement); } catch (_) {}
+      }
       await this.runSqlite(`
         CREATE TABLE IF NOT EXISTS tasks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -476,9 +490,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           producto_id INTEGER NOT NULL,
           cantidad NUMERIC(10, 2) NOT NULL,
           total NUMERIC(10, 2) NOT NULL,
-          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          agency_id VARCHAR(100),
+          branch_name VARCHAR(255)
         );
       `);
+      await this.runPg('ALTER TABLE ventas ADD COLUMN IF NOT EXISTS agency_id VARCHAR(100);');
+      await this.runPg('ALTER TABLE ventas ADD COLUMN IF NOT EXISTS branch_name VARCHAR(255);');
       await this.runPg(`
         CREATE TABLE IF NOT EXISTS tasks (
           id SERIAL PRIMARY KEY,

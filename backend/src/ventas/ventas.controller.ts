@@ -106,7 +106,7 @@ export class VentasController {
   async getVentas(@Res() res: express.Response) {
     try {
       const rows = await this.db.query(
-        'SELECT v.id, v.producto_id, p.nombre as nombre_producto, v.cantidad, v.total, v.fecha FROM ventas v LEFT JOIN productos p ON v.producto_id = p.id ORDER BY v.fecha DESC'
+        'SELECT v.id, v.producto_id, p.nombre as nombre_producto, v.cantidad, v.total, v.fecha, v.agency_id, v.branch_name FROM ventas v LEFT JOIN productos p ON v.producto_id = p.id ORDER BY v.fecha DESC'
       );
       return res.status(HttpStatus.OK).json({ success: true, ventas: rows });
     } catch (e: any) {
