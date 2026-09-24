@@ -481,62 +481,60 @@ export const AdminPanel: React.FC = () => {
         return undefined;
       };
       const headers = [
-        'Fecha', 'Hora', 'Folio', 'ID venta', 'Colaborador', 'ID colaborador', 'Cliente',
-        'Correo', 'Tel\u00e9fono', 'Sucursal', 'Tipo', 'Estado', 'Pago',
-        'Productos (producto x cantidad @ precio = importe)', 'Subtotal', 'Descuento',
-        'Impuestos', 'Costo', 'Ganancia', 'Total cobrado', 'Recibido', 'Cambio',
-        'Notas', 'Factura / UUID', 'L\u00ednea de facturaci\u00f3n'
+        'FECHA/HORA', 'FOLIO', 'COLABORADOR', 'CLIENTE', 'SUCURSAL',
+        'PRODUCTOS', 'PAGO', 'SUBTOTAL', 'DESCUENTO', 'IMPUESTOS', 'COSTO', 'GANANCIA', 'TOTAL'
       ];
-      const toCell = (value: unknown) => String(value ?? '').replace(/[\t\r\n]+/g, ' ').trim();
+      const missing = '\u2014';
+      const toCell = (value: unknown) => String(value ?? missing).replace(/[\t\r\n|]+/g, ' ').trim();
       const dateFormatter = new Intl.DateTimeFormat('es-MX', {
         dateStyle: 'short', timeZone: 'America/Mexico_City'
       });
       const timeFormatter = new Intl.DateTimeFormat('es-MX', {
-        timeStyle: 'medium', timeZone: 'America/Mexico_City'
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Mexico_City'
       });
+      const formatMoneyCell = (value: any) => {
+        if (value === undefined || value === null || value === '') return missing;
+        if (typeof value === 'number' || (typeof value === 'string' && Number.isFinite(Number(value)))) return money(value);
+        return JSON.stringify(value);
+      };
       const rows = salesToday.map(order => {
         const items = Array.isArray(order.items) ? order.items : [];
         const date = getSaleDate(order);
-        const productSummary = items.map((item: any) => {
+        const products = items.map((item: any) => {
           const quantity = Number(item.quantity ?? item.cantidad ?? 0);
           const price = getFirst(item, ['price', 'precio', 'unit_price', 'unitPrice']);
-          const amount = getFirst(item, ['subtotal', 'total']) ?? (price !== undefined ? Number(price) * quantity : undefined);
-          const productName = item.name || item.productName || item.title || 'Producto sin nombre';
-          return `${productName} x ${quantity || 's/c'} @ ${displayValue(price)} = ${displayValue(amount)}`;
-        }).join(' ; ') || 'Sin detalle de productos';
+          const name = item.name || item.productName || item.title || 'Producto';
+          return `${name} x${quantity || '?'}${price !== undefined ? ` @ ${money(price)}` : ''}`;
+        }).join('; ') || missing;
         const employee = getFirst(order, ['employee_name', 'employeeName', 'colaborador', 'seller_name', 'sellerName', 'created_by', 'createdBy']);
-        const employeeId = getFirst(order, ['employee_id', 'employeeId', 'seller_id', 'sellerId', 'user_id', 'userId', 'created_by_id']);
         const customer = getFirst(order, ['customer_name', 'customerName', 'userName', 'user_name', 'cliente']);
+        const tax = getRecordedTax(order, items);
+        const profit = getRecordedProfit(order, items);
         const cells = [
-          date ? dateFormatter.format(date) : 'No registrada',
-          date ? timeFormatter.format(date) : 'No registrada',
-          order.order_number || order.orderNumber || 'No registrado',
-          order.id || 'No registrado',
-          employee || 'No registrado',
-          employeeId || 'No registrado',
-          customer || 'Cliente general / no especificado',
-          getFirst(order, ['customer_email', 'customerEmail', 'userEmail', 'user_email']) || 'No registrado',
-          getFirst(order, ['customer_phone', 'customerPhone', 'userPhone', 'user_phone']) || 'No registrado',
-          getFirst(order, ['branch_name', 'branchName', 'sucursal_nombre', 'sucursal']) || 'No registrada',
-          getFirst(order, ['order_type', 'orderType', 'tipo', 'origen']) || 'No registrado',
-          order.status || 'No registrado',
-          getFirst(order, ['payment_method', 'paymentMethod', 'metodo_pago']) || 'No registrado',
-          productSummary,
-          displayValue(getFirst(order, ['subtotal'])),
-          displayValue(getFirst(order, ['discountAmount', 'discount_amount', 'discount', 'descuento'])),
-          formatMaybeMoney(getRecordedTax(order, items)),
-          displayValue(getFirst(order, ['total_cost', 'totalCost', 'costo_total'])),
-          displayValue(getRecordedProfit(order, items)),
-          displayValue(getFirst(order, ['total', 'total_amount', 'totalAmount'])),
-          displayValue(getFirst(order, ['amountReceived', 'amount_received', 'recibido'])),
-          displayValue(getFirst(order, ['change', 'cambio'])),
-          getFirst(order, ['notes', 'order_notes', 'orderNotes']) || 'Sin notas',
-          getFirst(order, ['invoice_number', 'invoiceNumber', 'folio_fiscal', 'uuid', 'invoice_uuid']) || 'No registrado',
-          getFirst(order, ['billing_line_id', 'billingLineId']) || 'No registrada'
+          date ? `${dateFormatter.format(date)} ${timeFormatter.format(date)}` : missing,
+          order.order_number || order.orderNumber || order.id || missing,
+          employee || missing,
+          customer || 'Publico general',
+          getFirst(order, ['branch_name', 'branchName', 'sucursal_nombre', 'sucursal']) || missing,
+          products,
+          getFirst(order, ['payment_method', 'paymentMethod', 'metodo_pago']) || missing,
+          formatMoneyCell(getFirst(order, ['subtotal'])),
+          formatMoneyCell(getFirst(order, ['discountAmount', 'discount_amount', 'discount', 'descuento'])),
+          formatMoneyCell(tax),
+          formatMoneyCell(getFirst(order, ['total_cost', 'totalCost', 'costo_total'])),
+          formatMoneyCell(profit),
+          formatMoneyCell(getFirst(order, ['total', 'total_amount', 'totalAmount']))
         ];
-        return cells.map(toCell).join('\t');
+        return `| ${cells.map(toCell).join(' | ')} |`;
       });
-      const report = [headers.join('\t'), ...(rows.length ? rows : ['Sin ventas registradas para este periodo.'])];
+      const report = [
+        `INFORME DE VENTAS ${period === 'month' ? 'DEL MES' : 'DEL DIA'} - ${period === 'month' ? start.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : dateFormatter.format(start)}`,
+        `${missing} = dato no registrado`,
+        '',
+        `| ${headers.join(' | ')} |`,
+        `|${headers.map(() => '---').join('|')}|`,
+        ...(rows.length ? rows : [`| Sin ventas registradas para este periodo. |`])
+      ];
 
       const blob = new Blob(['\uFEFF' + report.join('\r\n')], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -549,7 +547,7 @@ export const AdminPanel: React.FC = () => {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast({ title: 'Reporte descargado', description: `Archivo TXT tabulado con ${salesToday.length} ventas ${period === 'month' ? 'del mes' : 'del d\u00eda'}.` });
+      toast({ title: 'Reporte descargado', description: `Reporte TXT compacto con ${salesToday.length} ventas ${period === 'month' ? 'del mes' : 'del dia'}.` });
     } catch (error) {
       console.error('[AdminPanel] No se pudo generar el informe de ventas:', error);
       toast({ title: 'No se pudo descargar el reporte', description: 'Ocurrió un error al consultar o preparar las ventas del día.', variant: 'destructive' });
