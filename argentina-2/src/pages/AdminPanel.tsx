@@ -101,8 +101,6 @@ const WppConfiguration = lazy(() => import('@/components/admin/WppConfiguration'
 const MailConfiguration = lazy(() => import('@/components/admin/MailConfiguration'));
 const AiAgentsDashboard = lazy(() => import('@/components/admin/AiAgentsDashboard').then(m => ({ default: m.AiAgentsDashboard })));
 const FunnelsManager = lazy(() => import('@/components/admin/FunnelsManager').then(m => ({ default: m.FunnelsManager })));
-const SitiosManager = lazy(() => import('@/components/admin/SitiosManager').then(m => ({ default: m.SitiosManager })));
-const SeoManager = lazy(() => import('@/components/admin/SeoManager').then(m => ({ default: m.SeoManager })));
 const WebsiteManager = lazy(() => import('@/components/admin/WebsiteManager').then(m => ({ default: m.WebsiteManager })));
 const PaymentGatewayManager = lazy(() => import('@/components/admin/PaymentGatewayManager').then(m => ({ default: m.PaymentGatewayManager })));
 const FacturacionManager = lazy(() => import('@/components/admin/FacturacionManager').then(m => ({ default: m.FacturacionManager })));
@@ -163,8 +161,6 @@ const ADMIN_TAB_PATHS: Record<string, string> = {
   erp: 'erp',
   website: 'sitio-web',
   funnels: 'sitio-web/funnels',
-  sitios: 'sitio-web/sitios',
-  seo: 'sitio-web/seo',
   analytics: 'sitio-web/analitica',
   comments: 'sitio-web/comentarios',
   filters: 'sitio-web/filtros',
@@ -1924,8 +1920,6 @@ export const AdminPanel: React.FC = () => {
                 <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
                 <TabsTrigger value="help-manual">Manual de Ayuda</TabsTrigger>
                 <TabsTrigger value="funnels">Funnels</TabsTrigger>
-                <TabsTrigger value="sitios">Sitios</TabsTrigger>
-                <TabsTrigger value="seo">SEO</TabsTrigger>
                 <TabsTrigger value="comments">Comments</TabsTrigger>
                 <TabsTrigger value="website">Website</TabsTrigger>
                 <TabsTrigger value="calendars">Calendario</TabsTrigger>
@@ -3028,21 +3022,6 @@ export const AdminPanel: React.FC = () => {
                   <WebsiteManager key={user?.agencyId || 'default'} initialTab="funnels" isAdmin={isAdmin} onNavigate={setActiveTab} />
                 </Suspense>
               </TabsContent>
-
-              {/* Sitios tab */}
-              <TabsContent value="sitios" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="sitios" isAdmin={isAdmin} onNavigate={setActiveTab} />
-                </Suspense>
-              </TabsContent>
-
-              {/* SEO tab */}
-              <TabsContent value="seo" className="space-y-6">
-                <Suspense fallback={<LoadingFallback />}>
-                  <WebsiteManager key={user?.agencyId || 'default'} initialTab="seo" isAdmin={isAdmin} onNavigate={setActiveTab} />
-                </Suspense>
-              </TabsContent>
-
 
               {/* Empleados - Nueva sección */}
               <TabsContent value="employees" className="space-y-6">

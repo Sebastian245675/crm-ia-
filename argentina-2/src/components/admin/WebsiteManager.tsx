@@ -4,11 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, MoreHorizontal, Package, SlidersHorizontal, Sparkles, Tags } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FunnelsManager } from './FunnelsManager';
-import { SitiosManager } from './SitiosManager';
-import { SeoManager } from './SeoManager';
 import { CommentsManager } from './CommentsManager';
 import { ProductAnalyticsView } from './ProductAnalytics';
-import { FormBuilder } from './FormBuilder';
 import { ReportsManager } from './ReportsManager';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -42,23 +39,16 @@ export const WebsiteManager: React.FC<WebsiteManagerProps> = ({ initialTab = 'fu
   // Definir pestañas para la navegación horizontal
   const tabs = [
     { id: 'funnels', label: 'Funnels', type: 'active' },
-    { id: 'sitios', label: 'Sitios', type: 'active' },
-    { id: 'seo', label: 'SEO', type: 'active', beta: true },
     ...(isAdmin ? [{ id: 'analytics', label: 'Analítica', type: 'active' }] : []),
     { id: 'reportes', label: 'Reportes', type: 'active' },
     { id: 'comments', label: 'Comentarios', type: 'active' },
     { id: 'blogs', label: 'Blogs', type: 'placeholder' },
-    { id: 'formularios', label: 'Formularios', type: 'active' }
   ];
 
   const renderContent = () => {
     switch (activeSubTab) {
       case 'funnels':
         return <FunnelsManager key={agencyKey} />;
-      case 'sitios':
-        return <SitiosManager key={agencyKey} />;
-      case 'seo':
-        return <SeoManager key={agencyKey} />;
       case 'analytics':
         return <ProductAnalyticsView key={agencyKey} />;
       case 'reportes':
@@ -72,8 +62,6 @@ export const WebsiteManager: React.FC<WebsiteManagerProps> = ({ initialTab = 'fu
             description="Crea artículos y contenido optimizado para atraer tráfico orgánico a tu tienda en línea."
           />
         );
-      case 'formularios':
-        return <FormBuilder key={agencyKey} />;
       default:
         return <FunnelsManager key={agencyKey} />;
     }
