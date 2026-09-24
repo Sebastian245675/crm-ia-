@@ -480,69 +480,63 @@ export const AdminPanel: React.FC = () => {
         }
         return undefined;
       };
-      const mexicoDateTime = new Intl.DateTimeFormat('es-MX', {
-        dateStyle: 'medium', timeStyle: 'medium', timeZone: 'America/Mexico_City'
-      });
-      const report = [
-        period === 'month' ? 'DETALLE DE VENTAS DEL MES' : 'DETALLE DE VENTAS DEL DÍA',
-        `Fecha de generación: ${mexicoDateTime.format(new Date())}`,
-        `Periodo: ${start.toLocaleDateString('es-MX')} - ${new Date(end.getTime() - 1).toLocaleDateString('es-MX')}`,
-        `Cuenta: ${user?.sub_cuenta || user?.name || activeAgencyId || 'Cuenta activa'}`,
-        `Ventas registradas: ${salesToday.length}`,
-        `Total de ventas: ${money(salesToday.reduce((sum, order) => sum + Number(order.total || 0), 0))}`,
-        '',
-        ...salesToday.flatMap((order, index) => {
-          const items = Array.isArray(order.items) ? order.items : [];
-          const date = getSaleDate(order);
-          const employee = getFirst(order, ['employee_name', 'employeeName', 'colaborador', 'seller_name', 'sellerName', 'created_by', 'createdBy']);
-          const employeeId = getFirst(order, ['employee_id', 'employeeId', 'seller_id', 'sellerId', 'user_id', 'userId', 'created_by_id']);
-          const customer = getFirst(order, ['customer_name', 'customerName', 'userName', 'user_name', 'cliente']);
-          const taxes = getRecordedTax(order, items);
-          const profit = getRecordedProfit(order, items);
-          const lines = [
-            `VENTA ${index + 1}${order.order_number || order.orderNumber ? ` — Folio: ${order.order_number || order.orderNumber}` : ''}`,
-            `ID: ${order.id || 'No registrado'}`,
-            `Fecha y hora: ${date ? mexicoDateTime.format(date) : 'No registrada'} (hora de Ciudad de México)`,
-            `Colaborador: ${employee || 'No registrado'}`,
-            `ID del colaborador: ${employeeId || 'No registrado'}`,
-            `Cliente: ${customer || 'Cliente general / no especificado'}`,
-            `Correo del cliente: ${getFirst(order, ['customer_email', 'customerEmail', 'userEmail', 'user_email']) || 'No registrado'}`,
-            `Teléfono del cliente: ${getFirst(order, ['customer_phone', 'customerPhone', 'userPhone', 'user_phone']) || 'No registrado'}`,
-            `Sucursal: ${getFirst(order, ['branch_name', 'branchName', 'sucursal_nombre', 'sucursal']) || 'No registrada'}`,
-            `Tipo de venta: ${getFirst(order, ['order_type', 'orderType', 'tipo', 'origen']) || 'No registrado'}`,
-            `Estado: ${order.status || 'No registrado'}`,
-            `Método de pago: ${getFirst(order, ['payment_method', 'paymentMethod', 'metodo_pago']) || 'No registrado'}`,
-            `Subtotal: ${displayValue(getFirst(order, ['subtotal']))}`,
-            `Descuento: ${displayValue(getFirst(order, ['discountAmount', 'discount_amount', 'discount', 'descuento']))}`,
-            `Tipo/valor de descuento: ${getFirst(order, ['discountType', 'discount_type']) ?? 'No registrado'} / ${displayValue(getFirst(order, ['discountValue', 'discount_value']))}`,
-            `Impuestos: ${formatMaybeMoney(taxes)}`,
-            `Ganancia/utilidad: ${displayValue(profit)}`,
-            `Costo registrado: ${displayValue(getFirst(order, ['total_cost', 'totalCost', 'costo_total']))}`,
-            `Total cobrado: ${displayValue(getFirst(order, ['total', 'total_amount', 'totalAmount']))}`,
-            `Importe recibido: ${displayValue(getFirst(order, ['amountReceived', 'amount_received', 'recibido']))}`,
-            `Cambio: ${displayValue(getFirst(order, ['change', 'cambio']))}`,
-            `Factura/folio fiscal: ${getFirst(order, ['invoice_number', 'invoiceNumber', 'folio_fiscal', 'uuid', 'invoice_uuid']) || 'No registrado'}`,
-            `Línea de facturación: ${getFirst(order, ['billing_line_id', 'billingLineId']) || 'No registrada'}`,
-            `Notas: ${getFirst(order, ['notes', 'order_notes', 'orderNotes']) || 'Sin notas'}`,
-            'Productos:'
-          ];
-          if (!items.length) lines.push('  No hay productos detallados en el registro de esta venta.');
-          items.forEach((item: any, itemIndex: number) => {
-            const quantity = Number(item.quantity ?? item.cantidad ?? 0);
-            const unitPrice = getFirst(item, ['price', 'precio', 'unit_price', 'unitPrice']);
-            const cost = getFirst(item, ['cost', 'costPrice', 'cost_price', 'costo']);
-            const itemProfit = getFirst(item, ['profit', 'ganancia', 'total_profit', 'totalProfit']);
-            const itemTax = getFirst(item, ['tax', 'tax_amount', 'taxAmount', 'impuestos', 'iva']);
-            lines.push(
-              `  ${itemIndex + 1}. ${item.name || item.productName || item.title || 'Producto sin nombre'}`,
-              `     Cantidad: ${quantity || 'No registrada'} | Precio unitario: ${displayValue(unitPrice)} | Importe: ${displayValue(getFirst(item, ['subtotal', 'total']) ?? (unitPrice !== undefined ? Number(unitPrice) * quantity : undefined))}`,
-              `     Costo: ${displayValue(cost)} | Ganancia: ${displayValue(itemProfit)} | Impuesto: ${formatMaybeMoney(itemTax)}`
-            );
-          });
-          return [...lines, '', ''];
-        })
+      const headers = [
+        'Fecha', 'Hora', 'Folio', 'ID venta', 'Colaborador', 'ID colaborador', 'Cliente',
+        'Correo', 'Tel\u00e9fono', 'Sucursal', 'Tipo', 'Estado', 'Pago',
+        'Productos (producto x cantidad @ precio = importe)', 'Subtotal', 'Descuento',
+        'Impuestos', 'Costo', 'Ganancia', 'Total cobrado', 'Recibido', 'Cambio',
+        'Notas', 'Factura / UUID', 'L\u00ednea de facturaci\u00f3n'
       ];
-      if (!salesToday.length) report.push(period === 'month' ? 'No se registraron ventas confirmadas en este mes.' : 'No se registraron ventas confirmadas para hoy.');
+      const toCell = (value: unknown) => String(value ?? '').replace(/[\t\r\n]+/g, ' ').trim();
+      const dateFormatter = new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'short', timeZone: 'America/Mexico_City'
+      });
+      const timeFormatter = new Intl.DateTimeFormat('es-MX', {
+        timeStyle: 'medium', timeZone: 'America/Mexico_City'
+      });
+      const rows = salesToday.map(order => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        const date = getSaleDate(order);
+        const productSummary = items.map((item: any) => {
+          const quantity = Number(item.quantity ?? item.cantidad ?? 0);
+          const price = getFirst(item, ['price', 'precio', 'unit_price', 'unitPrice']);
+          const amount = getFirst(item, ['subtotal', 'total']) ?? (price !== undefined ? Number(price) * quantity : undefined);
+          const productName = item.name || item.productName || item.title || 'Producto sin nombre';
+          return `${productName} x ${quantity || 's/c'} @ ${displayValue(price)} = ${displayValue(amount)}`;
+        }).join(' ; ') || 'Sin detalle de productos';
+        const employee = getFirst(order, ['employee_name', 'employeeName', 'colaborador', 'seller_name', 'sellerName', 'created_by', 'createdBy']);
+        const employeeId = getFirst(order, ['employee_id', 'employeeId', 'seller_id', 'sellerId', 'user_id', 'userId', 'created_by_id']);
+        const customer = getFirst(order, ['customer_name', 'customerName', 'userName', 'user_name', 'cliente']);
+        const cells = [
+          date ? dateFormatter.format(date) : 'No registrada',
+          date ? timeFormatter.format(date) : 'No registrada',
+          order.order_number || order.orderNumber || 'No registrado',
+          order.id || 'No registrado',
+          employee || 'No registrado',
+          employeeId || 'No registrado',
+          customer || 'Cliente general / no especificado',
+          getFirst(order, ['customer_email', 'customerEmail', 'userEmail', 'user_email']) || 'No registrado',
+          getFirst(order, ['customer_phone', 'customerPhone', 'userPhone', 'user_phone']) || 'No registrado',
+          getFirst(order, ['branch_name', 'branchName', 'sucursal_nombre', 'sucursal']) || 'No registrada',
+          getFirst(order, ['order_type', 'orderType', 'tipo', 'origen']) || 'No registrado',
+          order.status || 'No registrado',
+          getFirst(order, ['payment_method', 'paymentMethod', 'metodo_pago']) || 'No registrado',
+          productSummary,
+          displayValue(getFirst(order, ['subtotal'])),
+          displayValue(getFirst(order, ['discountAmount', 'discount_amount', 'discount', 'descuento'])),
+          formatMaybeMoney(getRecordedTax(order, items)),
+          displayValue(getFirst(order, ['total_cost', 'totalCost', 'costo_total'])),
+          displayValue(getRecordedProfit(order, items)),
+          displayValue(getFirst(order, ['total', 'total_amount', 'totalAmount'])),
+          displayValue(getFirst(order, ['amountReceived', 'amount_received', 'recibido'])),
+          displayValue(getFirst(order, ['change', 'cambio'])),
+          getFirst(order, ['notes', 'order_notes', 'orderNotes']) || 'Sin notas',
+          getFirst(order, ['invoice_number', 'invoiceNumber', 'folio_fiscal', 'uuid', 'invoice_uuid']) || 'No registrado',
+          getFirst(order, ['billing_line_id', 'billingLineId']) || 'No registrada'
+        ];
+        return cells.map(toCell).join('\t');
+      });
+      const report = [headers.join('\t'), ...(rows.length ? rows : ['Sin ventas registradas para este periodo.'])];
 
       const blob = new Blob(['\uFEFF' + report.join('\r\n')], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -555,9 +549,9 @@ export const AdminPanel: React.FC = () => {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast({ title: 'Reporte descargado', description: `Archivo TXT con ${salesToday.length} ventas ${period === 'month' ? 'del mes' : 'del d\u00eda'}.` });
+      toast({ title: 'Reporte descargado', description: `Archivo TXT tabulado con ${salesToday.length} ventas ${period === 'month' ? 'del mes' : 'del d\u00eda'}.` });
     } catch (error) {
-      console.error('[AdminPanel] No se pudo generar el detalle diario de ventas:', error);
+      console.error('[AdminPanel] No se pudo generar el informe de ventas:', error);
       toast({ title: 'No se pudo descargar el reporte', description: 'Ocurrió un error al consultar o preparar las ventas del día.', variant: 'destructive' });
     } finally {
       setDownloadingSalesPeriod(null);
