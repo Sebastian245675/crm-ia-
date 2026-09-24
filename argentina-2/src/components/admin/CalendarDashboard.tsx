@@ -62,7 +62,6 @@ interface CustomCalendar {
 const DEFAULT_CALENDARS: CustomCalendar[] = [
   { id: 'general', name: 'Calendario General', color: '#3b82f6' },
   { id: 'citas', name: 'Citas de Ventas', color: '#10b981' },
-  { id: 'inmobiliaria', name: 'Asesoría Inmobiliaria', color: '#8b5cf6' },
 ];
 
 export const CalendarDashboard: React.FC = () => {
@@ -179,60 +178,6 @@ export const CalendarDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMockEvents = (assignedName: string): CalendarEvent[] => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-    return [
-      {
-        id: 'mock-1',
-        title: 'Asesoría Inmobiliaria - Casa Palermo',
-        clientName: 'Juan Pérez',
-        clientEmail: 'juan.perez@gmail.com',
-        clientPhone: '1123456789',
-        date: todayStr,
-        startTime: '10:00',
-        endTime: '11:00',
-        type: 'cita',
-        status: 'confirmada',
-        assignedUser: assignedName,
-        calendarId: 'inmobiliaria',
-        notes: 'Interesado en casa de 3 habitaciones con m2 de jardín.'
-      },
-      {
-        id: 'mock-2',
-        title: 'Llamada de Venta - Perfumes Importados',
-        clientName: 'María Rodríguez',
-        clientEmail: 'maria.rod@hotmail.com',
-        clientPhone: '1198765432',
-        date: todayStr,
-        startTime: '14:30',
-        endTime: '15:30',
-        type: 'cita',
-        status: 'pendiente',
-        assignedUser: assignedName,
-        calendarId: 'citas',
-        notes: 'Quiere cotización para lote mayorista.'
-      },
-      {
-        id: 'mock-3',
-        title: 'Almuerzo de Equipo (Bloqueado)',
-        clientName: '',
-        clientEmail: '',
-        clientPhone: '',
-        date: tomorrowStr,
-        startTime: '13:00',
-        endTime: '14:30',
-        type: 'bloqueo',
-        status: 'confirmada',
-        assignedUser: assignedName,
-        calendarId: 'general'
-      }
-    ];
   };
 
   // Save Settings Helper

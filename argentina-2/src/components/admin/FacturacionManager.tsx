@@ -75,7 +75,7 @@ export const FacturacionManager: React.FC = () => {
           metodo_pago: 'PUE',
           items: [
             {
-              name: 'Producto de Prueba (Bicicleta Premium)',
+              name: 'Producto de prueba',
               price: 1160,
               quantity: 1,
             }
