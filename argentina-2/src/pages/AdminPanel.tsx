@@ -296,6 +296,7 @@ export const AdminPanel: React.FC = () => {
   const [sessionStart, setSessionStart] = useState<Date>(new Date());
   const [todaySales, setTodaySales] = useState<number>(0);
   const [todaySalesLoading, setTodaySalesLoading] = useState<boolean>(true);
+  const [downloadingTodaySales, setDownloadingTodaySales] = useState(false);
   const [monthlySales, setMonthlySales] = useState<number>(0);
   const [monthlySalesLoading, setMonthlySalesLoading] = useState<boolean>(true);
   const [avgConversations, setAvgConversations] = useState<number>(0);
@@ -411,6 +412,151 @@ export const AdminPanel: React.FC = () => {
 
   // Caché para evitar recalcular ventas mensuales en la misma sesión
   const monthlySalesCacheRef = useRef<{ agencyId: string; month: number; year: number; value: number } | null>(null);
+
+  const handleDownloadTodaySalesDetails = async () => {
+    setDownloadingTodaySales(true);
+    try {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      let sales: any[] = [];
+
+      if (isSupabase) {
+        const { data, error } = await (db as any).from('orders').select('*')
+          .gte('created_at', start.toISOString())
+          .lt('created_at', end.toISOString())
+          .eq('status', REAL_SALE_STATUS);
+        if (error) throw error;
+        sales = (data || []).filter((order: any) => isOrderForAgency(order, activeAgencyId));
+      } else {
+        const snapshot = await getDocs(query(
+          collection(db, 'orders'),
+          where('status', '==', REAL_SALE_STATUS),
+          where('createdAt', '>=', Timestamp.fromDate(start)),
+          where('createdAt', '<', Timestamp.fromDate(end))
+        ));
+        sales = snapshot.docs.map((sale: any) => ({ id: sale.id, ...sale.data() }))
+          .filter((order: any) => isOrderForAgency(order, activeAgencyId));
+      }
+
+      const getSaleDate = (order: any) => {
+        const value = order.created_at ?? order.createdAt ?? order.confirmedAt ?? order.fecha;
+        if (value?.toDate) return value.toDate();
+        if (value?.seconds) return new Date(value.seconds * 1000);
+        return value ? new Date(value) : null;
+      };
+      const salesToday = sales.filter(order => {
+        const date = getSaleDate(order);
+        return date && date >= start && date < end;
+      }).sort((a, b) => (getSaleDate(a)?.getTime() || 0) - (getSaleDate(b)?.getTime() || 0));
+      const money = (value: unknown) => formatCurrency(Number(value) || 0);
+      const displayValue = (value: unknown) => value === undefined || value === null || value === '' ? 'No registrado' : money(value);
+      const getFirst = (source: any, keys: string[]) => {
+        for (const key of keys) if (source?.[key] !== undefined && source[key] !== null && source[key] !== '') return source[key];
+        return undefined;
+      };
+      const formatMaybeMoney = (value: any) => {
+        if (value === undefined || value === null || value === '') return 'No registrado';
+        if (typeof value === 'number' || (typeof value === 'string' && Number.isFinite(Number(value)))) return money(value);
+        return JSON.stringify(value);
+      };
+      const getRecordedProfit = (order: any, items: any[]) => {
+        const total = getFirst(order, ['total_profit', 'totalProfit', 'ganancia_total', 'gananciaTotal', 'profit']);
+        if (total !== undefined) return total;
+        if (items.length && items.every(item => getFirst(item, ['profit', 'ganancia', 'total_profit', 'totalProfit']) !== undefined)) {
+          return items.reduce((sum, item) => sum + Number(getFirst(item, ['profit', 'ganancia', 'total_profit', 'totalProfit']) || 0), 0);
+        }
+        return undefined;
+      };
+      const getRecordedTax = (order: any, items: any[]) => {
+        const total = getFirst(order, ['tax', 'taxes', 'impuestos', 'tax_amount', 'taxAmount', 'iva', 'iva_amount', 'ivaAmount']);
+        if (total !== undefined) return total;
+        if (items.length && items.every(item => getFirst(item, ['tax', 'tax_amount', 'taxAmount', 'impuestos', 'iva']) !== undefined)) {
+          return items.reduce((sum, item) => sum + Number(getFirst(item, ['tax', 'tax_amount', 'taxAmount', 'impuestos', 'iva']) || 0), 0);
+        }
+        return undefined;
+      };
+      const mexicoDateTime = new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'medium', timeStyle: 'medium', timeZone: 'America/Mexico_City'
+      });
+      const report = [
+        'DETALLE DE VENTAS DEL DÍA',
+        `Fecha de generación: ${mexicoDateTime.format(new Date())}`,
+        `Cuenta: ${user?.sub_cuenta || user?.name || activeAgencyId || 'Cuenta activa'}`,
+        `Ventas registradas: ${salesToday.length}`,
+        `Total de ventas: ${money(salesToday.reduce((sum, order) => sum + Number(order.total || 0), 0))}`,
+        '',
+        ...salesToday.flatMap((order, index) => {
+          const items = Array.isArray(order.items) ? order.items : [];
+          const date = getSaleDate(order);
+          const employee = getFirst(order, ['employee_name', 'employeeName', 'colaborador', 'seller_name', 'sellerName', 'created_by', 'createdBy']);
+          const employeeId = getFirst(order, ['employee_id', 'employeeId', 'seller_id', 'sellerId', 'user_id', 'userId', 'created_by_id']);
+          const customer = getFirst(order, ['customer_name', 'customerName', 'userName', 'user_name', 'cliente']);
+          const taxes = getRecordedTax(order, items);
+          const profit = getRecordedProfit(order, items);
+          const lines = [
+            `VENTA ${index + 1}${order.order_number || order.orderNumber ? ` — Folio: ${order.order_number || order.orderNumber}` : ''}`,
+            `ID: ${order.id || 'No registrado'}`,
+            `Fecha y hora: ${date ? mexicoDateTime.format(date) : 'No registrada'} (hora de Ciudad de México)`,
+            `Colaborador: ${employee || 'No registrado'}`,
+            `ID del colaborador: ${employeeId || 'No registrado'}`,
+            `Cliente: ${customer || 'Cliente general / no especificado'}`,
+            `Correo del cliente: ${getFirst(order, ['customer_email', 'customerEmail', 'userEmail', 'user_email']) || 'No registrado'}`,
+            `Teléfono del cliente: ${getFirst(order, ['customer_phone', 'customerPhone', 'userPhone', 'user_phone']) || 'No registrado'}`,
+            `Sucursal: ${getFirst(order, ['branch_name', 'branchName', 'sucursal_nombre', 'sucursal']) || 'No registrada'}`,
+            `Tipo de venta: ${getFirst(order, ['order_type', 'orderType', 'tipo', 'origen']) || 'No registrado'}`,
+            `Estado: ${order.status || 'No registrado'}`,
+            `Método de pago: ${getFirst(order, ['payment_method', 'paymentMethod', 'metodo_pago']) || 'No registrado'}`,
+            `Subtotal: ${displayValue(getFirst(order, ['subtotal']))}`,
+            `Descuento: ${displayValue(getFirst(order, ['discountAmount', 'discount_amount', 'discount', 'descuento']))}`,
+            `Tipo/valor de descuento: ${getFirst(order, ['discountType', 'discount_type']) ?? 'No registrado'} / ${displayValue(getFirst(order, ['discountValue', 'discount_value']))}`,
+            `Impuestos: ${formatMaybeMoney(taxes)}`,
+            `Ganancia/utilidad: ${displayValue(profit)}`,
+            `Costo registrado: ${displayValue(getFirst(order, ['total_cost', 'totalCost', 'costo_total']))}`,
+            `Total cobrado: ${displayValue(getFirst(order, ['total', 'total_amount', 'totalAmount']))}`,
+            `Importe recibido: ${displayValue(getFirst(order, ['amountReceived', 'amount_received', 'recibido']))}`,
+            `Cambio: ${displayValue(getFirst(order, ['change', 'cambio']))}`,
+            `Factura/folio fiscal: ${getFirst(order, ['invoice_number', 'invoiceNumber', 'folio_fiscal', 'uuid', 'invoice_uuid']) || 'No registrado'}`,
+            `Línea de facturación: ${getFirst(order, ['billing_line_id', 'billingLineId']) || 'No registrada'}`,
+            `Notas: ${getFirst(order, ['notes', 'order_notes', 'orderNotes']) || 'Sin notas'}`,
+            'Productos:'
+          ];
+          if (!items.length) lines.push('  No hay productos detallados en el registro de esta venta.');
+          items.forEach((item: any, itemIndex: number) => {
+            const quantity = Number(item.quantity ?? item.cantidad ?? 0);
+            const unitPrice = getFirst(item, ['price', 'precio', 'unit_price', 'unitPrice']);
+            const cost = getFirst(item, ['cost', 'costPrice', 'cost_price', 'costo']);
+            const itemProfit = getFirst(item, ['profit', 'ganancia', 'total_profit', 'totalProfit']);
+            const itemTax = getFirst(item, ['tax', 'tax_amount', 'taxAmount', 'impuestos', 'iva']);
+            lines.push(
+              `  ${itemIndex + 1}. ${item.name || item.productName || item.title || 'Producto sin nombre'}`,
+              `     Cantidad: ${quantity || 'No registrada'} | Precio unitario: ${displayValue(unitPrice)} | Importe: ${displayValue(getFirst(item, ['subtotal', 'total']) ?? (unitPrice !== undefined ? Number(unitPrice) * quantity : undefined))}`,
+              `     Costo: ${displayValue(cost)} | Ganancia: ${displayValue(itemProfit)} | Impuesto: ${formatMaybeMoney(itemTax)}`
+            );
+          });
+          return [...lines, '', ''];
+        })
+      ];
+      if (!salesToday.length) report.push('No se registraron ventas confirmadas para hoy.');
+
+      const blob = new Blob(['\uFEFF' + report.join('\r\n')], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ventas-del-dia-${start.toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Reporte descargado', description: `Archivo TXT con ${salesToday.length} ventas del día.` });
+    } catch (error) {
+      console.error('[AdminPanel] No se pudo generar el detalle diario de ventas:', error);
+      toast({ title: 'No se pudo descargar el reporte', description: 'Ocurrió un error al consultar o preparar las ventas del día.', variant: 'destructive' });
+    } finally {
+      setDownloadingTodaySales(false);
+    }
+  };
 
   // Implementar el hook para prevenir problemas de pantalla blanca en subcuentas
   const { hasRenderIssues, manualRefresh } = useSubAccountRenderFix(user?.subCuenta === "si");
@@ -1993,10 +2139,10 @@ export const AdminPanel: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-4 pt-3 border-t border-green-400/30">
-                        <a href="#" className="text-xs text-green-50 hover:text-white transition-colors flex items-center group">
-                          Más información
+                        <button type="button" onClick={handleDownloadTodaySalesDetails} disabled={downloadingTodaySales} className="text-xs text-green-50 hover:text-white transition-colors flex items-center group disabled:opacity-60">
+                          {downloadingTodaySales ? 'Preparando archivo...' : 'M\u00e1s informaci\u00f3n'}
                           <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                        </a>
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
