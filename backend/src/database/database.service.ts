@@ -355,7 +355,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           total REAL NOT NULL,
           estatus TEXT NOT NULL,
-          billing_line_id TEXT
+          billing_line_id TEXT,
+          agency_id TEXT
         );
       `);
       await this.runSqlite(`
@@ -415,6 +416,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       } catch (_) {}
       try {
         await this.runSqlite("ALTER TABLE facturas_electronicas ADD COLUMN billing_line_id TEXT;");
+      } catch (_) {}
+      try {
+        await this.runSqlite("ALTER TABLE facturas_electronicas ADD COLUMN agency_id TEXT;");
       } catch (_) {}
     } else {
       await this.runPg(`
@@ -526,7 +530,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           total NUMERIC(10, 2) NOT NULL,
           estatus VARCHAR(50) NOT NULL,
-          billing_line_id VARCHAR(255)
+          billing_line_id VARCHAR(255),
+          agency_id VARCHAR(100)
         );
       `);
       await this.runPg(`
@@ -583,6 +588,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
       try {
         await this.runPg("ALTER TABLE facturas_electronicas ADD COLUMN billing_line_id VARCHAR(255);");
+      } catch (_) {}
+      try {
+        await this.runPg("ALTER TABLE facturas_electronicas ADD COLUMN agency_id VARCHAR(100);");
       } catch (_) {}
     }
   }

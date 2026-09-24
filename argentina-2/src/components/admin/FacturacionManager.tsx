@@ -289,12 +289,15 @@ export const FacturacionManager: React.FC = () => {
       const data = await res.json();
       const allInvoices = data.facturas || [];
 
-      // Filter invoices matching this agency's billing lines or agency items
+      // POS invoices carry agency_id directly; legacy Panel invoices use a billing line.
       const { data: lineData } = await db.from('lineas_facturacion').select('*');
       const agencyLines = (lineData || []).filter((l: any) => isItemForAgency(l, activeAgencyId));
       const lineIds = new Set(agencyLines.map((l: any) => String(l.id)));
 
       const filtered = allInvoices.filter((inv: any) => {
+        if (inv.agency_id || inv.agencyId || inv.owner_id) {
+          return isItemForAgency(inv, activeAgencyId);
+        }
         if (inv.billing_line_id) {
           return lineIds.has(String(inv.billing_line_id));
         }

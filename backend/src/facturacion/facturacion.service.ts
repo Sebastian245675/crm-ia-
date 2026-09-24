@@ -145,7 +145,7 @@ export class FacturacionService {
   async getHistorial() {
     try {
       const rows = await this.db.query(
-        'SELECT id, order_id, uuid, fecha, total, estatus, billing_line_id FROM facturas_electronicas ORDER BY fecha DESC'
+        'SELECT id, order_id, uuid, fecha, total, estatus, billing_line_id, agency_id FROM facturas_electronicas ORDER BY fecha DESC'
       );
       return rows;
     } catch (e: any) {
