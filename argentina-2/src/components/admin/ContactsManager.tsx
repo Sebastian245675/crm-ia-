@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Plus,
   Download,
+  Upload,
   MoreVertical,
   Search,
   Filter,
@@ -125,6 +127,54 @@ export const ContactsManager: React.FC = () => {
   const [bulkTagInput, setBulkTagInput] = useState('');
   const [bulkRemoveTagInput, setBulkRemoveTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImportContacts = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    let saved = 0;
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' });
+      if (!rows.length) throw new Error('El archivo no contiene contactos.');
+      const normalizeHeader = (header: string) => header.trim().toLocaleLowerCase('es-MX').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+      const imported = rows.map(row => {
+        const values = new Map(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const value = values.get(normalizeHeader(key));
+            if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+          }
+          return '';
+        };
+        return {
+          name: get('nombre', 'name', 'contacto'),
+          phone: get('telefono', 'celular', 'phone', 'mobile'),
+          email: get('email', 'correo', 'correo electronico'),
+          company: get('empresa', 'compania', 'company', 'organization'),
+          tags: get('etiquetas', 'etiqueta', 'tags', 'tag').split(/[,;|]/).map(tag => tag.trim()).filter(Boolean),
+          created_at: new Date().toISOString(),
+          agency_id: activeAgencyId || '2',
+        };
+      }).filter(contact => contact.name);
+      if (!imported.length) throw new Error('No encontré filas con nombre. Usa una columna “Nombre” o “Name”.');
+      if (!isSupabase) throw new Error('No está disponible la conexión con la base de datos.');
+
+      for (const contact of imported) {
+        const { error } = await db.from('contacts').insert([contact]);
+        if (error) throw error;
+        saved++;
+      }
+      await loadContacts();
+      toast({ title: 'Importación completada', description: `Se cargaron ${saved} contactos desde ${file.name}.` });
+    } catch (error: any) {
+      console.error('Error importing contacts:', error);
+      const detail = error?.message || 'Revisa que sea un Excel o CSV válido.';
+      toast({ title: 'Importación incompleta', description: saved ? `Se guardaron ${saved} contactos antes del error. ${detail}` : detail, variant: 'destructive' });
+    }
+  };
 
   useEffect(() => {
     loadContacts();
@@ -719,10 +769,15 @@ export const ContactsManager: React.FC = () => {
             Gestiona tus contactos y listas inteligentes con herramientas avanzadas.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="border-slate-200 shadow-sm hidden sm:flex" onClick={handleExportContacts}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" className="border-slate-200 shadow-sm" onClick={handleExportContacts}>
             <Download className="h-4 w-4 mr-2" />
             Exportar
+          </Button>
+          <input ref={importFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImportContacts} className="hidden" aria-label="Seleccionar archivo de contactos" />
+          <Button variant="outline" className="border-slate-200 shadow-sm" onClick={() => importFileRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar
           </Button>
           <div className="flex items-center gap-1">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all shadow-md active:scale-95" onClick={() => setShowAddDialog(true)}>
@@ -786,11 +841,6 @@ export const ContactsManager: React.FC = () => {
           </Button>
         </div>
 
-        {/* Info Message */}
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-600">
-          Las opciones de menú «Gestionar listas inteligentes» y «Restaurar» cambian de sitio. A partir del 29 de enero de 2026, las encontrará en el menú de acciones (:) junto al botón «Añadir contacto».
-        </div>
-
         <TabsContent value="smart-lists" className="space-y-4">
           {/* Action Bar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -801,10 +851,6 @@ export const ContactsManager: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" className="bg-white border-slate-200 hover:bg-slate-50 shadow-sm">
-                <Download className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                Importar
-              </Button>
               <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
               <Button variant="ghost" size="sm" className="text-slate-600 hover:text-blue-600 flex items-center gap-2">
                 <Filter className="h-3.5 w-3.5" />
@@ -922,10 +968,7 @@ export const ContactsManager: React.FC = () => {
                         </Badge>
                       ))}
                     </div>
-                    {contact.tags && contact.tags.length > 0 ? (
-                      <div className="text-xs text-slate-500">Ya existe una etiqueta asociada. Elimina primero para cambiarla.</div>
-                    ) : (
-                      <DropdownMenu>
+                    <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="h-8 w-8 rounded-md flex items-center justify-center text-slate-500 border border-slate-200 hover:bg-slate-50">
                             <MoreVertical className="h-4 w-4" />
@@ -946,7 +989,6 @@ export const ContactsManager: React.FC = () => {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )}
                   </div>
                 </div>
               ))
@@ -1104,10 +1146,7 @@ export const ContactsManager: React.FC = () => {
                                   </Badge>
                                 ))}
                               </div>
-                              {contact.tags && contact.tags.length > 0 ? (
-                                <div className="text-xs text-slate-500">Ya existe una etiqueta asociada. Elimina primero para cambiarla.</div>
-                              ) : (
-                                <DropdownMenu>
+                              <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm" className="w-full h-8 text-slate-600 justify-between">
                                       Asociar etiqueta
@@ -1129,7 +1168,6 @@ export const ContactsManager: React.FC = () => {
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
-                              )}
                             </div>
                           </td>
                           <td className="px-5 py-4 text-right">
