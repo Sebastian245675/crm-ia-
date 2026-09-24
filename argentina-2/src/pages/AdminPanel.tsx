@@ -167,6 +167,7 @@ const ADMIN_TAB_PATHS: Record<string, string> = {
   'ai-assistant': 'asistente-ia',
   reportes: 'reportes',
   contabilidad: 'contabilidad',
+  'flujo-caja': 'flujo-caja',
   facturacion: 'facturacion',
   seguridad: 'seguridad',
   configuration: 'configuracion',
@@ -1916,7 +1917,8 @@ export const AdminPanel: React.FC = () => {
                 <TabsTrigger value="wpp">WhatsApp (WPP)</TabsTrigger>
                 <TabsTrigger value="mail-config">Correos (IMAP/SMTP)</TabsTrigger>
                 <TabsTrigger value="payment-gateways">Pasarelas de Pago</TabsTrigger>
-              <TabsTrigger value="ai-assistant">Asistente IA</TabsTrigger>
+                <TabsTrigger value="ai-assistant">Asistente IA</TabsTrigger>
+                <TabsTrigger value="flujo-caja">Flujo de caja</TabsTrigger>
                 <TabsTrigger value="help-manual">Manual de Ayuda</TabsTrigger>
                 <TabsTrigger value="funnels">Funnels</TabsTrigger>
                 <TabsTrigger value="comments">Comments</TabsTrigger>
@@ -2982,6 +2984,12 @@ export const AdminPanel: React.FC = () => {
               </TabsContent>
 
               {/* Contabilidad tab */}
+              <TabsContent value="flujo-caja" className="space-y-6">
+                <Suspense fallback={<LoadingFallback />}>
+                  <AccountingManager key={`${user?.agencyId || 'default'}-cash-flow`} standalone mode="cash-flow" />
+                </Suspense>
+              </TabsContent>
+
               <TabsContent value="contabilidad" className="space-y-6">
                 <Suspense fallback={<LoadingFallback />}>
                   <AccountingManager key={user?.agencyId || 'default'} standalone />

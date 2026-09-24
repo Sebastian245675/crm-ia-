@@ -43,6 +43,7 @@ const TAB_PERMISSION: Record<string, AgencyPermissionKey> = {
   comments: 'manageWebsite',
   'ai-assistant': 'accessAiAssistant',
   contabilidad: 'viewAccounting',
+  'flujo-caja': 'viewAccounting',
   facturacion: 'viewAccounting',
   reportes: 'viewAccounting',
   configuration: 'manageSettings',
@@ -71,6 +72,6 @@ export const canAccessAdminTab = (user: AgencyUserLike | null | undefined, tab: 
 };
 
 export const firstAllowedAdminTab = (user: AgencyUserLike | null | undefined) => {
-  const priority = ['dashboard', 'mensajeria', 'contacts', 'calendars', 'opportunities', 'orders', 'products', 'marketing', 'erp', 'website', 'ai-assistant', 'contabilidad'];
+  const priority = ['dashboard', 'mensajeria', 'contacts', 'calendars', 'opportunities', 'orders', 'products', 'marketing', 'erp', 'website', 'ai-assistant', 'flujo-caja', 'contabilidad'];
   return priority.find((tab) => canAccessAdminTab(user, tab)) || 'help-manual';
 };

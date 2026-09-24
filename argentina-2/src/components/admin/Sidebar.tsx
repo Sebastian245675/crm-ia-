@@ -250,6 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'erp', icon: <Factory className="h-5 w-5" />, label: 'ERP Integral', description: 'Operaciones y recursos' },
     { id: 'website', icon: <Globe className="h-5 w-5" />, label: 'Sitio Web', description: 'Páginas, funnels, SEO...' },
     { id: 'ai-assistant', icon: <Bot className="h-5 w-5" />, label: 'Asistente IA', description: 'Disponible próximamente' },
+    { id: 'flujo-caja', icon: <DollarSign className="h-5 w-5" />, label: 'Flujo de caja', description: 'Cobros, pagos y caja diaria' },
     { id: 'contabilidad', icon: <DollarSign className="h-5 w-5" />, label: 'Contabilidad', description: 'Ingresos y egresos' },
   ];
   const visibleSidebarItems = sidebarItems.filter((item) => item.id === 'ai-assistant' || canAccessAdminTab(user, item.id));

@@ -614,7 +614,8 @@ const sidebarItems = [
   { id: 'facturacion', label: 'Facturación', description: 'Configurar facturación y líneas' },
   { id: 'seguridad', label: 'Seguridad', description: 'Autenticación de 2 pasos y accesos' },
   { id: 'employees', label: 'Empleados', description: 'Gestión de personal' },
-  { id: 'contabilidad', label: 'Contabilidad', description: 'Ingresos y egresos' }
+  { id: 'contabilidad', label: 'Contabilidad', description: 'Ingresos y egresos' },
+  { id: 'flujo-caja', label: 'Flujo de caja', description: 'Cobros, pagos y caja diaria' }
 ];
 
 export default AdminLayout;

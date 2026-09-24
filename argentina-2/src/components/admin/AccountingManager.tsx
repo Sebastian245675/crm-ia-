@@ -44,7 +44,7 @@ const views = [
   ['resumen', 'Resumen', Landmark], ['plan', 'Plan de cuentas', BookOpen], ['asientos', 'Asientos y diario', ReceiptText], ['mayor', 'Libro mayor', BookOpen],
   ['cartera', 'Cuentas por cobrar/pagar', WalletCards], ['bancos', 'Conciliación bancaria', Landmark], ['facturacion', 'Facturación', ReceiptText],
   ['impuestos', 'Impuestos', Scale], ['estados', 'Estados financieros', Scale], ['presupuesto', 'Presupuesto', Building2], ['activos', 'Activos fijos', Landmark],
-  ['costos', 'Centros de costo', Building2], ['cierres', 'Cierres y auditoría', LockKeyhole], ['operacion', 'Caja y comprobantes', CircleDollarSign],
+  ['costos', 'Centros de costo', Building2], ['cierres', 'Cierres y auditoría', LockKeyhole], ['operacion', 'Caja y comprobantes', CircleDollarSign], ['cierre-caja', 'Cierre de caja', LockKeyhole],
 ] as const;
 const formatMoney = formatCurrency;
 const compactMoney = formatCurrency;
@@ -78,6 +78,7 @@ interface AccountingManagerProps {
   operationalRecords?: Record<string, Array<Record<string, string>>>;
   onOpenModule?: (moduleId: string) => void;
   standalone?: boolean;
+  mode?: 'accounting' | 'cash-flow';
 }
 
 const OperationalAccounting = React.lazy(() => import('@/components/admin/ContabilidadManager').then((module) => ({ default: module.ContabilidadManager })));
@@ -119,8 +120,8 @@ export const accountingApps: AccountingAppItem[] = [
   },
   {
     id: 'operacion',
-    name: 'Caja y Recibos',
-    subtitle: 'Arqueo diario y egresos de caja',
+    name: 'Caja y recibos',
+    subtitle: 'Registro de ingresos, egresos y comprobantes',
     icon: Banknote,
     gradient: 'from-amber-500 to-orange-600',
     category: 'operativa',
@@ -227,9 +228,15 @@ export const accountingApps: AccountingAppItem[] = [
     category: 'gestion',
     categoryLabel: 'Control',
   },
+  {
+    id: 'cierre-caja', name: 'Cierre de caja', subtitle: 'Arqueo diario y control del efectivo',
+    icon: LockKeyhole, gradient: 'from-amber-600 to-red-600', category: 'operativa', categoryLabel: 'Tesorería',
+  },
 ];
 
-export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationalRecords = {}, onOpenModule, standalone = false }) => {
+const cashFlowAppIds = new Set<AccountingAppItem['id']>(['resumen', 'facturacion', 'operacion', 'cartera', 'bancos', 'cierre-caja']);
+
+export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationalRecords = {}, onOpenModule, standalone = false, mode = 'accounting' }) => {
   const { user } = useAuth();
   const activeAgencyId = getActiveAgencyId(user);
   const storageKey = 'merco-accounting-v1-' + (activeAgencyId || '2');
@@ -308,7 +315,8 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
   };
 
   const filteredApps = useMemo(() => {
-    return accountingApps.filter((app) => {
+    const apps = mode === 'cash-flow' ? accountingApps.filter((app) => cashFlowAppIds.has(app.id)) : accountingApps.filter((app) => app.id !== 'cierre-caja');
+    return apps.filter((app) => {
       const query = appSearchTerm.trim().toLowerCase();
       const matchesSearch = !query ||
         app.name.toLowerCase().includes(query) ||
@@ -317,7 +325,7 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
       const matchesCategory = appCategoryFilter === 'todas' || app.category === appCategoryFilter;
       return matchesSearch && matchesCategory;
     });
-  }, [appSearchTerm, appCategoryFilter]);
+  }, [appSearchTerm, appCategoryFilter, mode]);
 
   const saveEntry = () => {
     const amount = Number(entryForm.amount);
@@ -481,6 +489,7 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
   const Header = ({ title, note, button }: { title: string; note?: string; button?: React.ReactNode }) => <div className="mb-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h2 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">{title}</h2>{note && <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">{note}</p>}</div>{button}</div>;
 
   const currentApp = accountingApps.find((app) => app.id === view);
+  const availableApps = mode === 'cash-flow' ? accountingApps.filter((app) => cashFlowAppIds.has(app.id)) : accountingApps.filter((app) => app.id !== 'cierre-caja');
 
   return <div className="min-h-screen max-w-full overflow-x-hidden bg-slate-50">
     {view !== 'apps' && (
@@ -513,7 +522,7 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
             onChange={(event) => setView(event.target.value as AccountingAppItem['id'])}
             className="h-8 text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 font-medium text-slate-700 focus:ring-1 focus:ring-blue-500 cursor-pointer"
           >
-            {accountingApps.map((a) => (
+            {availableApps.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
@@ -528,10 +537,10 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
         <div className="mb-6 border-b border-slate-200 pb-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">Suite financiera</p>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Contabilidad y gestión</h1>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">{mode === 'cash-flow' ? 'Gestión diaria de tesorería' : 'Suite financiera'}</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{mode === 'cash-flow' ? 'Flujo de caja' : 'Contabilidad y gestión'}</h1>
               <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500 sm:text-sm">
-                Accede a cada proceso contable desde un único centro de trabajo.
+                {mode === 'cash-flow' ? 'Control diario del dinero cobrado y pagado.' : 'Accede a cada proceso contable desde un único centro de trabajo.'}
               </p>
             </div>
             <div className="relative w-full lg:w-80">
@@ -544,7 +553,7 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
               />
             </div>
           </div>
-          <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
+          {mode !== 'cash-flow' && <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
             {([
               ['todas', 'Todas'],
               ['operativa', 'Operación'],
@@ -566,7 +575,7 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
                 {label}
               </button>
             ))}
-          </div>
+          </div>}
         </div>
 
         <div className="grid grid-cols-3 gap-x-3 gap-y-7 sm:grid-cols-4 sm:gap-x-6 md:grid-cols-5 lg:grid-cols-7">
@@ -690,7 +699,7 @@ export const AccountingManager: React.FC<AccountingManagerProps> = ({ operationa
       {view === 'activos' && <><Header title="Registro y depreciación de activos fijos" /><div className={tableShell}><table className="w-full"><thead><tr>{['Código', 'Activo', 'Fecha de alta', 'Valor original', 'Vida útil', 'Depreciación anual', 'Estado', 'Control'].map((label) => <th key={label} className={th}>{label}</th>)}</tr></thead><tbody>{state.assets.map((asset) => <tr key={asset.id}><td className={`${td} font-bold text-[#245878]`}>{asset.code}</td><td className={td}>{asset.name}</td><td className={td}>{asset.acquired}</td><td className={`${td} text-right`}>{formatMoney(asset.value)}</td><td className={td}>{asset.years} años</td><td className={`${td} text-right font-bold`}>{formatMoney(asset.value / asset.years)}</td><td className={td}>{asset.status}</td><td className={td}><button onClick={() => toggleAsset(asset.id)} className={asset.status === 'Activo' ? 'text-red-700 underline' : action}>{asset.status === 'Activo' ? 'Dar de baja' : 'Reactivar'}</button></td></tr>)}</tbody></table></div></>}
       {view === 'costos' && <><Header title="Contabilidad analítica por centro de costo" /><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2">{state.costCenters.map((center) => { const usage = Math.round(center.actual / center.budget * 100); return <div key={center.id} className="border border-[#a8c0d1] bg-white"><div className="px-3 py-2 bg-[#dcecf5] border-b border-[#a8c0d1] text-xs font-bold text-[#244d68]">{center.code} · {center.name}</div><div className="p-3 text-xs space-y-2"><div className="flex justify-between"><span>Presupuesto</span><strong>{formatMoney(center.budget)}</strong></div><div className="flex justify-between"><span>Ejecutado</span><strong>{formatMoney(center.actual)}</strong></div><div className="h-2 bg-slate-200"><div className={cn('h-full', usage > 100 ? 'bg-red-500' : 'bg-[#397da8]')} style={{ width: `${Math.min(usage, 100)}%` }} /></div><p className="text-right text-[10px] text-slate-500">{usage}% ejecutado</p></div></div>; })}</div></>}
       {view === 'cierres' && <><Header title="Períodos contables y auditoría" /><div className={tableShell}><table className="w-full"><thead><tr>{['Período', 'Estado', 'Fecha de cierre', 'Control'].map((label) => <th key={label} className={th}>{label}</th>)}</tr></thead><tbody>{state.periods.map((period) => <tr key={period.id}><td className={`${td} font-bold`}>{period.name}</td><td className={td}>{period.status}</td><td className={td}>{period.closedAt || '—'}</td><td className={td}><button onClick={() => togglePeriod(period.id)} className={action}>{period.status === 'Abierto' ? 'Cerrar período' : 'Reabrir con auditoría'}</button></td></tr>)}</tbody></table></div><h3 className="text-xs font-bold text-[#244d68] mt-4 mb-2">Registro de auditoría</h3><div className={tableShell}><table className="w-full"><thead><tr>{['Fecha', 'Acción', 'Detalle'].map((label) => <th key={label} className={th}>{label}</th>)}</tr></thead><tbody>{state.audit.map((event) => <tr key={event.id}><td className={td}>{event.date}</td><td className={`${td} font-bold`}>{event.action}</td><td className={td}>{event.detail}</td></tr>)}</tbody></table></div></>}
-      {view === 'operacion' && <React.Suspense fallback={<div className="flex min-h-64 items-center justify-center border border-[#a8c0d1] bg-white text-xs font-semibold text-slate-500">Cargando caja y comprobantes...</div>}><OperationalAccounting embedded /></React.Suspense>}
+      {(view === 'operacion' || view === 'cierre-caja') && <React.Suspense fallback={<div className="flex min-h-64 items-center justify-center border border-[#a8c0d1] bg-white text-xs font-semibold text-slate-500">Cargando caja y comprobantes...</div>}><OperationalAccounting embedded /></React.Suspense>}
     </div>)}
     <Dialog open={entryOpen} onOpenChange={setEntryOpen}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>Nuevo asiento contable</DialogTitle></DialogHeader><div className="grid sm:grid-cols-2 gap-3">{[['date', 'Fecha', 'date'], ['reference', 'Referencia', 'text'], ['description', 'Descripción', 'text'], ['amount', 'Importe', 'number']].map(([key, label, type]) => <div key={key} className="space-y-1"><Label>{label}</Label><Input type={type} value={entryForm[key as keyof typeof entryForm]} onChange={(event) => setEntryForm((current) => ({ ...current, [key]: event.target.value }))} /></div>)}<div className="space-y-1"><Label>Cuenta débito</Label><select value={entryForm.debitAccount} onChange={(event) => setEntryForm((current) => ({ ...current, debitAccount: event.target.value }))} className="w-full h-10 border rounded px-2 text-sm">{state.accounts.map((account) => <option key={account.code} value={account.code}>{account.code} · {account.name}</option>)}</select></div><div className="space-y-1"><Label>Cuenta crédito</Label><select value={entryForm.creditAccount} onChange={(event) => setEntryForm((current) => ({ ...current, creditAccount: event.target.value }))} className="w-full h-10 border rounded px-2 text-sm">{state.accounts.map((account) => <option key={account.code} value={account.code}>{account.code} · {account.name}</option>)}</select></div></div><DialogFooter><Button variant="outline" onClick={() => setEntryOpen(false)}>Cancelar</Button><Button onClick={saveEntry}><Check className="h-4 w-4 mr-1" />Contabilizar</Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={accountOpen} onOpenChange={setAccountOpen}><DialogContent><DialogHeader><DialogTitle>Nueva cuenta contable</DialogTitle></DialogHeader><div className="space-y-3"><div><Label>Código</Label><Input value={accountForm.code} onChange={(event) => setAccountForm((current) => ({ ...current, code: event.target.value }))} /></div><div><Label>Nombre</Label><Input value={accountForm.name} onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))} /></div><div><Label>Naturaleza</Label><select value={accountForm.type} onChange={(event) => setAccountForm((current) => ({ ...current, type: event.target.value as Account['type'] }))} className="w-full h-10 border rounded px-2 text-sm">{['Activo', 'Pasivo', 'Patrimonio', 'Ingreso', 'Gasto'].map((type) => <option key={type}>{type}</option>)}</select></div></div><DialogFooter><Button variant="outline" onClick={() => setAccountOpen(false)}>Cancelar</Button><Button onClick={saveAccount}>Guardar cuenta</Button></DialogFooter></DialogContent></Dialog>
