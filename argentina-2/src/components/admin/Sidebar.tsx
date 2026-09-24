@@ -249,10 +249,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'orders', icon: <ShoppingCart className="h-5 w-5" />, label: 'Pedidos', description: 'Control de ventas' },
     { id: 'erp', icon: <Factory className="h-5 w-5" />, label: 'ERP Integral', description: 'Operaciones y recursos' },
     { id: 'website', icon: <Globe className="h-5 w-5" />, label: 'Sitio Web', description: 'Páginas, funnels, SEO...' },
-    { id: 'ai-assistant', icon: <Bot className="h-5 w-5" />, label: 'Asistente IA', description: 'Inteligencia artificial' },
+    { id: 'ai-assistant', icon: <Bot className="h-5 w-5" />, label: 'Asistente IA', description: 'Disponible próximamente' },
     { id: 'contabilidad', icon: <DollarSign className="h-5 w-5" />, label: 'Contabilidad', description: 'Ingresos y egresos' },
   ];
-  const visibleSidebarItems = sidebarItems.filter((item) => canAccessAdminTab(user, item.id));
+  const visibleSidebarItems = sidebarItems.filter((item) => item.id === 'ai-assistant' || canAccessAdminTab(user, item.id));
   const canManageSettings = canAccessAdminTab(user, 'configuration');
   const canViewAccounting = canAccessAdminTab(user, 'facturacion');
   const canOpenConfigurationMenu = canManageSettings || canViewAccounting || isAdmin;
@@ -441,7 +441,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <React.Fragment key={item.id}>
                   <li>
                     <button
+                      disabled={item.id === 'ai-assistant'}
+                      aria-disabled={item.id === 'ai-assistant'}
+                      title={item.id === 'ai-assistant' ? 'Disponible próximamente' : item.description}
                       onClick={() => {
+                        if (item.id === 'ai-assistant') return;
                         if (item.hasDropdown && item.toggleDropdown) {
                           item.toggleDropdown();
                         } else {
@@ -450,13 +454,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       className={cn(
                         "w-full flex items-center px-4 py-2.5 rounded-md text-left transition-all duration-200 group relative",
-                        isTabActive(item.id)
+                        item.id === 'ai-assistant'
+                          ? 'cursor-not-allowed opacity-70'
+                          : isTabActive(item.id)
                           ? "bg-[#d5eaf7] text-[#174e73] border border-[#9bc3dc] font-semibold"
                           : "text-slate-600 border border-transparent hover:bg-[#e2eff6] hover:text-[#174e73]"
                       )}
                     >
                       {/* Active Indicator Line for main items */}
-                      {isTabActive(item.id) && !item.hasDropdown && (
+                      {item.id !== 'ai-assistant' && isTabActive(item.id) && !item.hasDropdown && (
                         <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-6 w-1 bg-[#2575a8]" />
                       )}
 
@@ -468,7 +474,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                       </span>
 
                       <span className="truncate flex-1">
-                        {item.label}
+                        <span className="block truncate">{item.label}</span>
+                        {item.id === 'ai-assistant' && (
+                          <span className="block truncate text-[9px] font-medium text-slate-500">Disponible próximamente</span>
+                        )}
                       </span>
 
                       {/* Dropdown chevron */}

@@ -99,7 +99,6 @@ const CommentsManager = lazy(() => import('@/components/admin/CommentsManager').
 const MessagingManager = lazy(() => import('@/components/admin/MessagingManager').then(m => ({ default: m.MessagingManager })));
 const WppConfiguration = lazy(() => import('@/components/admin/WppConfiguration'));
 const MailConfiguration = lazy(() => import('@/components/admin/MailConfiguration'));
-const AiAgentsDashboard = lazy(() => import('@/components/admin/AiAgentsDashboard').then(m => ({ default: m.AiAgentsDashboard })));
 const FunnelsManager = lazy(() => import('@/components/admin/FunnelsManager').then(m => ({ default: m.FunnelsManager })));
 const WebsiteManager = lazy(() => import('@/components/admin/WebsiteManager').then(m => ({ default: m.WebsiteManager })));
 const PaymentGatewayManager = lazy(() => import('@/components/admin/PaymentGatewayManager').then(m => ({ default: m.PaymentGatewayManager })));
@@ -1917,7 +1916,7 @@ export const AdminPanel: React.FC = () => {
                 <TabsTrigger value="wpp">WhatsApp (WPP)</TabsTrigger>
                 <TabsTrigger value="mail-config">Correos (IMAP/SMTP)</TabsTrigger>
                 <TabsTrigger value="payment-gateways">Pasarelas de Pago</TabsTrigger>
-                <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
+              <TabsTrigger value="ai-assistant">Asistente IA</TabsTrigger>
                 <TabsTrigger value="help-manual">Manual de Ayuda</TabsTrigger>
                 <TabsTrigger value="funnels">Funnels</TabsTrigger>
                 <TabsTrigger value="comments">Comments</TabsTrigger>
@@ -3040,11 +3039,18 @@ export const AdminPanel: React.FC = () => {
                 </Card>
               </TabsContent>
 
-              {/* AI Assistant - disponible para todos (admin y subadmin) */}
+              {/* Asistente de IA reservado para la Etapa 2 */}
               <TabsContent value="ai-assistant" className="m-0 p-0 border-none outline-none mt-0">
-                <Suspense fallback={<LoadingFallback />}>
-                  <AiAgentsDashboard />
-                </Suspense>
+                <Card className="mx-auto max-w-2xl border-slate-200 shadow-sm">
+                  <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                      <Sparkles className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="text-xl">Asistente de IA</CardTitle>
+                    <Badge variant="secondary">Disponible próximamente</Badge>
+                    <p className="max-w-md text-sm text-slate-500">Esta función está prevista para la Etapa 2.</p>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Mensajería (WhatsApp simulation and config) */}
