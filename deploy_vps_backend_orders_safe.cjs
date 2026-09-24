@@ -34,7 +34,12 @@ const exec = (command, cwd = projectDir) => new Promise((resolve, reject) => {
 });
 
 const putFile = (sftp, local, remote) => new Promise((resolve, reject) => {
-  sftp.fastPut(local, remote, (error) => error ? reject(error) : resolve());
+  const source = fs.createReadStream(local);
+  const destination = sftp.createWriteStream(remote, { mode: 0o644 });
+  source.on('error', reject);
+  destination.on('error', reject);
+  destination.on('close', resolve);
+  source.pipe(destination);
 });
 
 connection.on('keyboard-interactive', (_name, _instructions, _language, prompts, finish) => finish(prompts.map(() => password)));
