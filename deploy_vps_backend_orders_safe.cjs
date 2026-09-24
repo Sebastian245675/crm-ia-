@@ -54,7 +54,7 @@ connection.on('ready', async () => {
     await exec(`mkdir -p "${remoteBackup}" "${remoteBackend}/src/database" "${remoteBackend}/src/ventas"`);
     const sftp = await new Promise((resolve, reject) => connection.sftp((error, value) => error ? reject(error) : resolve(value)));
     for (const [localRelative, remote, backupName] of files) {
-      await putFile(path.resolve(__dirname, localRelative), `${remote}.next-${releaseId}`);
+      await putFile(sftp, path.resolve(__dirname, localRelative), `${remote}.next-${releaseId}`);
       await exec(`cp "${remote}" "${remoteBackup}/${backupName}"`);
     }
     sftp.end();
