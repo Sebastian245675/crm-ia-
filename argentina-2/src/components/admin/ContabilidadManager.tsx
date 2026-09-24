@@ -51,6 +51,15 @@ import { toast } from '@/hooks/use-toast';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ec4899', '#14b8a6'];
 
+const getOrderTax = (order: any): number => {
+  const directTax = order?.tax ?? order?.impuestos;
+  if (directTax !== undefined && directTax !== null && Number.isFinite(Number(directTax))) {
+    return Number(directTax);
+  }
+  const taxRows = Array.isArray(order?.taxes) ? order.taxes : [];
+  return taxRows.reduce((sum: number, tax: any) => sum + (Number(tax?.amount ?? tax?.tax) || 0), 0);
+};
+
 const categoryStyleMap: Record<string, { icon: string; bg: string; text: string; border: string }> = {
   'Mercadería': { icon: '📦', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-150' },
   'Marketing': { icon: '📢', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-150' },
@@ -109,6 +118,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
 
   // KPI states for Egresos
   const [kpiTotalSales, setKpiTotalSales] = useState(0);
+  const [kpiSalesTax, setKpiSalesTax] = useState(0);
   const [kpiTotalExpenses, setKpiTotalExpenses] = useState(0);
   const [kpiNetProfit, setKpiNetProfit] = useState(0);
   const [maxExpenseValue, setMaxExpenseValue] = useState<number>(0);
@@ -378,12 +388,20 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
     const filteredExpenses = filteredManual.filter(e => e.tipo !== 'ingreso');
     // Calculations
     const totalSales = sumRealSales(filteredOrders);
+    const salesTax = filteredOrders.reduce((sum, order) => sum + getOrderTax(order), 0);
     setKpiTotalSales(totalSales);
+    setKpiSalesTax(salesTax);
 
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.monto) || 0), 0);
     setKpiTotalExpenses(totalExpenses);
 
-    setKpiNetProfit(totalSales - totalExpenses);
+    // El IVA cobrado no es ingreso propio. Los ingresos contables (p. ej. reversión
+    // del costo de un ticket devuelto) reducen los egresos netos del periodo.
+    const profitRelevantIncomeCategories = new Set(['venta manual', 'servicios', 'reembolso', 'mercadería']);
+    const otherIncome = filteredManual
+      .filter(e => e.tipo === 'ingreso' && profitRelevantIncomeCategories.has(String(e.categoria || '').trim().toLowerCase()))
+      .reduce((sum, e) => sum + (Number(e.monto) || 0), 0);
+    setKpiNetProfit(totalSales - salesTax - totalExpenses + otherIncome);
 
     const maxExpVal = filteredExpenses.reduce((max, exp) => Math.max(max, Number(exp.monto) || 0), 0);
     setMaxExpenseValue(maxExpVal);
@@ -909,14 +927,14 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
       {/* ================================= UNIFIED ANALYTICS DASHBOARD ================================= */}
       <div className="space-y-6 animate-in fade-in duration-350">
           {/* KPI CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <Card className="bg-white border border-slate-100 shadow-sm relative overflow-hidden">
               <CardContent className="p-6 flex justify-between items-start">
                 <div>
-                  <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Caja total de Ventas</p>
+                  <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Ventas cobradas</p>
                   <h3 className="text-2xl font-black text-slate-800">{formatCurrency(kpiTotalSales)}</h3>
                   <p className="text-[10px] text-blue-600 mt-1 font-medium flex items-center">
-                    <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> Flujo neto de ingresos
+                    <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> Incluye impuestos trasladados
                   </p>
                 </div>
                 <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg">
@@ -940,13 +958,26 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
               </CardContent>
             </Card>
 
+            <Card className="bg-white border border-amber-100 shadow-sm relative overflow-hidden">
+              <CardContent className="p-6 flex justify-between items-start">
+                <div>
+                  <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Impuestos de ventas</p>
+                  <h3 className="text-2xl font-black text-amber-700">{formatCurrency(kpiSalesTax)}</h3>
+                  <p className="text-[10px] text-amber-700 mt-1 font-medium">Desglosados de las ventas POS</p>
+                </div>
+                <div className="p-2.5 bg-amber-50 text-amber-700 rounded-lg">
+                  <Coins className="h-5 w-5" />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className={cn(
               "border shadow-sm relative overflow-hidden",
               kpiNetProfit >= 0 ? "bg-emerald-50/20 border-emerald-100" : "bg-red-50/20 border-red-100"
             )}>
               <CardContent className="p-6 flex justify-between items-start">
                 <div>
-                  <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Balance de Caja</p>
+                  <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Ganancia estimada</p>
                   <h3 className={cn(
                     "text-2xl font-black",
                     kpiNetProfit >= 0 ? "text-emerald-700" : "text-red-700"
@@ -958,7 +989,7 @@ export const ContabilidadManager: React.FC<ContabilidadManagerProps> = ({ embedd
                     kpiNetProfit >= 0 ? "text-emerald-600" : "text-red-600"
                   )}>
                     {kpiNetProfit >= 0 ? <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />}
-                    {kpiNetProfit >= 0 ? "Balance Comercial Sano" : "Caja en Negativo"}
+                    Ventas sin impuestos menos gastos netos
                   </p>
                 </div>
                 <div className={cn(
